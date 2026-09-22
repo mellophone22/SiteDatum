@@ -1,4 +1,4 @@
-# Project Engineer Workspace
+# AnyDesk
 
 A local-first Windows desktop workspace for project engineers, built with Tauri, React, TypeScript, Rust, and bundled SQLite.
 

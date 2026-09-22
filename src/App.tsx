@@ -10,6 +10,8 @@ import { Submittals } from "./Submittals";
 import { Files } from "./Files";
 import { NotesContacts } from "./NotesContacts";
 import { SearchPalette } from "./SearchPalette";
+import brandLogo from "./assets/anydesk-logo-transparent.png";
+import appIcon from "./assets/anydesk-app-icon.jpg";
 
 type ProjectRootSetting = { path: string | null };
 type ProjectRootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
@@ -136,7 +138,7 @@ function App() {
   return (
     <main className="application-shell">
       <aside className="app-sidebar">
-        <div className="brand-row"><span className="brand-mark" aria-hidden="true">PE</span><span className="app-name">Project Engineer<span>Workspace</span></span></div>
+        <div className="brand-row"><span className="brand-lockup"><img className="brand-logo" src={brandLogo} alt="AnyDesk"/><img className="brand-logo brand-logo-contrast" src={brandLogo} alt="" aria-hidden="true"/></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
         <nav className="main-navigation" aria-label="Main navigation">
           <div className="primary-nav"><p className="nav-group-label">Command center</p>{navButton("attention", "Attention")}{navButton("projects", "Projects")}</div>
           <div className="workspace-nav" aria-label="Workspace registers"><p className="nav-group-label">Project registers</p>{navButton("tasks", "Tasks")}{navButton("rfis", "RFIs")}{navButton("submittals", "Submittals")}{navButton("files", "Files")}{navButton("notes", "Notes & Contacts")}</div>

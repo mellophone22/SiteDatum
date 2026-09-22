@@ -694,5 +694,5 @@ pub fn run() {
             create_local_backup
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run Project Engineer Workspace");
+        .expect("failed to run AnyDesk");
 }
