@@ -1,0 +1,1 @@
+export function takeFocus(screen:string):string|null{try{const value=JSON.parse(localStorage.getItem("workspace.focus")??"null") as {screen?:string;id?:string}|null;if(value?.screen===screen&&value.id){localStorage.removeItem("workspace.focus");return value.id}}catch{localStorage.removeItem("workspace.focus")}return null}
