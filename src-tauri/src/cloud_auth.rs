@@ -46,14 +46,25 @@ fn session_entry() -> AppResult<Entry> {
 }
 
 fn stored_session() -> AppResult<StoredSession> {
-    let value = session_entry()?.get_password().map_err(|error| {
-        AppError::from_technical(
-            "CLOUD_SIGN_IN_REQUIRED",
-            "Connect this computer to the cloud workspace before syncing.",
-            "Open Settings and sign in with your email and password.",
-            error.to_string(),
-        )
-    })?;
+    let value = match session_entry()?.get_password() {
+        Ok(value) => value,
+        Err(keyring::Error::NoEntry) => {
+            return Err(AppError::from_technical(
+                "CLOUD_SIGN_IN_REQUIRED",
+                "Connect this computer to the cloud workspace before syncing.",
+                "Open Settings and sign in with your email and password.",
+                "No cloud session exists in Windows Credential Manager.",
+            ));
+        }
+        Err(error) => {
+            return Err(AppError::from_technical(
+                "CLOUD_CREDENTIAL_STORE_UNAVAILABLE",
+                "The saved cloud session could not be read securely.",
+                "Check Windows Credential Manager, then try again.",
+                error.to_string(),
+            ));
+        }
+    };
     serde_json::from_str::<StoredSession>(&value).map_err(|error| {
         AppError::from_technical(
             "CLOUD_CREDENTIAL_INVALID",
@@ -215,5 +226,18 @@ pub fn disconnect() -> AppResult<()> {
             "Try again or remove the AnyDesk cloud credential from Windows Credential Manager.",
             error.to_string(),
         )),
+    }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod tests {
+    use keyring::credential::CredentialPersistence;
+
+    #[test]
+    fn windows_keyring_uses_persistent_native_store() {
+        assert!(matches!(
+            keyring::default::default_credential_builder().persistence(),
+            CredentialPersistence::UntilDelete
+        ));
     }
 }
