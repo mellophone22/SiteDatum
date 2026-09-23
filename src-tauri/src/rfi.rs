@@ -21,6 +21,12 @@ pub struct RfiInput {
     pub response_received_date: Option<String>,
     pub response: Option<String>,
     pub notes: Option<String>,
+    pub rfi_location: Option<String>,
+    pub drawing_number: Option<String>,
+    pub cost_impact: Option<String>,
+    pub time_delay: Option<String>,
+    pub suggested_solution: Option<String>,
+    pub requested_by: Option<String>,
     pub related_task_id: Option<String>,
 }
 
@@ -42,6 +48,12 @@ pub struct Rfi {
     pub response_received_date: Option<String>,
     pub response: Option<String>,
     pub notes: Option<String>,
+    pub rfi_location: Option<String>,
+    pub drawing_number: Option<String>,
+    pub cost_impact: Option<String>,
+    pub time_delay: Option<String>,
+    pub suggested_solution: Option<String>,
+    pub requested_by: Option<String>,
     pub related_task_id: Option<String>,
 }
 
@@ -146,6 +158,12 @@ mod tests {
             response_received_date: None,
             response: None,
             notes: None,
+            rfi_location: None,
+            drawing_number: None,
+            cost_impact: None,
+            time_delay: None,
+            suggested_solution: None,
+            requested_by: None,
             related_task_id: None,
         }
     }

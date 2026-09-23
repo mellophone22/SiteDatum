@@ -1,15 +1,23 @@
+mod cloud_auth;
+mod cloud_sync;
+mod data_exchange;
 mod error;
 mod file_record;
 mod note_contact;
 mod persistence;
 mod project;
 mod project_root;
+mod recovery;
+mod reports;
 mod rfi;
+mod rfi_pdf;
 mod submittal;
 mod task;
+mod work_item;
 
 use std::{fs, sync::Mutex};
 
+use data_exchange::ImportPreview;
 use error::{AppError, AppResult};
 use file_record::{FileInput, FileMetadataInput, FileRecord};
 use note_contact::{ActivityEvent, Contact, ContactInput, Note, NoteInput};
@@ -20,6 +28,7 @@ use rfi::{AttachmentReference, Rfi, RfiInput};
 use submittal::{AttachmentReference as SubmittalAttachmentReference, Submittal, SubmittalInput};
 use task::{AttentionSection, Task, TaskInput};
 use tauri::Manager;
+use work_item::{ProjectTemplate, ProjectTemplateInput, WorkItem, WorkItemInput};
 
 struct AppState {
     database: Mutex<Database>,
@@ -216,6 +225,118 @@ fn list_tasks(state: tauri::State<'_, AppState>) -> AppResult<Vec<Task>> {
         .list_tasks()
 }
 #[tauri::command]
+fn list_work_items(state: tauri::State<'_, AppState>) -> AppResult<Vec<WorkItem>> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .list_work_items()
+}
+#[tauri::command]
+fn create_work_item(
+    input: WorkItemInput,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<WorkItem> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .create_work_item(&input)
+}
+#[tauri::command]
+fn update_work_item(
+    id: String,
+    input: WorkItemInput,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<WorkItem> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .update_work_item(&id, &input)
+}
+#[tauri::command]
+fn bulk_set_work_item_status(
+    ids: Vec<String>,
+    status: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<usize> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .bulk_set_work_item_status(&ids, &status)
+}
+#[tauri::command]
+fn list_project_templates(state: tauri::State<'_, AppState>) -> AppResult<Vec<ProjectTemplate>> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .list_project_templates()
+}
+#[tauri::command]
+fn create_project_template(
+    input: ProjectTemplateInput,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<ProjectTemplate> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .create_project_template(&input)
+}
+#[tauri::command]
+fn apply_project_template(
+    template_id: String,
+    project_id: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<usize> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .apply_project_template(&template_id, &project_id)
+}
+#[tauri::command]
+fn preview_work_item_import(
+    path: String,
+    project_id: String,
+    item_type: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<ImportPreview> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .preview_work_item_import(&path, &project_id, &item_type)
+}
+#[tauri::command]
+fn import_work_items(
+    path: String,
+    project_id: String,
+    item_type: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<usize> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .import_work_items(&path, &project_id, &item_type)
+}
+#[tauri::command]
+fn export_work_items(
+    path: String,
+    ids: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<usize> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .export_work_items(&path, &ids)
+}
+#[tauri::command]
 fn list_attention(
     today: String,
     through: String,
@@ -288,6 +409,42 @@ fn update_rfi(id: String, input: RfiInput, state: tauri::State<'_, AppState>) ->
         .lock()
         .map_err(|_| AppError::internal("Database state is unavailable."))?
         .update_rfi(&id, &input)
+}
+#[tauri::command]
+fn get_rfi_pdf_default_path(id: String, state: tauri::State<'_, AppState>) -> AppResult<String> {
+    let database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    let rfi = database.get_rfi(&id)?;
+    let project = database.get_project(&rfi.project_id)?;
+    Ok(rfi_pdf::suggested_path(&rfi, &project)
+        .to_string_lossy()
+        .into_owned())
+}
+#[tauri::command]
+fn export_rfi_pdf(
+    id: String,
+    output_path: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<String> {
+    let mut database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    let rfi = database.get_rfi(&id)?;
+    let project = database.get_project(&rfi.project_id)?;
+    let destination = std::path::Path::new(&output_path);
+    rfi_pdf::write(&rfi, &project, destination)?;
+    if let Err(error) = database.add_rfi_attachment(&id, &output_path) {
+        return Err(AppError::from_technical(
+            "RFI_PDF_REFERENCE_FAILED",
+            "The PDF was created, but AnyDesk could not add it to the RFI attachments.",
+            "The PDF remains at the selected location. Reference it manually from the RFI if needed.",
+            format!("{} | {}", destination.display(), error.technical_detail()),
+        ));
+    }
+    Ok(destination.to_string_lossy().into_owned())
 }
 #[tauri::command]
 fn list_rfi_attention(
@@ -585,6 +742,164 @@ fn create_local_backup(state: tauri::State<'_, AppState>) -> AppResult<String> {
     })?;
     Ok(destination.to_string_lossy().to_string())
 }
+#[tauri::command]
+fn list_local_backups(state: tauri::State<'_, AppState>) -> AppResult<Vec<recovery::BackupInfo>> {
+    let parent = state
+        .database_path
+        .parent()
+        .ok_or_else(|| AppError::internal("Application storage is unavailable."))?;
+    recovery::list(&parent.join("backups"))
+}
+#[tauri::command]
+fn preview_local_backup(
+    path: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<recovery::BackupPreview> {
+    let parent = state
+        .database_path
+        .parent()
+        .ok_or_else(|| AppError::internal("Application storage is unavailable."))?;
+    let target = recovery::validate_target(&path, &parent.join("backups"))?;
+    recovery::preview(&target)
+}
+#[tauri::command]
+fn restore_local_backup(path: String, state: tauri::State<'_, AppState>) -> AppResult<()> {
+    create_sync_safety_backup(&state)?;
+    let parent = state
+        .database_path
+        .parent()
+        .ok_or_else(|| AppError::internal("Application storage is unavailable."))?;
+    let target = recovery::validate_target(&path, &parent.join("backups"))?;
+    let mut database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    recovery::restore(&mut database, &target)
+}
+#[tauri::command]
+fn export_operational_report(
+    report_type: String,
+    project_id: Option<String>,
+    output_path: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<String> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .export_operational_report(&report_type, project_id.as_deref(), &output_path)
+}
+
+#[tauri::command]
+fn sign_in_cloud_with_password(
+    email: String,
+    password: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<cloud_auth::CloudAuthStatus> {
+    let result = cloud_auth::sign_in_with_password(email, password);
+    if let Err(error) = &result {
+        log_error(&state.log_path, error);
+    }
+    result
+}
+
+#[tauri::command]
+fn get_cloud_auth_status(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<cloud_auth::CloudAuthStatus> {
+    let result = cloud_auth::status();
+    if let Err(error) = &result {
+        log_error(&state.log_path, error);
+    }
+    result
+}
+
+#[tauri::command]
+fn disconnect_cloud(state: tauri::State<'_, AppState>) -> AppResult<()> {
+    let result = cloud_auth::disconnect();
+    if let Err(error) = &result {
+        log_error(&state.log_path, error);
+    }
+    result
+}
+
+#[tauri::command]
+fn sync_cloud_workspace(state: tauri::State<'_, AppState>) -> AppResult<cloud_sync::SyncResult> {
+    create_sync_safety_backup(&state)?;
+    let mut database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    let result = cloud_sync::sync_now(&mut database);
+    if let Err(error) = &result {
+        log_error(&state.log_path, error);
+    }
+    result
+}
+
+fn create_sync_safety_backup(state: &AppState) -> AppResult<()> {
+    let parent = state
+        .database_path
+        .parent()
+        .ok_or_else(|| AppError::internal("Application storage is unavailable."))?;
+    let backups = parent.join("backups");
+    fs::create_dir_all(&backups).map_err(|error| {
+        AppError::from_technical(
+            "SYNC_BACKUP_FAILED",
+            "A safety backup could not be created before syncing.",
+            "Check local disk space and permissions, then try again.",
+            error.to_string(),
+        )
+    })?;
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .checkpoint()?;
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|error| AppError::internal(error.to_string()))?
+        .as_secs();
+    let destination = backups.join(format!("pre-sync-{stamp}.sqlite3"));
+    fs::copy(&state.database_path, destination).map_err(|error| {
+        AppError::from_technical(
+            "SYNC_BACKUP_FAILED",
+            "A safety backup could not be created before syncing.",
+            "Check local disk space and permissions, then try again.",
+            error.to_string(),
+        )
+    })?;
+    Ok(())
+}
+
+#[tauri::command]
+fn list_cloud_conflicts(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<Vec<cloud_sync::SyncConflict>> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .list_sync_conflicts()
+}
+
+#[tauri::command]
+fn resolve_cloud_conflict(
+    id: String,
+    choice: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<cloud_sync::SyncResult> {
+    create_sync_safety_backup(&state)?;
+    let mut database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    let result = cloud_sync::resolve_conflict(&mut database, &id, &choice);
+    if let Err(error) = &result {
+        log_error(&state.log_path, error);
+    }
+    result
+}
 
 fn append_log(path: &std::path::Path, level: &str, event: &str, detail: &str) {
     use std::io::Write;
@@ -611,6 +926,7 @@ fn log_error(path: &std::path::Path, error: &AppError) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let local_data = app.path().app_local_data_dir().map_err(|error| {
                 AppError::from_technical(
@@ -656,6 +972,16 @@ pub fn run() {
             update_project,
             open_project_folder,
             list_tasks,
+            list_work_items,
+            create_work_item,
+            update_work_item,
+            bulk_set_work_item_status,
+            list_project_templates,
+            create_project_template,
+            apply_project_template,
+            preview_work_item_import,
+            import_work_items,
+            export_work_items,
             list_attention,
             create_task,
             set_task_status,
@@ -663,6 +989,8 @@ pub fn run() {
             get_rfi,
             create_rfi,
             update_rfi,
+            get_rfi_pdf_default_path,
+            export_rfi_pdf,
             list_rfi_attention,
             list_rfi_attachments,
             add_rfi_attachment,
@@ -691,7 +1019,17 @@ pub fn run() {
             update_contact,
             delete_contact,
             list_activity,
-            create_local_backup
+            create_local_backup,
+            list_local_backups,
+            preview_local_backup,
+            restore_local_backup,
+            export_operational_report,
+            sign_in_cloud_with_password,
+            get_cloud_auth_status,
+            disconnect_cloud,
+            sync_cloud_workspace,
+            list_cloud_conflicts,
+            resolve_cloud_conflict
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AnyDesk");

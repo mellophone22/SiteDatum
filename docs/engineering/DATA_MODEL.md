@@ -15,3 +15,11 @@ Attention grouping is exclusive: overdue (due before local today), today, follow
 RFIs use stable UUIDs and a project-scoped, case-insensitive visible number. Their constrained statuses are `draft`, `open`, `response_received`, and `closed`. Every RFI requires project, number, subject, question, and created date. An RFI cannot leave Draft without a recipient, and it cannot enter Response Received or Closed without a recorded response. Opening an RFI supplies a submitted date when one has not been entered; receiving/closing supplies a response-received date when one has not been entered.
 
 An RFI can reference one task in the same project through `rfi_task_relationships`. Attachment references store a path and filename only; they do not copy, move, delete, or otherwise own the referenced Windows file. Removing a reference deletes only the metadata reference. Open RFIs with a response due date through the Attention window are surfaced in the RFI Attention queue.
+
+## WP13-WP18 operations rules
+
+`work_items` stores ten constrained operational types: `meeting_minute`, `procurement`, `change_event`, `transmittal`, `milestone`, `punch_item`, `daily_report`, `startup_check`, `commissioning_check`, and `commissioning_issue`. All records belong to a project and store stable machine-readable type, status, and priority values. Optional domain fields include visible number, responsible party, company, location, amount, due/occurred dates, and checklist totals. Daily reports require an occurred date; transmittals require a number; checklist completion cannot exceed the total.
+
+`project_templates` stores a template name plus validated JSON arrays of task and milestone titles. Applying a template inserts all generated tasks and milestones and their activity events in one transaction. Templates never create arbitrary filesystem paths; the existing standard project-folder workflow remains authoritative.
+
+Work-item imports validate every row before beginning the insertion transaction. Backup restore accepts only a canonical `.sqlite3` file directly within the app-local backups directory, verifies integrity, creates a safety backup, restores via SQLite's backup API, reapplies repository migrations, and re-enables foreign keys.

@@ -14,7 +14,7 @@ use crate::submittal::{
 use crate::task::{self, AttentionSection, Task, TaskInput};
 
 pub struct Database {
-    connection: Connection,
+    pub(crate) connection: Connection,
 }
 
 impl Database {
@@ -158,7 +158,7 @@ impl Database {
         Ok(())
     }
     pub fn list_rfis(&self) -> AppResult<Vec<Rfi>> {
-        let mut statement = self.connection.prepare("SELECT r.id,r.project_id,p.number,p.name,r.number,r.subject,r.question,r.recipient,r.status,r.created_date,r.submitted_date,r.response_due_date,r.response_received_date,r.response,r.notes,(SELECT task_id FROM rfi_task_relationships WHERE rfi_id=r.id LIMIT 1) FROM rfis r JOIN projects p ON p.id=r.project_id WHERE p.archived_at_utc IS NULL ORDER BY r.response_due_date IS NULL,r.response_due_date,r.updated_at_utc DESC").map_err(database_error)?;
+        let mut statement = self.connection.prepare("SELECT r.id,r.project_id,p.number,p.name,r.number,r.subject,r.question,r.recipient,r.status,r.created_date,r.submitted_date,r.response_due_date,r.response_received_date,r.response,r.notes,r.rfi_location,r.drawing_number,r.cost_impact,r.time_delay,r.suggested_solution,r.requested_by,(SELECT task_id FROM rfi_task_relationships WHERE rfi_id=r.id LIMIT 1) FROM rfis r JOIN projects p ON p.id=r.project_id WHERE p.archived_at_utc IS NULL ORDER BY r.response_due_date IS NULL,r.response_due_date,r.updated_at_utc DESC").map_err(database_error)?;
         let rows = statement
             .query_map([], rfi_from_row)
             .map_err(database_error)?;
@@ -750,7 +750,7 @@ impl Database {
     }
 }
 
-fn apply_migrations(connection: &mut Connection) -> AppResult<()> {
+pub(crate) fn apply_migrations(connection: &mut Connection) -> AppResult<()> {
     connection.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at_utc TEXT NOT NULL);").map_err(database_error)?;
     for (version, sql) in [
         (1_i64, include_str!("../migrations/0001_foundation.sql")),
@@ -760,6 +760,9 @@ fn apply_migrations(connection: &mut Connection) -> AppResult<()> {
         (5_i64, include_str!("../migrations/0005_submittals.sql")),
         (6_i64, include_str!("../migrations/0006_files.sql")),
         (7_i64, include_str!("../migrations/0007_notes_contacts.sql")),
+        (8_i64, include_str!("../migrations/0008_cloud_sync.sql")),
+        (9_i64, include_str!("../migrations/0009_rfi_pdf_fields.sql")),
+        (10_i64, include_str!("../migrations/0010_operations.sql")),
     ] {
         let applied = connection
             .query_row(
@@ -835,7 +838,13 @@ fn rfi_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Rfi> {
         response_received_date: row.get(12)?,
         response: row.get(13)?,
         notes: row.get(14)?,
-        related_task_id: row.get(15)?,
+        rfi_location: row.get(15)?,
+        drawing_number: row.get(16)?,
+        cost_impact: row.get(17)?,
+        time_delay: row.get(18)?,
+        suggested_solution: row.get(19)?,
+        requested_by: row.get(20)?,
+        related_task_id: row.get(21)?,
     })
 }
 
@@ -874,6 +883,12 @@ fn write_rfi(
     let recipient = rfi::clean(&input.recipient);
     let response = rfi::clean(&input.response);
     let notes = rfi::clean(&input.notes);
+    let rfi_location = rfi::clean(&input.rfi_location);
+    let drawing_number = rfi::clean(&input.drawing_number);
+    let cost_impact = rfi::clean(&input.cost_impact);
+    let time_delay = rfi::clean(&input.time_delay);
+    let suggested_solution = rfi::clean(&input.suggested_solution);
+    let requested_by = rfi::clean(&input.requested_by);
     let submitted_date = if input.status == "open" {
         input
             .submitted_date
@@ -892,9 +907,9 @@ fn write_rfi(
         input.response_received_date.clone()
     };
     let changed = if creating {
-        tx.execute("INSERT INTO rfis (id,project_id,number,subject,question,recipient,status,created_date,submitted_date,response_due_date,response_received_date,response,notes,created_at_utc,updated_at_utc) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))", rusqlite::params![id,input.project_id,input.number.trim(),input.subject.trim(),input.question.trim(),recipient,input.status,input.created_date,submitted_date,input.response_due_date,response_received_date,response,notes]).map_err(database_error)?
+        tx.execute("INSERT INTO rfis (id,project_id,number,subject,question,recipient,status,created_date,submitted_date,response_due_date,response_received_date,response,notes,rfi_location,drawing_number,cost_impact,time_delay,suggested_solution,requested_by,created_at_utc,updated_at_utc) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))", rusqlite::params![id,input.project_id,input.number.trim(),input.subject.trim(),input.question.trim(),recipient,input.status,input.created_date,submitted_date,input.response_due_date,response_received_date,response,notes,rfi_location,drawing_number,cost_impact,time_delay,suggested_solution,requested_by]).map_err(database_error)?
     } else {
-        tx.execute("UPDATE rfis SET project_id=?2,number=?3,subject=?4,question=?5,recipient=?6,status=?7,created_date=?8,submitted_date=?9,response_due_date=?10,response_received_date=?11,response=?12,notes=?13,updated_at_utc=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?1", rusqlite::params![id,input.project_id,input.number.trim(),input.subject.trim(),input.question.trim(),recipient,input.status,input.created_date,submitted_date,input.response_due_date,response_received_date,response,notes]).map_err(database_error)?
+        tx.execute("UPDATE rfis SET project_id=?2,number=?3,subject=?4,question=?5,recipient=?6,status=?7,created_date=?8,submitted_date=?9,response_due_date=?10,response_received_date=?11,response=?12,notes=?13,rfi_location=?14,drawing_number=?15,cost_impact=?16,time_delay=?17,suggested_solution=?18,requested_by=?19,updated_at_utc=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?1", rusqlite::params![id,input.project_id,input.number.trim(),input.subject.trim(),input.question.trim(),recipient,input.status,input.created_date,submitted_date,input.response_due_date,response_received_date,response,notes,rfi_location,drawing_number,cost_impact,time_delay,suggested_solution,requested_by]).map_err(database_error)?
     };
     if !creating && changed == 0 {
         return Ok(0);
@@ -1055,6 +1070,12 @@ mod tests {
             response_received_date: None,
             response: None,
             notes: None,
+            rfi_location: Some("Mechanical room".into()),
+            drawing_number: Some("M-401".into()),
+            cost_impact: Some("None anticipated".into()),
+            time_delay: Some("None anticipated".into()),
+            suggested_solution: Some("Use sequence B.".into()),
+            requested_by: Some("Project Engineer".into()),
             related_task_id: None,
         }
     }
@@ -1179,6 +1200,9 @@ mod tests {
             input.related_task_id = Some(task.id.clone());
             let created = database.create_rfi("rfi-1", &input).unwrap();
             assert_eq!(created.status, "open");
+            assert_eq!(created.rfi_location.as_deref(), Some("Mechanical room"));
+            assert_eq!(created.drawing_number.as_deref(), Some("M-401"));
+            assert_eq!(created.requested_by.as_deref(), Some("Project Engineer"));
             assert_eq!(created.related_task_id.as_deref(), Some(task.id.as_str()));
             assert_eq!(
                 database
@@ -1215,6 +1239,7 @@ mod tests {
             let rfi = database.get_rfi("rfi-1").unwrap();
             assert_eq!(rfi.status, "response_received");
             assert_eq!(rfi.response.as_deref(), Some("Use sequence B."));
+            assert_eq!(rfi.suggested_solution.as_deref(), Some("Use sequence B."));
         }
         std::fs::remove_file(external_file).unwrap();
         std::fs::remove_file(path).unwrap();

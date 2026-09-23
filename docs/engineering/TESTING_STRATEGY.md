@@ -18,8 +18,26 @@ Rust unit tests cover Waiting requirements, calendar-date validation (including 
 
 Rust unit coverage validates RFI lifecycle gates: recipient before opening and response before marking received/closed. SQLite integration coverage creates an RFI linked to a same-project task, confirms it appears/disappears from the response-due Attention queue, persists it across reopen, and verifies attachment-reference add/remove activity without altering the original file.
 
+## WP10 verified coverage
+
+Rust coverage loads the embedded template, creates a readable one-page PDF with representative RFI fields, verifies key overlay text, refuses an existing destination, and persists the additional template fields across database reopen. Visual verification compares a rendered completed PDF with the supplied workbook's PDF rendering. Frontend build/typecheck, ESLint, Vitest, native launch, and production packaging remain required release gates.
+
+## WP11 verified coverage
+
+Frontend unit coverage verifies task-progress totals, completed percentages, status counts, cancelled-task exclusion, and the zero-task state. The Attention and Tasks views share the same semantic progress component, which uses a native `progress` element and textual counts so color is not the only indicator. Project-context filtering is applied consistently to task progress, task queues, RFIs, and submittals.
+
+## WP12 verified coverage
+
+Frontend unit coverage verifies saved task-view serialization and malformed-storage recovery. Manual interaction coverage verifies dialog focus containment, Escape/Cancel, required-field gating, record-type switching, named-view save/restore/delete, project-context inheritance, and Overview routing. Existing Rust domain and persistence tests verify that quick-captured records still pass the normal application boundary.
+
 ## Final MVP verification coverage
 
 The persistence suite now covers a checkpointed backup copied and reopened as an independent SQLite database, including file/drawing metadata, current/superseded state, notes, and contacts. A realistic-volume integration test creates 500 tasks, verifies all corresponding activity events, and reopens the database to confirm no records were lost. Search focus has frontend tests for exact-record routing state, cross-screen preservation, and malformed-state recovery.
 
 The production gate builds both Windows bundle formats. Live UI automation was attempted during the final review but the host's trusted computer-control RPC service was not configured (`sky`); source-level keyboard/focus review and the Tauri development/runtime checks were completed, and the external automation limitation is recorded in `FINAL_VERIFICATION.md`.
+
+## WP13-WP18 verified coverage
+
+Rust domain tests cover operational type/status/priority constraints, daily-report and transmittal requirements, checklist bounds, database persistence, transactional bulk status changes, and transactional template application. Data-exchange tests cover CSV and native Excel generation, full-batch import preview, validation, and overwrite refusal. Report tests verify the visible template version and collision refusal. Recovery tests and release verification cover backup integrity preview, constrained restore selection, migration-forward behavior, and preservation of foreign-key enforcement.
+
+Frontend release gates cover TypeScript typecheck/build, ESLint, Vitest, keyboard and focus inspection, reminder opt-in behavior, register filtering/editing/bulk selection, import preview, template application confirmation, report generation, recovery confirmation, and visual review of Operations, Calendar, Reports, Recovery, and Settings at supported window sizes.
