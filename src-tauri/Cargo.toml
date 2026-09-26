@@ -1,6 +1,6 @@
 [package]
 name = "project_engineer_workspace"
-version = "1.2.0"
+version = "1.2.1"
 description = "SiteDatum local-first Windows project engineering workspace"
 authors = ["SiteDatum"]
 edition = "2021"
