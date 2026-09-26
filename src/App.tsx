@@ -15,6 +15,13 @@ import { Overview } from "./Overview";
 import { Operations } from "./Operations";
 import { remindersEnabled, runReminderCheck, setRemindersEnabled } from "./reminders";
 import { AuditRecovery } from "./AuditRecovery";
+import { useWorkspace } from "./workspace";
+import type { Screen } from "./workspaceState";
+import { projectModuleOrder, type ProjectModule } from "./phasePrioritization";
+import { recoveryIssueCount, recoverySummary } from "./recoveryHealth";
+import { LoadingState, StatusNotice, useConfirmation } from "./Feedback";
+import { FirstRun } from "./FirstRun";
+import { needsFirstRun } from "./firstRunState";
 import brandLogo from "./assets/anydesk-logo-transparent.png";
 import appIcon from "./assets/anydesk-app-icon.jpg";
 
@@ -23,8 +30,12 @@ type ProjectRootValidation = { canonicalPath: string; pathKind: "local" | "unc";
 type CloudAuthStatus = { connected: boolean; email: string | null };
 type CloudSyncResult = { outcome: string; message: string; cloudVersion: number; conflictCount: number };
 type CloudConflict = { id: string; createdAtUtc: string };
-type Screen = "overview" | "projects" | "tasks" | "rfis" | "submittals" | "files" | "notes" | "operations" | "attention" | "recovery" | "settings";
-type ProjectSummary = { id: string; number: string; name: string };
+type FileHealth = { missing: boolean };
+type ProjectSummary = { id: string; number: string; name: string; status: string; phase: string; customPhaseName: string | null };
+
+const projectLabel = (value: string) => value.replace(/_/g, " ").replace(/\b\w/g, (character: string) => character.toUpperCase());
+const projectModuleLabels:Record<ProjectModule,string>={tasks:"Tasks",rfis:"RFIs",submittals:"Submittals",files:"Files",operations:"Project Controls",notes:"Notes & Contacts"};
+const firstRunPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).has("first-run-preview");
 
 const navIcons: Record<Screen, ReactNode> = {
   overview: <><path d="M4 5h7v6H4zM13 5h7v10h-7zM4 13h7v6H4zM13 17h7v2h-7z"/></>,
@@ -45,18 +56,18 @@ function NavIcon({ screen }: { screen: Screen }) {
 }
 
 function App() {
+  const { state, setCurrentProject, navigate, openRecord, refreshProjects, refreshWorkspace, reconcileProjects } = useWorkspace();
+  const { currentScreen: screen, currentProjectId, navigationRevision, projectListRevision } = state;
+  const projectContext = currentProjectId ?? "";
   const [path, setPath] = useState("");
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [validation, setValidation] = useState<ProjectRootValidation | null>(null);
   const [message, setMessage] = useState("Loading saved setting…");
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
-  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem("workspace.screen") as Screen | null) || "attention");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
-  const [navigationRevision, setNavigationRevision] = useState(0);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
-  const [projectContext, setProjectContext] = useState(() => localStorage.getItem("workspace.projectContext") ?? "");
   const [projectOptions, setProjectOptions] = useState<ProjectSummary[]>([]);
   const [cloudStatus, setCloudStatus] = useState<CloudAuthStatus>({ connected: false, email: null });
   const [cloudEmail, setCloudEmail] = useState("");
@@ -66,15 +77,21 @@ function App() {
   const [cloudWorking, setCloudWorking] = useState(false);
   const [cloudConflicts, setCloudConflicts] = useState<CloudConflict[]>([]);
   const [remindersOn, setRemindersOn] = useState(remindersEnabled);
+  const [missingFileCount, setMissingFileCount] = useState(0);
+  const [firstRunStatus, setFirstRunStatus] = useState<"checking" | "needed" | "complete">(firstRunPreview ? "needed" : "checking");
+  const { confirmAction, confirmationDialog } = useConfirmation();
+  const selectedProject = projectOptions.find((project) => project.id === currentProjectId) ?? null;
+  const projectNavigation=projectModuleOrder(selectedProject?.phase);
 
   useEffect(() => {
     void loadSetting();
-    void invoke<ProjectSummary[]>("list_projects", { includeArchived: false }).then(setProjectOptions).catch(() => setProjectOptions([]));
     void invoke<CloudAuthStatus>("get_cloud_auth_status").then((status) => { setCloudStatus(status); if (status.connected) void loadCloudConflicts(); }).catch((caught) => setCloudError(describeAppError(caught)));
+    if (!firstRunPreview) void Promise.all([invoke<ProjectRootSetting>("get_project_root"), invoke<ProjectSummary[]>("list_projects", { includeArchived: true })]).then(([root, projects]) => setFirstRunStatus(needsFirstRun(root.path, projects.length) ? "needed" : "complete")).catch(() => setFirstRunStatus("complete"));
   }, []);
-  useEffect(() => { localStorage.setItem("workspace.screen", screen); }, [screen]);
+  useEffect(() => { void loadProjectOptions(); }, [projectListRevision]);
+  useEffect(() => { void loadMissingFileCount(); }, [navigationRevision]);
   useEffect(()=>{if(!remindersOn)return;void runReminderCheck();const timer=window.setInterval(()=>void runReminderCheck(),300000);return()=>window.clearInterval(timer)},[remindersOn]);
-  useEffect(()=>{const restored=()=>setNavigationRevision(value=>value+1);window.addEventListener("workspace:restored",restored);return()=>window.removeEventListener("workspace:restored",restored)},[]);
+  useEffect(()=>{const restored=()=>refreshWorkspace();window.addEventListener("workspace:restored",restored);return()=>window.removeEventListener("workspace:restored",restored)},[refreshWorkspace]);
   useEffect(() => { const handler=(event:KeyboardEvent)=>{if(event.ctrlKey&&event.key.toLowerCase()==="k"){event.preventDefault();setPaletteOpen(true)}if(event.ctrlKey&&event.shiftKey&&event.key.toLowerCase()==="n"){event.preventDefault();setCaptureOpen(true)}else if(event.ctrlKey&&event.key.toLowerCase()==="n"){event.preventDefault();window.dispatchEvent(new CustomEvent("workspace:new"))}if(event.key==="Escape")setPaletteOpen(false)};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler)},[]);
   useEffect(() => {
     const listKeys = (event: KeyboardEvent) => {
@@ -108,6 +125,16 @@ function App() {
     } catch (caught) {
       setError(describeAppError(caught));
       setMessage("");
+    }
+  }
+
+  async function loadProjectOptions() {
+    try {
+      const projects = await invoke<ProjectSummary[]>("list_projects", { includeArchived: false });
+      setProjectOptions(projects);
+      reconcileProjects(projects.map((project) => project.id));
+    } catch {
+      setProjectOptions([]);
     }
   }
 
@@ -160,54 +187,68 @@ function App() {
     finally { setCloudWorking(false); }
   }
   async function disconnectCloud() {
-    if (!confirm("Disconnect this computer from the AnyDesk cloud workspace? Local projects and files will remain on this computer.")) return;
+    if (!await confirmAction({ title: "Disconnect this computer?", description: "Cloud synchronization will stop on this computer. Local projects, metadata, and project files will remain available.", confirmLabel: "Disconnect computer", destructive: true })) return;
     setCloudWorking(true); setCloudError("");
     try { await invoke("disconnect_cloud"); setCloudStatus({ connected: false, email: null }); setCloudConflicts([]); setCloudPassword(""); setCloudMessage("This computer is disconnected. Local workspace data remains available."); }
     catch (caught) { setCloudError(describeAppError(caught)); }
     finally { setCloudWorking(false); }
   }
   async function loadCloudConflicts() { try { setCloudConflicts(await invoke<CloudConflict[]>("list_cloud_conflicts")); } catch (caught) { setCloudError(describeAppError(caught)); } }
+  async function loadMissingFileCount() { try { const files = await invoke<FileHealth[]>("list_files"); setMissingFileCount(files.filter((file) => file.missing).length); } catch { setMissingFileCount(0); } }
   async function syncCloud() {
     setCloudWorking(true); setCloudError(""); setCloudMessage("");
-    try { const result = await invoke<CloudSyncResult>("sync_cloud_workspace"); setCloudMessage(result.message); await loadCloudConflicts(); if (result.outcome === "downloaded") { setNavigationRevision((value) => value + 1); void invoke<ProjectSummary[]>("list_projects", { includeArchived: false }).then(setProjectOptions); } }
+    try { const result = await invoke<CloudSyncResult>("sync_cloud_workspace"); setCloudMessage(result.message); await loadCloudConflicts(); if (result.outcome === "downloaded") refreshWorkspace(); }
     catch (caught) { setCloudError(describeAppError(caught)); }
     finally { setCloudWorking(false); }
   }
   async function resolveCloudConflict(id: string, choice: "local" | "cloud") {
     const description = choice === "local" ? "replace the cloud metadata with this computer's version" : "replace this computer's metadata with the cloud version";
-    if (!confirm(`Resolve this conflict and ${description}? Project files in OneDrive will not be deleted or overwritten.`)) return;
+    if (!await confirmAction({ title: "Resolve sync conflict?", description: <><p>This will {description}.</p><p>Project files in the configured project root will not be deleted or overwritten.</p></>, confirmLabel: choice === "local" ? "Keep this computer" : "Use cloud version", destructive: true })) return;
     setCloudWorking(true); setCloudError("");
-    try { const result = await invoke<CloudSyncResult>("resolve_cloud_conflict", { id, choice }); setCloudMessage(result.message); await loadCloudConflicts(); setNavigationRevision((value) => value + 1); void invoke<ProjectSummary[]>("list_projects", { includeArchived: false }).then(setProjectOptions); }
+    try { const result = await invoke<CloudSyncResult>("resolve_cloud_conflict", { id, choice }); setCloudMessage(result.message); await loadCloudConflicts(); refreshWorkspace(); }
     catch (caught) { setCloudError(describeAppError(caught)); }
     finally { setCloudWorking(false); }
   }
-  function changeProjectContext(value: string) { setProjectContext(value); localStorage.setItem("workspace.projectContext", value); window.dispatchEvent(new CustomEvent("workspace:project", { detail: value })); }
+  function changeProjectContext(value: string) { setCurrentProject(value || null); }
   function closePalette() { setPaletteOpen(false); requestAnimationFrame(() => searchButtonRef.current?.focus()); }
   async function changeReminders(enabled:boolean){try{const accepted=await setRemindersEnabled(enabled);setRemindersOn(accepted&&enabled);if(accepted&&enabled){const total=await runReminderCheck(true);setMessage(total?`Windows reminders enabled. ${total} items currently need attention.`:"Windows reminders enabled. Nothing is due now.")}else if(!enabled)setMessage("Windows reminders disabled.");else setError("Windows notification permission was not granted.")}catch(caught){setError(describeAppError(caught))}}
-  const navigate = (destination: Screen) => setScreen(destination);
-  const navButton = (destination: Screen, label: string) => <button type="button" className={`nav-button${screen === destination ? " active" : ""}`} title={label} aria-current={screen === destination ? "page" : undefined} onClick={() => navigate(destination)}><NavIcon screen={destination}/><span>{label}</span></button>;
+  const recoveryHealth = { missingFiles: missingFileCount, syncConflicts: cloudConflicts.length };
+  const recoveryIssues = recoveryIssueCount(recoveryHealth);
+  const navButton = (destination: Screen, label: string, attention = false) => <button type="button" className={`nav-button${screen === destination ? " active" : ""}${destination === "recovery" && !attention ? " recovery-quiet" : ""}${attention ? " recovery-needed" : ""}`} title={label} aria-current={screen === destination ? "page" : undefined} onClick={() => navigate(destination)}><NavIcon screen={destination}/><span>{label}</span>{attention && <strong className="nav-count" aria-label={`${recoveryIssues} recovery issues`}>{recoveryIssues}</strong>}</button>;
+
+  if (firstRunStatus === "checking") return <main className="first-run-shell"><LoadingState>Checking local workspace…</LoadingState></main>;
+  if (firstRunStatus === "needed") return <FirstRun onSkip={() => { setFirstRunStatus("complete"); navigate("settings"); }} onComplete={(project) => { setFirstRunStatus("complete"); setCurrentProject(project.id); refreshProjects(); void loadSetting(); navigate("overview"); }} />;
 
   return (
     <main className="application-shell">
+      {confirmationDialog}
+      <a className="skip-link" href="#workspace-content">Skip to workspace</a>
       <aside className="app-sidebar">
         <div className="brand-row"><span className="brand-lockup"><img className="brand-logo" src={brandLogo} alt="AnyDesk"/><img className="brand-logo brand-logo-contrast" src={brandLogo} alt="" aria-hidden="true"/></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
         <nav className="main-navigation" aria-label="Main navigation">
-          <div className="primary-nav"><p className="nav-group-label">Command center</p>{navButton("overview", "Overview")}{navButton("attention", "Attention")}{navButton("projects", "Projects")}</div>
-          <div className="workspace-nav" aria-label="Workspace registers"><p className="nav-group-label">Project registers</p>{navButton("tasks", "Tasks")}{navButton("rfis", "RFIs")}{navButton("submittals", "Submittals")}{navButton("operations", "Operations")}{navButton("files", "Files")}{navButton("notes", "Notes & Contacts")}</div>
+          <div className="primary-nav"><p className="nav-group-label">Global</p>{navButton("overview", "Home")}{navButton("attention", "Attention")}{navButton("projects", "Projects")}</div>
+          <div className="workspace-nav" aria-label={selectedProject ? `${selectedProject.number} project workspace` : "All-project workspace"}>
+            <p className="nav-group-label">Project workspace</p>
+            <div className={`sidebar-project-context${selectedProject ? " has-project" : ""}`} aria-live="polite">
+              {selectedProject ? <><strong>{selectedProject.number} — {selectedProject.name}</strong><span>{selectedProject.phase === "custom" ? selectedProject.customPhaseName : projectLabel(selectedProject.phase)} · {projectLabel(selectedProject.status)}</span></> : <><strong>All projects</strong><span>Cross-project registers</span></>}
+            </div>
+            {selectedProject&&<p className="phase-priority">Prioritized for {selectedProject.phase==="custom"?(selectedProject.customPhaseName||"custom phase"):projectLabel(selectedProject.phase)}</p>}
+            {projectNavigation.map(destination=>navButton(destination,projectModuleLabels[destination]))}
+          </div>
         </nav>
-        <div className="sidebar-footer">{navButton("recovery", "Recovery")}{navButton("settings", "Settings")}<span className="local-indicator"><i aria-hidden="true"/>Local workspace</span></div>
+        <div className="sidebar-footer"><p className="nav-group-label">System</p>{navButton("settings", "Settings")}{navButton("recovery", "Recovery", recoveryIssues > 0)}<span className="local-indicator"><i aria-hidden="true"/>Local workspace</span></div>
       </aside>
       <div className="workspace-shell">
         <header className="app-header">
-          <label className="project-context"><span>Working context</span><select value={projectContext} onChange={(event) => changeProjectContext(event.target.value)}><option value="">All projects</option>{projectOptions.map((project) => <option key={project.id} value={project.id}>{project.number} — {project.name}</option>)}</select></label>
+          <label className="project-context"><span>Current project</span><select aria-label="Current project" value={projectContext} onChange={(event) => changeProjectContext(event.target.value)}><option value="">All projects</option>{projectOptions.map((project) => <option key={project.id} value={project.id}>{project.number} — {project.name}</option>)}</select>{selectedProject && <small>{selectedProject.phase === "custom" ? selectedProject.customPhaseName : projectLabel(selectedProject.phase)} · {projectLabel(selectedProject.status)}</small>}</label>
           <div className="header-actions"><button type="button" className="secondary quick-capture-trigger" onClick={()=>setCaptureOpen(true)}>Quick capture <kbd>Ctrl+Shift+N</kbd></button><button ref={searchButtonRef} type="button" className="search-trigger" aria-label="Search workspace" onClick={()=>setPaletteOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span>Search workspace</span><kbd>Ctrl+K</kbd></button></div>
         </header>
-        <div className="workspace-content">
-      <SearchPalette open={paletteOpen} onClose={closePalette} onNavigate={(value)=>{setScreen(value as typeof screen);setNavigationRevision((current)=>current+1)}} />
-      <QuickCapture open={captureOpen} projects={projectOptions} projectContext={projectContext} onClose={()=>setCaptureOpen(false)} onSaved={(value)=>{setScreen(value as Screen);setNavigationRevision((current)=>current+1)}} />
-      {screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>setScreen(value as Screen)} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>setScreen("settings")} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => setScreen("rfis")} onOpenSubmittals={() => setScreen("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>setScreen("files")}/> : <section className="settings" aria-labelledby="settings-title">
-        <div className="section-heading"><div><p className="eyebrow">Settings</p><h1 id="settings-title">Project root</h1></div></div>
-        <p className="intro">Select an existing local folder or UNC share. The app stores its data separately in local application storage.</p>
+        <div id="workspace-content" className="workspace-content" tabIndex={-1}>
+      <SearchPalette open={paletteOpen} onClose={closePalette} onOpen={(item)=>{if(item.kind==="action")navigate(item.screen);else if(item.kind==="project"){setCurrentProject(item.id);navigate("overview")}else openRecord(item.screen,{type:item.type,id:item.id},item.projectId)}} />
+      <QuickCapture open={captureOpen} projects={projectOptions} projectContext={projectContext} onClose={()=>setCaptureOpen(false)} onSaved={(value)=>{navigate(value as Screen);refreshWorkspace()}} />
+      {screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
+        <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, synchronization, reminders, and data safeguards.</p></div></div>
+        <section className="settings-section" aria-labelledby="workspace-settings-title"><div className="settings-section-heading"><h2 id="workspace-settings-title">Workspace</h2><p>Select an existing local folder or UNC share. Application data remains in local application storage.</p></div>
         <div className="form-row">
           <label htmlFor="project-root">Existing folder path</label>
           <div className="path-control">
@@ -216,24 +257,26 @@ function App() {
           </div>
           <p id="root-help" className="help">The folder must already exist and be readable. Reparse points are not accepted.</p>
         </div>
-        <div className="actions"><button type="button" className="secondary" onClick={() => void checkLocation()} disabled={working || !path.trim()}>Check location</button><button type="button" onClick={() => void save()} disabled={working || !path.trim()}>Save project root</button><button type="button" className="secondary" onClick={() => void backup()} disabled={working}>Create local backup</button></div>
+        <div className="actions"><button type="button" className="secondary" onClick={() => void checkLocation()} disabled={working || !path.trim()}>Check location</button><button type="button" onClick={() => void save()} disabled={working || !path.trim()}>Save project root</button></div>
         <div id="root-status" className="status-area" aria-live="polite">
-          {message && <p className="status success">{message}</p>}
-          {validation?.warning && <p className="status warning">{validation.warning}</p>}
-          {error && <p className="status error" role="alert">{error}</p>}
+          {message && <StatusNotice tone="success">{message}</StatusNotice>}
+          {validation?.warning && <StatusNotice tone="warning">{validation.warning}</StatusNotice>}
+          {error && <StatusNotice tone="error">{error}</StatusNotice>}
           {savedPath && <p className="saved-path"><span>Saved path</span>{savedPath}</p>}
         </div>
-        <section className="cloud-settings" aria-labelledby="cloud-title">
-          <div className="section-heading"><div><h2 id="cloud-title">Cloud workspace</h2><p className="intro">Sign in with the same confirmed account on each computer. Project files stay in your dedicated OneDrive project root; AnyDesk never syncs its local database through OneDrive.</p></div></div>
+        </section>
+        <section className="settings-section" aria-labelledby="cloud-title">
+          <div className="settings-section-heading"><h2 id="cloud-title">Sync</h2><p>Synchronize workspace metadata between computers. Project files remain in the configured project root.</p></div>
           {cloudStatus.connected ? <><div className="cloud-connected"><p><strong>Connected</strong><span>{cloudStatus.email}</span></p><div className="actions"><button type="button" onClick={() => void syncCloud()} disabled={cloudWorking}>{cloudWorking ? "Synchronizing…" : "Sync now"}</button><button type="button" className="secondary" onClick={() => void disconnectCloud()} disabled={cloudWorking}>Disconnect this computer</button></div></div>{cloudConflicts.length > 0 && <section className="conflict-panel" aria-labelledby="conflicts-title"><h3 id="conflicts-title">Sync conflict</h3><p>Both computers changed workspace metadata since the last successful sync. Choose the version to keep.</p>{cloudConflicts.map((conflict) => <div className="conflict-row" key={conflict.id}><span>Detected {new Date(conflict.createdAtUtc).toLocaleString()}</span><div className="actions"><button type="button" onClick={() => void resolveCloudConflict(conflict.id, "local")} disabled={cloudWorking}>Keep this computer</button><button type="button" className="secondary" onClick={() => void resolveCloudConflict(conflict.id, "cloud")} disabled={cloudWorking}>Use cloud version</button></div></div>)}</section>}</> : <form className="cloud-auth" onSubmit={(event) => { event.preventDefault(); void signInCloud(); }}>
             <label htmlFor="cloud-email">Email address<input id="cloud-email" type="email" autoComplete="email" required value={cloudEmail} onChange={(event) => { setCloudEmail(event.target.value); setCloudError(""); }} placeholder="you@company.com" /></label>
             <label htmlFor="cloud-password">Password<input id="cloud-password" type="password" autoComplete="current-password" required minLength={8} value={cloudPassword} onChange={(event) => { setCloudPassword(event.target.value); setCloudError(""); }} /></label>
             <p className="help">Use the confirmed user created in Supabase Authentication → Users. Windows Credential Manager securely stores the session on this computer.</p>
             <div className="actions"><button type="submit" disabled={cloudWorking || !cloudEmail.trim() || cloudPassword.length < 8}>{cloudWorking ? "Signing in…" : "Sign in"}</button></div>
           </form>}
-          <div className="status-area" aria-live="polite">{cloudMessage && <p className="status success">{cloudMessage}</p>}{cloudError && <p className="status error" role="alert">{cloudError}</p>}</div>
+          <div className="status-area" aria-live="polite">{cloudMessage && <StatusNotice tone="success">{cloudMessage}</StatusNotice>}{cloudError && <StatusNotice tone="error">{cloudError}</StatusNotice>}</div>
         </section>
-        <section className="cloud-settings" aria-labelledby="reminders-title"><div className="section-heading"><div><h2 id="reminders-title">Local reminders</h2><p className="intro">Show a Windows notification for overdue and due-today tasks, follow-ups, and project-control records while AnyDesk is running.</p></div></div><label className="setting-toggle"><input type="checkbox" checked={remindersOn} onChange={(event)=>void changeReminders(event.target.checked)}/> Enable Windows reminders</label>{remindersOn&&<button type="button" className="secondary" onClick={()=>void runReminderCheck(true).then(total=>setMessage(total?`Reminder sent for ${total} current items.`:"No items currently need a reminder.")).catch(caught=>setError(describeAppError(caught)))}>Check reminders now</button>}</section>
+        <section className="settings-section" aria-labelledby="reminders-title"><div className="settings-section-heading"><h2 id="reminders-title">Notifications</h2><p>Show a Windows notification for overdue and due-today tasks, follow-ups, and project-control records while AnyDesk is running.</p></div><label className="setting-toggle"><input type="checkbox" checked={remindersOn} onChange={(event)=>void changeReminders(event.target.checked)}/> Enable Windows reminders</label>{remindersOn&&<button type="button" className="secondary" onClick={()=>void runReminderCheck(true).then(total=>setMessage(total?`Reminder sent for ${total} current items.`:"No items currently need a reminder.")).catch(caught=>setError(describeAppError(caught)))}>Check reminders now</button>}</section>
+        <section className={`settings-section recovery-settings${recoveryIssues ? " needs-attention" : ""}`} aria-labelledby="data-recovery-title"><div className="settings-section-heading"><h2 id="data-recovery-title">Data &amp; Recovery</h2><p>{recoverySummary(recoveryHealth)}</p></div><div className="actions"><button type="button" className="secondary" onClick={() => void backup()} disabled={working}>{working ? "Working…" : "Create local backup"}</button><button type="button" className="secondary" onClick={() => navigate("recovery")}>{recoveryIssues ? "Review recovery issues" : "Open audit and recovery"}</button></div></section>
       </section>}
         </div>
       </div>

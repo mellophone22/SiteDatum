@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { describeAppError } from "./error";
+import { nextTabIndex, type TabNavigationKey } from "./tabNavigation";
 
 type Project = { id: string; number: string; name: string };
 type CaptureType = "task" | "note" | "rfi" | "contact";
@@ -21,8 +22,9 @@ export function QuickCapture({ open, projects, projectContext, onClose, onSaved 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const dialogRef = useRef<HTMLElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
 
-  useEffect(() => { if (open) { setProjectId(projectContext); setError(""); } }, [open, projectContext]);
+  useEffect(() => { if (!open) return; previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setProjectId(projectContext); setError(""); return () => previousFocus.current?.focus(); }, [open, projectContext]);
   useEffect(() => { if (!open) return; const key=(event:KeyboardEvent)=>{if(event.key==="Escape")onClose()}; window.addEventListener("keydown",key); return()=>window.removeEventListener("keydown",key); }, [open, onClose]);
 
   function reset() { setTitle(""); setDetail(""); setSecondary(""); setDate(""); setPriority("medium"); setError(""); }
@@ -41,10 +43,11 @@ export function QuickCapture({ open, projects, projectContext, onClose, onSaved 
   const needsProject = type === "task" || type === "rfi";
   const valid = type === "note" ? detail.trim() : type === "rfi" ? projectId && title.trim() && secondary.trim() && detail.trim() : type === "task" ? projectId && title.trim() : title.trim();
   const trapFocus = (event: React.KeyboardEvent) => { if(event.key!=="Tab"||!dialogRef.current)return; const controls=Array.from(dialogRef.current.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)")); const first=controls[0],last=controls[controls.length-1]; if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()} };
+  const navigateTypes = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => { if (!(["ArrowLeft","ArrowRight","Home","End"] as string[]).includes(event.key)) return; event.preventDefault(); const types:CaptureType[]=["task","note","rfi","contact"]; const next=nextTabIndex(index,types.length,event.key as TabNavigationKey); changeType(types[next]); event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus(); };
   if (!open) return null;
   return <div className="palette-backdrop" onMouseDown={onClose}><section ref={dialogRef} className="palette quick-capture" role="dialog" aria-modal="true" aria-labelledby="capture-title" onMouseDown={(event)=>event.stopPropagation()} onKeyDown={trapFocus}>
     <div className="palette-heading"><div><h2 id="capture-title">Quick capture</h2><p>Record the item without leaving your current workspace.</p></div><button type="button" className="quiet" onClick={onClose}>Close</button></div>
-    <div className="capture-types" role="tablist" aria-label="Record type">{(["task","note","rfi","contact"] as CaptureType[]).map((value)=><button key={value} type="button" role="tab" aria-selected={type===value} className={type===value?"selected":"secondary"} onClick={()=>changeType(value)}>{value === "rfi" ? "RFI draft" : value[0].toUpperCase()+value.slice(1)}</button>)}</div>
+    <div className="capture-types" role="tablist" aria-label="Record type">{(["task","note","rfi","contact"] as CaptureType[]).map((value,index)=><button key={value} type="button" role="tab" aria-selected={type===value} tabIndex={type===value?0:-1} className={type===value?"selected":"secondary"} onKeyDown={(event)=>navigateTypes(event,index)} onClick={()=>changeType(value)}>{value === "rfi" ? "RFI draft" : value[0].toUpperCase()+value.slice(1)}</button>)}</div>
     <form onSubmit={(event)=>void save(event)}>
       {type !== "contact" && <label>Project {type === "note" && <span className="optional">(optional)</span>}<select autoFocus value={projectId} onChange={(event)=>setProjectId(event.target.value)} required={needsProject}><option value="">{needsProject?"Choose project":"General workspace"}</option>{projects.map((project)=><option key={project.id} value={project.id}>{project.number} — {project.name}</option>)}</select></label>}
       {type !== "note" && <label>{type === "contact" ? "Contact name" : type === "rfi" ? "Subject" : "Task title"}<input autoFocus={type==="contact"} value={title} onChange={(event)=>setTitle(event.target.value)} required /></label>}

@@ -39,7 +39,7 @@ Built with Tauri, React, TypeScript, Rust, and bundled SQLite, AnyDesk works off
 
 ### Project controls and field operations
 
-The Operations workspace provides dedicated registers for:
+The Project Controls workspace provides dedicated registers for:
 
 - Meeting minutes and action ownership
 - Procurement items
@@ -84,7 +84,7 @@ Each register supports search, project filtering, constrained status and priorit
 
 ## Install
 
-Download the latest Windows installer from [GitHub Releases](https://github.com/kiktio123/AnyDesk/releases/latest). The current release artifacts are also kept under `releases/1.0.1` in this repository.
+Download the latest Windows installer from [GitHub Releases](https://github.com/kiktio123/AnyDesk/releases/latest). The current release artifacts are also kept under `releases/1.1.0` in this repository.
 
 The current installer is not code-signed, so Windows SmartScreen may show an unrecognized-publisher warning.
 

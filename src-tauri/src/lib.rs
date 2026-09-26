@@ -358,6 +358,15 @@ fn create_task(input: TaskInput, state: tauri::State<'_, AppState>) -> AppResult
     db.create_task(&task::id(), &input)
 }
 #[tauri::command]
+fn update_task(id: String, input: TaskInput, state: tauri::State<'_, AppState>) -> AppResult<Task> {
+    task::validate(&input)?;
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .update_task(&id, &input)
+}
+#[tauri::command]
 fn set_task_status(
     id: String,
     status: String,
@@ -984,6 +993,7 @@ pub fn run() {
             export_work_items,
             list_attention,
             create_task,
+            update_task,
             set_task_status,
             list_rfis,
             get_rfi,

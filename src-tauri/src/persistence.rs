@@ -106,7 +106,7 @@ impl Database {
         self.get_project(id)
     }
     pub fn list_tasks(&self) -> AppResult<Vec<Task>> {
-        let mut s=self.connection.prepare("SELECT t.id,t.project_id,p.number,p.name,t.title,t.priority,t.status,t.due_date,t.follow_up_date,t.waiting_on FROM tasks t JOIN projects p ON p.id=t.project_id WHERE p.archived_at_utc IS NULL ORDER BY t.due_date IS NULL,t.due_date,t.updated_at_utc DESC").map_err(database_error)?;
+        let mut s=self.connection.prepare("SELECT t.id,t.project_id,p.number,p.name,t.title,t.description,t.priority,t.status,t.category,t.due_date,t.follow_up_date,t.waiting_on FROM tasks t JOIN projects p ON p.id=t.project_id WHERE p.archived_at_utc IS NULL ORDER BY t.due_date IS NULL,t.due_date,t.updated_at_utc DESC").map_err(database_error)?;
         let rows = s.query_map([], task_from_row).map_err(database_error)?;
         rows.collect::<Result<Vec<_>, _>>().map_err(database_error)
     }
@@ -133,6 +133,34 @@ impl Database {
             .into_iter()
             .find(|t| t.id == id)
             .ok_or_else(|| AppError::internal("Created task could not be read."))
+    }
+    pub fn update_task(&mut self, id: &str, input: &TaskInput) -> AppResult<Task> {
+        task::validate(input)?;
+        let tx = self.connection.transaction().map_err(database_error)?;
+        let incompatible_relationships:i64=tx.query_row("SELECT (SELECT COUNT(*) FROM rfi_task_relationships rel JOIN rfis r ON r.id=rel.rfi_id WHERE rel.task_id=?1 AND r.project_id<>?2)+(SELECT COUNT(*) FROM submittal_task_relationships rel JOIN submittals s ON s.id=rel.submittal_id WHERE rel.task_id=?1 AND s.project_id<>?2)",rusqlite::params![id,input.project_id],|row|row.get(0)).map_err(database_error)?;
+        if incompatible_relationships > 0 {
+            return Err(AppError::from_technical(
+                "TASK_PROJECT_RELATIONSHIP_CONFLICT",
+                "This task is linked to an RFI or submittal in its current project.",
+                "Remove or update the related records before changing the task project.",
+                id,
+            ));
+        }
+        let changed=tx.execute("UPDATE tasks SET project_id=?2,title=?3,description=?4,priority=?5,status=?6,category=?7,due_date=?8,follow_up_date=?9,waiting_on=?10,waiting_since_utc=CASE WHEN ?6='waiting' THEN COALESCE(waiting_since_utc,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ELSE NULL END,updated_at_utc=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?1",rusqlite::params![id,input.project_id,input.title.trim(),input.description,input.priority,input.status,input.category,input.due_date,input.follow_up_date,input.waiting_on.as_deref().map(str::trim)]).map_err(database_error)?;
+        if changed == 0 {
+            return Err(AppError::from_technical(
+                "TASK_NOT_FOUND",
+                "The task no longer exists.",
+                "Refresh the task list and try again.",
+                id,
+            ));
+        }
+        tx.execute("INSERT INTO activity_events (event_type,entity_type,entity_id,summary,occurred_at_utc) VALUES ('task.updated','task',?1,?2,strftime('%Y-%m-%dT%H:%M:%fZ','now'))",rusqlite::params![id,format!("Updated task {}",input.title.trim())]).map_err(database_error)?;
+        tx.commit().map_err(database_error)?;
+        self.list_tasks()?
+            .into_iter()
+            .find(|task| task.id == id)
+            .ok_or_else(|| AppError::internal("Updated task could not be read."))
     }
     pub fn set_task_status(
         &mut self,
@@ -814,11 +842,13 @@ fn task_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Task> {
         project_number: row.get(2)?,
         project_name: row.get(3)?,
         title: row.get(4)?,
-        priority: row.get(5)?,
-        status: row.get(6)?,
-        due_date: row.get(7)?,
-        follow_up_date: row.get(8)?,
-        waiting_on: row.get(9)?,
+        description: row.get(5)?,
+        priority: row.get(6)?,
+        status: row.get(7)?,
+        category: row.get(8)?,
+        due_date: row.get(9)?,
+        follow_up_date: row.get(10)?,
+        waiting_on: row.get(11)?,
     })
 }
 fn rfi_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Rfi> {
@@ -1131,6 +1161,34 @@ mod tests {
             let created = database.create_task(id, &test_task_input("p1")).unwrap();
             assert_eq!(created.title, "Review coordination drawings");
             assert_eq!(created.status, "open");
+            assert_eq!(
+                created.description.as_deref(),
+                Some("Coordinate disciplines")
+            );
+            assert_eq!(created.category.as_deref(), Some("Engineering"));
+            let mut updated = test_task_input("p1");
+            updated.title = "Release coordination drawings".into();
+            updated.description = Some("Issued after final review".into());
+            updated.category = Some("Release".into());
+            updated.status = "waiting".into();
+            updated.waiting_on = Some("Controls vendor".into());
+            updated.follow_up_date = Some("2026-09-24".into());
+            let saved = database.update_task(id, &updated).unwrap();
+            assert_eq!(saved.title, "Release coordination drawings");
+            assert_eq!(saved.status, "waiting");
+            assert_eq!(
+                saved.description.as_deref(),
+                Some("Issued after final review")
+            );
+            assert_eq!(saved.category.as_deref(), Some("Release"));
+            database.connection.execute("INSERT INTO projects (id,number,name,project_path,created_at_utc,updated_at_utc) VALUES ('p2','P-200','Other Project','C:\\Projects\\P-200','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')",[]).unwrap();
+            database.connection.execute("INSERT INTO rfis (id,project_id,number,subject,question,status,created_date,created_at_utc,updated_at_utc) VALUES ('rfi-task-link','p1','RFI-1','Linked RFI','Question','draft','2026-09-22','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')",[]).unwrap();
+            database.connection.execute("INSERT INTO rfi_task_relationships (rfi_id,task_id,created_at_utc) VALUES ('rfi-task-link',?1,'2026-09-22T00:00:00Z')",[id]).unwrap();
+            updated.project_id = "p2".into();
+            assert_eq!(
+                database.update_task(id, &updated).err().unwrap().code,
+                "TASK_PROJECT_RELATIONSHIP_CONFLICT"
+            );
             database
                 .set_task_status(id, "waiting", Some("Controls vendor"), Some("2026-09-24"))
                 .unwrap();
@@ -1163,7 +1221,7 @@ mod tests {
                     |row| row.get(0),
                 )
                 .unwrap();
-            assert_eq!(events, 3);
+            assert_eq!(events, 4);
             assert_eq!(
                 database
                     .set_task_status("missing", "completed", None, None)
