@@ -33,7 +33,7 @@ fn err(code: &'static str, message: &str, detail: impl Into<String>) -> AppError
     AppError::from_technical(
         code,
         message,
-        "Choose a valid AnyDesk backup and try again.",
+        "Choose a valid SiteDatum backup and try again.",
         detail,
     )
 }
@@ -134,7 +134,7 @@ pub fn validate_target(path: &str, backups: &Path) -> AppResult<PathBuf> {
     {
         return Err(err(
             "BACKUP_PATH_INVALID",
-            "Only an AnyDesk app-local backup can be restored.",
+            "Only a SiteDatum app-local backup can be restored.",
             canonical.display().to_string(),
         ));
     }

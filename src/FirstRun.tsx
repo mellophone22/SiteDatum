@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { describeAppError } from "./error";
 import { StatusNotice } from "./Feedback";
-import brandLogo from "./assets/anydesk-logo-transparent.png";
+import brandLogo from "./assets/branding/site-datum-wordmark.png";
 
 type RootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
 type Project = { id: string; number: string; name: string };
@@ -62,10 +62,10 @@ export function FirstRun({ onComplete, onSkip }: { onComplete: (project: Project
 
   return <main className="first-run-shell">
     <section className="first-run-panel" aria-labelledby="first-run-title">
-      <header className="first-run-header"><img src={brandLogo} alt="AnyDesk"/><div><span>Local Project Engineer workspace</span><strong>Step {step === "root" ? "1" : "2"} of 2</strong></div></header>
+      <header className="first-run-header"><img src={brandLogo} alt="SiteDatum"/><div><span>Local Project Engineer workspace</span><strong>Step {step === "root" ? "1" : "2"} of 2</strong></div></header>
       {step === "root" ? <form onSubmit={saveRoot}>
         <p className="eyebrow">Workspace location</p><h1 id="first-run-title">Choose your project root</h1>
-        <p className="intro">AnyDesk creates project folders beneath this existing local folder or UNC share. Your documents remain normal Windows files.</p>
+        <p className="intro">SiteDatum creates project folders beneath this existing local folder or UNC share. Your documents remain normal Windows files.</p>
         <div className="first-run-field"><label htmlFor="first-run-root">Existing folder path</label><div className="path-control"><input id="first-run-root" required value={path} onChange={(event) => { setPath(event.target.value); setError(""); }} placeholder="C:\\Projects or \\server\\share\\Projects" spellCheck="false" autoFocus/><button type="button" className="secondary" onClick={() => void browse()} disabled={working}>Browse…</button></div></div>
         <p className="help">The folder must already exist and be readable. Existing project folders are never overwritten.</p>
         {error && <StatusNotice tone="error">{error}</StatusNotice>}

@@ -1,10 +1,10 @@
-# AnyDesk
+# SiteDatum
 
-AnyDesk is a local-first Windows desktop workspace for project engineers. It keeps project controls, day-to-day follow-up, document references, and operational reporting in one fast desktop application while leaving real project documents as ordinary Windows files.
+SiteDatum is a local-first Windows desktop workspace for project engineers. It keeps project controls, day-to-day follow-up, document references, and operational reporting in one fast desktop application while leaving real project documents as ordinary Windows files.
 
-Built with Tauri, React, TypeScript, Rust, and bundled SQLite, AnyDesk works offline and does not require a cloud account. Optional Supabase metadata synchronization and a dedicated OneDrive project root can be enabled when work needs to follow the user between trusted workstations.
+Built with Tauri, React, TypeScript, Rust, and bundled SQLite, SiteDatum works offline and does not require a cloud account. Optional Supabase metadata synchronization and a dedicated OneDrive project root can be enabled when work needs to follow the user between trusted workstations.
 
-## What AnyDesk can do
+## What SiteDatum can do
 
 ### Daily command center
 
@@ -57,7 +57,7 @@ Each register supports search, project filtering, constrained status and priorit
 ### Planning, reminders, import, export, and reports
 
 - Combines task due dates, follow-ups, RFI/submittal dates, and operational milestones in a restrained calendar-style register.
-- Offers opt-in Windows reminders for due and overdue work while AnyDesk is running.
+- Offers opt-in Windows reminders for due and overdue work while SiteDatum is running.
 - Previews CSV or Excel imports, validates every row, and commits the batch only when the full import is valid.
 - Exports filtered operational registers to CSV or native Excel workbooks.
 - Generates versioned printable HTML reports for weekly status, open items, meeting minutes, transmittals, submittal covers, and contact lists.
@@ -84,7 +84,7 @@ Each register supports search, project filtering, constrained status and priorit
 
 ## Install
 
-Download the latest Windows installer from [GitHub Releases](https://github.com/kiktio123/AnyDesk/releases/latest). The current release artifacts are also kept under `releases/1.1.0` in this repository.
+Download the latest Windows installer from [GitHub Releases](https://github.com/kiktio123/SiteDatum/releases/latest). The current release artifacts are also kept under `releases/1.2.0` in this repository.
 
 The current installer is not code-signed, so Windows SmartScreen may show an unrecognized-publisher warning.
 
@@ -98,8 +98,8 @@ Prerequisites:
 - Visual Studio 2022 Build Tools with the Desktop development with C++ workload
 
 ```powershell
-git clone https://github.com/kiktio123/AnyDesk.git
-cd AnyDesk
+git clone https://github.com/kiktio123/SiteDatum.git
+cd SiteDatum
 npm ci
 npm run tauri -- dev
 ```
@@ -123,6 +123,6 @@ npm run tauri -- build --bundles nsis
 
 ## Data locations
 
-AnyDesk stores its SQLite database, structured logs, settings, and backups under the Windows application-local data directory assigned to `com.cabre.project-engineer-workspace`. Real project documents remain normal Windows files beneath the Projects root selected in Settings.
+SiteDatum stores its SQLite database, structured logs, settings, and backups under the Windows application-local data directory assigned to `com.cabre.project-engineer-workspace`. This legacy identifier is intentionally retained so upgrades preserve existing local data and settings. Real project documents remain normal Windows files beneath the Projects root selected in Settings.
 
 For optional multi-workstation use, configure a dedicated OneDrive folder as the Projects root and enable Supabase metadata sync in Settings. Keep the database itself in application-local data; do not place the SQLite database inside OneDrive.

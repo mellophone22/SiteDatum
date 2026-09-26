@@ -448,7 +448,7 @@ fn export_rfi_pdf(
     if let Err(error) = database.add_rfi_attachment(&id, &output_path) {
         return Err(AppError::from_technical(
             "RFI_PDF_REFERENCE_FAILED",
-            "The PDF was created, but AnyDesk could not add it to the RFI attachments.",
+            "The PDF was created, but SiteDatum could not add it to the RFI attachments.",
             "The PDF remains at the selected location. Reference it manually from the RFI if needed.",
             format!("{} | {}", destination.display(), error.technical_detail()),
         ));
@@ -1042,5 +1042,5 @@ pub fn run() {
             resolve_cloud_conflict
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run AnyDesk");
+        .expect("failed to run SiteDatum");
 }

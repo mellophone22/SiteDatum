@@ -211,7 +211,7 @@ impl Database {
             .map(|v| format!("<th>{}</th>", escape(v)))
             .collect::<String>();
         let body = rows.iter().map(|v| row(v)).collect::<String>();
-        let html=format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>{}</title><style>body{{font:12px 'Segoe UI',Arial,sans-serif;color:#172033;margin:32px}}h1{{font-size:22px;margin-bottom:4px}}p{{color:#566176}}table{{width:100%;border-collapse:collapse;margin-top:20px}}th,td{{padding:8px;border:1px solid #cfd6e1;text-align:left;vertical-align:top}}th{{background:#eef2f7}}footer{{margin-top:20px;color:#697386;font-size:10px}}@media print{{body{{margin:12mm}}}}</style></head><body><h1>{}</h1><p>{}</p><table><thead><tr>{}</tr></thead><tbody>{}</tbody></table><footer>AnyDesk template {} · {} records</footer></body></html>",escape(title),escape(title),escape(&project_name),heading,body,TEMPLATE_VERSION,rows.len());
+        let html=format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>{}</title><style>body{{font:12px 'Segoe UI',Arial,sans-serif;color:#172033;margin:32px}}h1{{font-size:22px;margin-bottom:4px}}p{{color:#566176}}table{{width:100%;border-collapse:collapse;margin-top:20px}}th,td{{padding:8px;border:1px solid #cfd6e1;text-align:left;vertical-align:top}}th{{background:#eef2f7}}footer{{margin-top:20px;color:#697386;font-size:10px}}@media print{{body{{margin:12mm}}}}</style></head><body><h1>{}</h1><p>{}</p><table><thead><tr>{}</tr></thead><tbody>{}</tbody></table><footer>SiteDatum template {} · {} records</footer></body></html>",escape(title),escape(title),escape(&project_name),heading,body,TEMPLATE_VERSION,rows.len());
         let temporary = path.with_extension("html.tmp");
         fs::write(&temporary, html).map_err(|e| {
             err(
@@ -243,7 +243,7 @@ mod tests {
         db.export_operational_report("contacts", None, &output.to_string_lossy())
             .unwrap();
         let text = std::fs::read_to_string(&output).unwrap();
-        assert!(text.contains("AnyDesk template 1.0"));
+        assert!(text.contains("SiteDatum template 1.0"));
         assert_eq!(
             db.export_operational_report("contacts", None, &output.to_string_lossy())
                 .unwrap_err()

@@ -81,7 +81,7 @@ fn save_session(session: &StoredSession) -> AppResult<()> {
     session_entry()?.set_password(&serialized).map_err(|error| {
         AppError::from_technical(
             "CLOUD_CREDENTIAL_SAVE_FAILED",
-            "AnyDesk could not save the secure cloud session.",
+            "SiteDatum could not save the secure cloud session.",
             "Check Windows Credential Manager, then sign in again.",
             error.to_string(),
         )
@@ -91,7 +91,7 @@ fn save_session(session: &StoredSession) -> AppResult<()> {
 fn auth_error(code: &'static str, error: reqwest::Error) -> AppError {
     AppError::from_technical(
         code,
-        "AnyDesk could not reach the cloud workspace.",
+        "SiteDatum could not reach the cloud workspace.",
         "Check your connection and try again. Your local workspace is unchanged.",
         error.to_string(),
     )
@@ -103,14 +103,14 @@ pub fn sign_in_with_password(email: String, password: String) -> AppResult<Cloud
         return Err(AppError::from_technical(
             "CLOUD_EMAIL_INVALID",
             "Enter a valid email address.",
-            "Use the confirmed Supabase user created for AnyDesk.",
+            "Use the confirmed Supabase user created for SiteDatum.",
             email,
         ));
     }
     if password.len() < 8 {
         return Err(AppError::from_technical(
             "CLOUD_PASSWORD_INVALID",
-            "Enter your AnyDesk cloud password.",
+            "Enter your SiteDatum cloud password.",
             "The password must contain at least eight characters.",
             "Password shorter than eight characters.",
         ));
@@ -134,7 +134,7 @@ pub fn sign_in_with_password(email: String, password: String) -> AppResult<Cloud
     let authenticated: AuthResponse = response.json().map_err(|error| {
         AppError::from_technical(
             "CLOUD_SIGN_IN_FAILED",
-            "AnyDesk could not finish cloud sign-in.",
+            "SiteDatum could not finish cloud sign-in.",
             "Try signing in again. Your local workspace is unchanged.",
             error.to_string(),
         )
@@ -174,7 +174,7 @@ pub fn refreshed_access_token() -> AppResult<String> {
     let refreshed: AuthResponse = response.json().map_err(|error| {
         AppError::from_technical(
             "CLOUD_SESSION_REFRESH_FAILED",
-            "AnyDesk could not refresh the cloud session.",
+            "SiteDatum could not refresh the cloud session.",
             "Check your connection and try again.",
             error.to_string(),
         )
@@ -222,8 +222,8 @@ pub fn disconnect() -> AppResult<()> {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(error) => Err(AppError::from_technical(
             "CLOUD_CREDENTIAL_DELETE_FAILED",
-            "AnyDesk could not disconnect the cloud session.",
-            "Try again or remove the AnyDesk cloud credential from Windows Credential Manager.",
+            "SiteDatum could not disconnect the cloud session.",
+            "Try again or remove the SiteDatum cloud credential from Windows Credential Manager.",
             error.to_string(),
         )),
     }

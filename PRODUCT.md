@@ -14,11 +14,11 @@ The current product remains a single-user workspace. This is inferred from the a
 
 ## Product Purpose
 
-AnyDesk is a local-first Windows command center for projects, tasks, RFIs, submittals, documents, notes, contacts, and operational registers. Success means the user can trust it every workday to surface commitments, preserve relationships, and produce useful project records without taking ownership of the underlying Windows files.
+SiteDatum is a local-first Windows command center for projects, tasks, RFIs, submittals, documents, notes, contacts, and operational registers. Success means the user can trust it every workday to surface commitments, preserve relationships, and produce useful project records without taking ownership of the underlying Windows files.
 
 ## Positioning
 
-AnyDesk combines structured project metadata with ordinary Windows project folders. SQLite owns application records and relationships, while project documents remain normal files that can still be opened, copied, backed up, and synchronized with familiar Windows tools.
+SiteDatum combines structured project metadata with ordinary Windows project folders. SQLite owns application records and relationships, while project documents remain normal files that can still be opened, copied, backed up, and synchronized with familiar Windows tools.
 
 ## Operating Context
 
@@ -37,7 +37,7 @@ The core loop is: open Attention, select a project or item, perform or record th
 
 ## Brand Commitments
 
-The product name is AnyDesk. Existing supplied AnyDesk logo and Windows application icon assets must remain recognizable and cohesively integrated. The voice is concise, operational, and professional.
+The product name is SiteDatum. The SiteDatum wordmark and Windows application icon must remain recognizable and cohesively integrated. The voice is concise, operational, and professional.
 
 ## Evidence on Hand
 

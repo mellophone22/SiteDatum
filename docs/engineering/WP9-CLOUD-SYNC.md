@@ -1,10 +1,10 @@
 # WP9 — Optional Supabase and OneDrive Sync
 
-WP9 adds opt-in, single-user synchronization between Windows workstations. OneDrive remains responsible for normal project files beneath a dedicated project root. AnyDesk synchronizes its implemented metadata through Supabase and never places the live SQLite database in OneDrive.
+WP9 adds opt-in, single-user synchronization between Windows workstations. OneDrive remains responsible for normal project files beneath a dedicated project root. SiteDatum synchronizes its implemented metadata through Supabase and never places the live SQLite database in OneDrive.
 
 ## Delivered behavior
 
-- Email/password authentication against the AnyDesk Workspace Supabase project using a manually provisioned, confirmed user.
+- Email/password authentication against the SiteDatum Workspace Supabase project using a manually provisioned, confirmed user.
 - Access and refresh tokens stored in Windows Credential Manager rather than SQLite, browser storage, or source-controlled configuration.
 - Manual **Sync now** action; local operation remains available without a network connection.
 - A complete metadata snapshot covering projects, tasks, RFIs, submittals, relationships, attachment references, registered files, notes, contacts, and activity.
@@ -14,9 +14,9 @@ WP9 adds opt-in, single-user synchronization between Windows workstations. OneDr
 
 ## Operational notes
 
-Both computers must select their local copy of the same dedicated OneDrive project folder before syncing. On first connection, an empty local workspace downloads the cloud workspace. If both the cloud and local workspace already contain different metadata, AnyDesk requires an explicit conflict choice.
+Both computers must select their local copy of the same dedicated OneDrive project folder before syncing. On first connection, an empty local workspace downloads the cloud workspace. If both the cloud and local workspace already contain different metadata, SiteDatum requires an explicit conflict choice.
 
-The Supabase Free plan may pause after inactivity and does not provide downloadable managed backups. AnyDesk's local backups remain part of the recovery model.
+The Supabase Free plan may pause after inactivity and does not provide downloadable managed backups. SiteDatum's local backups remain part of the recovery model.
 
 ## Verification
 

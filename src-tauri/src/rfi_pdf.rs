@@ -159,7 +159,7 @@ fn template_document() -> AppResult<(Document, lopdf::ObjectId)> {
         pdf_error(
             "RFI_PDF_TEMPLATE_INVALID",
             "The bundled RFI PDF template could not be opened.",
-            "Reinstall AnyDesk and try again.",
+            "Reinstall SiteDatum and try again.",
             error.to_string(),
         )
     })?;
@@ -167,7 +167,7 @@ fn template_document() -> AppResult<(Document, lopdf::ObjectId)> {
         pdf_error(
             "RFI_PDF_TEMPLATE_INVALID",
             "The bundled RFI PDF template has no first page.",
-            "Reinstall AnyDesk and try again.",
+            "Reinstall SiteDatum and try again.",
             "Missing page 1.",
         )
     })?;
@@ -190,7 +190,7 @@ fn template_document() -> AppResult<(Document, lopdf::ObjectId)> {
             pdf_error(
                 "RFI_PDF_TEMPLATE_INVALID",
                 "The bundled RFI PDF template is damaged.",
-                "Reinstall AnyDesk and try again.",
+                "Reinstall SiteDatum and try again.",
                 error.to_string(),
             )
         })?;
@@ -201,7 +201,7 @@ fn template_document() -> AppResult<(Document, lopdf::ObjectId)> {
             pdf_error(
                 "RFI_PDF_TEMPLATE_INVALID",
                 "The bundled RFI PDF template resources are damaged.",
-                "Reinstall AnyDesk and try again.",
+                "Reinstall SiteDatum and try again.",
                 error.to_string(),
             )
         })?;
@@ -212,7 +212,7 @@ fn template_document() -> AppResult<(Document, lopdf::ObjectId)> {
             pdf_error(
                 "RFI_PDF_TEMPLATE_INVALID",
                 "The bundled RFI PDF template fonts are damaged.",
-                "Reinstall AnyDesk and try again.",
+                "Reinstall SiteDatum and try again.",
                 error.to_string(),
             )
         })?;
@@ -271,7 +271,7 @@ pub fn write(rfi: &Rfi, project: &Project, destination: &Path) -> AppResult<()> 
         return Err(pdf_error(
             "RFI_PDF_ALREADY_EXISTS",
             "A PDF already exists at that location.",
-            "Choose a different filename. AnyDesk never overwrites an existing document.",
+            "Choose a different filename. SiteDatum never overwrites an existing document.",
             destination.display().to_string(),
         ));
     }

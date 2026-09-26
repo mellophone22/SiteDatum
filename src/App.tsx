@@ -22,8 +22,8 @@ import { recoveryIssueCount, recoverySummary } from "./recoveryHealth";
 import { LoadingState, StatusNotice, useConfirmation } from "./Feedback";
 import { FirstRun } from "./FirstRun";
 import { needsFirstRun } from "./firstRunState";
-import brandLogo from "./assets/anydesk-logo-transparent.png";
-import appIcon from "./assets/anydesk-app-icon.jpg";
+import brandLogo from "./assets/branding/site-datum-wordmark.png";
+import appIcon from "./assets/branding/site-datum-app-icon-v2.png";
 
 type ProjectRootSetting = { path: string | null };
 type ProjectRootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
@@ -224,7 +224,7 @@ function App() {
       {confirmationDialog}
       <a className="skip-link" href="#workspace-content">Skip to workspace</a>
       <aside className="app-sidebar">
-        <div className="brand-row"><span className="brand-lockup"><img className="brand-logo" src={brandLogo} alt="AnyDesk"/><img className="brand-logo brand-logo-contrast" src={brandLogo} alt="" aria-hidden="true"/></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
+        <div className="brand-row"><span className="brand-lockup"><img className="brand-logo" src={brandLogo} alt="SiteDatum"/><img className="brand-logo brand-logo-contrast" src={brandLogo} alt="" aria-hidden="true"/></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
         <nav className="main-navigation" aria-label="Main navigation">
           <div className="primary-nav"><p className="nav-group-label">Global</p>{navButton("overview", "Home")}{navButton("attention", "Attention")}{navButton("projects", "Projects")}</div>
           <div className="workspace-nav" aria-label={selectedProject ? `${selectedProject.number} project workspace` : "All-project workspace"}>
@@ -275,7 +275,7 @@ function App() {
           </form>}
           <div className="status-area" aria-live="polite">{cloudMessage && <StatusNotice tone="success">{cloudMessage}</StatusNotice>}{cloudError && <StatusNotice tone="error">{cloudError}</StatusNotice>}</div>
         </section>
-        <section className="settings-section" aria-labelledby="reminders-title"><div className="settings-section-heading"><h2 id="reminders-title">Notifications</h2><p>Show a Windows notification for overdue and due-today tasks, follow-ups, and project-control records while AnyDesk is running.</p></div><label className="setting-toggle"><input type="checkbox" checked={remindersOn} onChange={(event)=>void changeReminders(event.target.checked)}/> Enable Windows reminders</label>{remindersOn&&<button type="button" className="secondary" onClick={()=>void runReminderCheck(true).then(total=>setMessage(total?`Reminder sent for ${total} current items.`:"No items currently need a reminder.")).catch(caught=>setError(describeAppError(caught)))}>Check reminders now</button>}</section>
+        <section className="settings-section" aria-labelledby="reminders-title"><div className="settings-section-heading"><h2 id="reminders-title">Notifications</h2><p>Show a Windows notification for overdue and due-today tasks, follow-ups, and project-control records while SiteDatum is running.</p></div><label className="setting-toggle"><input type="checkbox" checked={remindersOn} onChange={(event)=>void changeReminders(event.target.checked)}/> Enable Windows reminders</label>{remindersOn&&<button type="button" className="secondary" onClick={()=>void runReminderCheck(true).then(total=>setMessage(total?`Reminder sent for ${total} current items.`:"No items currently need a reminder.")).catch(caught=>setError(describeAppError(caught)))}>Check reminders now</button>}</section>
         <section className={`settings-section recovery-settings${recoveryIssues ? " needs-attention" : ""}`} aria-labelledby="data-recovery-title"><div className="settings-section-heading"><h2 id="data-recovery-title">Data &amp; Recovery</h2><p>{recoverySummary(recoveryHealth)}</p></div><div className="actions"><button type="button" className="secondary" onClick={() => void backup()} disabled={working}>{working ? "Working…" : "Create local backup"}</button><button type="button" className="secondary" onClick={() => navigate("recovery")}>{recoveryIssues ? "Review recovery issues" : "Open audit and recovery"}</button></div></section>
       </section>}
         </div>

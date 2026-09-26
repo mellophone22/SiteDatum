@@ -36,7 +36,7 @@ Reusable project templates create task checklists and milestones in one database
 
 ## Planning, data exchange, and reports
 
-The calendar is a compact dated register combining task due dates, waiting follow-ups, RFI/submittal dates, and operational milestones. Windows reminders are opt-in and run only while AnyDesk is open; no background service is installed.
+The calendar is a compact dated register combining task due dates, waiting follow-ups, RFI/submittal dates, and operational milestones. Windows reminders are opt-in and run only while SiteDatum is open; no background service is installed.
 
 Operational CSV and Excel imports require a preview and validate the complete batch before writing any rows. Filtered CSV and native Excel exports never overwrite existing files. Printable HTML reports use a visible template version and are generated for weekly status, open items, meeting minutes, transmittals, submittal covers, and contacts.
 

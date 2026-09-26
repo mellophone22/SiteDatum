@@ -6,7 +6,7 @@ Settings is organized into four operational sections:
 
 - Workspace: project-root validation and persistence.
 - Sync: optional metadata synchronization and conflict resolution.
-- Notifications: opt-in Windows reminders while AnyDesk is running.
+- Notifications: opt-in Windows reminders while SiteDatum is running.
 - Data & Recovery: backup creation, health summary, and entry to audit/restore tools.
 
 ## Recovery signal
