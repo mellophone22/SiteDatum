@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { describeAppError } from "./error";
 import { StatusNotice } from "./Feedback";
-import brandLogo from "./assets/branding/site-datum-wordmark.png";
+import appIcon from "./assets/branding/site-datum-app-icon-v2.png";
 
 type RootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
 type Project = { id: string; number: string; name: string };
@@ -62,7 +62,7 @@ export function FirstRun({ onComplete, onSkip }: { onComplete: (project: Project
 
   return <main className="first-run-shell">
     <section className="first-run-panel" aria-labelledby="first-run-title">
-      <header className="first-run-header"><img src={brandLogo} alt="SiteDatum"/><div><span>Local Project Engineer workspace</span><strong>Step {step === "root" ? "1" : "2"} of 2</strong></div></header>
+      <header className="first-run-header"><span className="brand-lockup" aria-label="SiteDatum"><img className="brand-mark" src={appIcon} alt="" aria-hidden="true"/><span className="brand-name"><span className="brand-name-site">Site</span><span className="brand-name-datum">Datum</span></span></span><div><span>Local Project Engineer workspace</span><strong>Step {step === "root" ? "1" : "2"} of 2</strong></div></header>
       {step === "root" ? <form onSubmit={saveRoot}>
         <p className="eyebrow">Workspace location</p><h1 id="first-run-title">Choose your project root</h1>
         <p className="intro">SiteDatum creates project folders beneath this existing local folder or UNC share. Your documents remain normal Windows files.</p>

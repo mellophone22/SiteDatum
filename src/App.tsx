@@ -22,7 +22,6 @@ import { recoveryIssueCount, recoverySummary } from "./recoveryHealth";
 import { LoadingState, StatusNotice, useConfirmation } from "./Feedback";
 import { FirstRun } from "./FirstRun";
 import { needsFirstRun } from "./firstRunState";
-import brandLogo from "./assets/branding/site-datum-wordmark.png";
 import appIcon from "./assets/branding/site-datum-app-icon-v2.png";
 
 type ProjectRootSetting = { path: string | null };
@@ -224,7 +223,7 @@ function App() {
       {confirmationDialog}
       <a className="skip-link" href="#workspace-content">Skip to workspace</a>
       <aside className="app-sidebar">
-        <div className="brand-row"><span className="brand-lockup"><img className="brand-logo" src={brandLogo} alt="SiteDatum"/><img className="brand-logo brand-logo-contrast" src={brandLogo} alt="" aria-hidden="true"/></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
+        <div className="brand-row"><span className="brand-lockup" aria-label="SiteDatum"><img className="brand-mark" src={appIcon} alt="" aria-hidden="true"/><span className="brand-name"><span className="brand-name-site">Site</span><span className="brand-name-datum">Datum</span></span></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
         <nav className="main-navigation" aria-label="Main navigation">
           <div className="primary-nav"><p className="nav-group-label">Global</p>{navButton("overview", "Home")}{navButton("attention", "Attention")}{navButton("projects", "Projects")}</div>
           <div className="workspace-nav" aria-label={selectedProject ? `${selectedProject.number} project workspace` : "All-project workspace"}>
