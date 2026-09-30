@@ -6,7 +6,7 @@ Status: Completed locally 2026-09-30; not deployed
 
 SiteDatum licensing uses a dedicated Supabase project that is separate from the optional metadata-sync project. Supabase Auth supplies paid-customer identity, Postgres stores the provider-neutral subscription projection and device activations, and Edge Functions issue signed entitlements. This service is not part of the local project workspace and never receives project names, records, documents, contacts, file paths, database contents, or sync payloads.
 
-No hosted project, production credential, merchant adapter, customer account, or secret was created in this package. Provider webhooks and reconciliation remain C4 scope. Desktop sign-in, secure credential storage, entitlement caching, and subscription UI remain C5 scope.
+The C3 package was originally completed without a hosted project, production credential, merchant adapter, customer account, or secret. Hosted Edge Functions use Supabase's injected server-only service-role credential; it is never placed in the repository or desktop client. Provider webhooks and reconciliation remain C4 scope. Desktop sign-in, secure credential storage, entitlement caching, and subscription UI remain C5 scope.
 
 ## Local service layout
 

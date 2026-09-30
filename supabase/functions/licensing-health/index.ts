@@ -8,7 +8,7 @@ Deno.serve(async (request) => {
   try {
     const admin = createClient(
       requiredEnvironment("SUPABASE_URL"),
-      requiredEnvironment("LICENSING_DATABASE_SECRET_KEY"),
+      requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
     const { data, error } = await admin.rpc("licensing_health");

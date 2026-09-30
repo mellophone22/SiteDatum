@@ -1,6 +1,6 @@
 # C4 — Stripe Managed Payments adapter
 
-Status: local implementation complete; hosted Stripe/Supabase proof pending configuration.
+Status: hosted Supabase licensing foundation verified; Stripe test configuration and lifecycle proof pending.
 
 ## Decision
 
@@ -38,3 +38,16 @@ Set the server-only values listed in `supabase/functions/.env.example`. Use an `
 ## Remaining acceptance proof
 
 Before Stripe is selected for launch, execute the hosted test matrix for monthly/annual checkout, renewal, failed payment and recovery, cancel-at-period-end, expiration, full and partial refund, duplicate webhook resend, delayed delivery, portal access, and reconciliation repair. Record IDs only in private operator notes, not repository documentation. Live-mode enablement is a separate founder-approved step.
+
+## Hosted test checkpoint — September 30, 2026
+
+- Dedicated Supabase organization and `SiteDatum Licensing Test` project created in `us-east-1`.
+- Project reference: `lirkgkiwbffhsmlrfsbp` (public project identifier, not a credential).
+- Both C3/C4 migrations applied and matched in remote migration history.
+- Hosted database lint returned no schema warnings.
+- `licensing-health` deployed and returned schema version 1 with healthy status.
+- `licensing-entitlement` deployed and rejected an unauthenticated request with HTTP 401.
+- Test signing key ID: `test-2026-09-30-1`.
+- Test Ed25519 public key (raw base64): `EG2rGjHrrOM3gUikZvU3s8PCul9IgRFUXwmgVFQ9NSA=`.
+- Private signing material and the reconciliation secret exist only in Supabase Edge Function secrets.
+- Hosted functions use Supabase's injected server-only service-role credential; no database credential is duplicated in project configuration.

@@ -34,7 +34,7 @@ Deno.serve(async (request) => {
   }
 
   const supabaseUrl = requiredEnvironment("SUPABASE_URL");
-  const secretKey = requiredEnvironment("LICENSING_DATABASE_SECRET_KEY");
+  const secretKey = requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY");
   const keyId = requiredEnvironment("LICENSING_ENTITLEMENT_KEY_ID");
   const privateKey = requiredEnvironment("LICENSING_ENTITLEMENT_PRIVATE_KEY_PKCS8_B64");
   const admin = createClient(supabaseUrl, secretKey, {

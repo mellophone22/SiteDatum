@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.117.2";
 import { requiredEnvironment } from "./http.ts";
 
 export function licensingAdmin() {
-  return createClient(requiredEnvironment("SUPABASE_URL"), requiredEnvironment("LICENSING_DATABASE_SECRET_KEY"), {
+  return createClient(requiredEnvironment("SUPABASE_URL"), requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
