@@ -7,4 +7,8 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { languageOptions: { globals: globals.browser } },
+  {
+    files: ["supabase/functions/**/*.ts"],
+    languageOptions: { globals: globals.deno },
+  },
 );
