@@ -59,6 +59,33 @@ impl Database {
             .map_err(database_error)?;
         rows.collect::<Result<Vec<_>, _>>().map_err(database_error)
     }
+    pub fn active_project_count(&self) -> AppResult<usize> {
+        let count: i64 = self
+            .connection
+            .query_row(
+                "SELECT COUNT(*) FROM projects WHERE archived_at_utc IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(database_error)?;
+        usize::try_from(count).map_err(|error| {
+            AppError::from_technical(
+                "DATABASE_PROJECT_COUNT_INVALID",
+                "The active project count could not be read.",
+                "Restart SiteDatum and try again.",
+                error.to_string(),
+            )
+        })
+    }
+    pub fn is_project_archived(&self, id: &str) -> AppResult<bool> {
+        self.connection
+            .query_row(
+                "SELECT archived_at_utc IS NOT NULL FROM projects WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(database_error)
+    }
     pub fn get_project(&self, id: &str) -> AppResult<Project> {
         self.connection.query_row("SELECT id, number, name, status, phase, custom_phase_name, customer, general_contractor, engineer, project_manager, superintendent, location, start_date, target_date, description, important_notes, project_path, is_pinned, archived_at_utc, created_at_utc, updated_at_utc FROM projects WHERE id = ?1", [id], project_from_row).map_err(database_error)
     }
@@ -1144,6 +1171,24 @@ mod tests {
                 database.get_project_root().unwrap().path.as_deref(),
                 Some("C:\\Projects")
             );
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn active_project_queries_distinguish_archived_projects() {
+        let path = std::env::temp_dir().join(format!(
+            "project-engineer-entitlement-{}.sqlite3",
+            uuid::Uuid::new_v4()
+        ));
+        {
+            let database = Database::open(&path).unwrap();
+            insert_test_project(&database);
+            database.connection.execute("INSERT INTO projects (id,number,name,project_path,archived_at_utc,created_at_utc,updated_at_utc) VALUES ('p2','P-200','Archived Project','C:\\Projects\\P-200','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')", []).unwrap();
+
+            assert_eq!(database.active_project_count().unwrap(), 1);
+            assert!(!database.is_project_archived("p1").unwrap());
+            assert!(database.is_project_archived("p2").unwrap());
         }
         std::fs::remove_file(path).unwrap();
     }

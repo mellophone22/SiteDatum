@@ -46,7 +46,7 @@ Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BO
 
 - **Commercial Phase 1 — audit and architecture:** repository audit, narrow operating-rule amendment, Free/Pro baseline, licensing boundary, threat model, provider evaluation criteria, launch blockers, and founder decisions. (Completed 2026-09-29; no billing behavior implemented.)
 - **C1 — entitlement domain:** provider-neutral capability policy, three-active-project Free limit, complete manual Free workflows, portability guarantees, 21-day unavailable-verification grace, two-device Pro allowance, non-destructive downgrade rules, and pure tests. (Completed 2026-09-29; dormant policy only, with no enforcement or provider integration.)
-- **C2 — trusted desktop enforcement:** enforce consequential limits at Rust mutation boundaries while preserving all existing data access, editing, backup, and recovery.
+- **C2 — trusted desktop enforcement:** enforce consequential limits at Rust mutation boundaries while preserving all existing data access, editing, backup, and recovery. (Completed 2026-09-29; command-boundary enforcement is wired and tested, with pre-commercial compatibility retained until C3 supplies trusted entitlement evidence.)
 - **C3 — licensing service:** minimal paid identity, subscription projection, signed entitlements, authorization, rate limiting, audit logging, and operational health.
 - **C4 — merchant test adapter:** hosted checkout, verified and idempotent webhooks, customer portal, reconciliation, cancellation, refund, and failure-path tests.
 - **C5 — subscription UX:** Account/Subscription settings, real Free/Pro comparison, upgrade, pending/recovery states, portal access, and offline-grace messaging.

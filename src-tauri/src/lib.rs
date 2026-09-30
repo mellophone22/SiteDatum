@@ -2,6 +2,7 @@ mod cloud_auth;
 mod cloud_sync;
 mod data_exchange;
 pub mod entitlement;
+mod entitlement_enforcement;
 mod error;
 mod file_record;
 mod note_contact;
@@ -19,6 +20,8 @@ mod work_item;
 use std::{fs, sync::Mutex};
 
 use data_exchange::ImportPreview;
+use entitlement::CommercialFeature;
+use entitlement_enforcement::{require_feature, require_project_activation, CommercialAccess};
 use error::{AppError, AppResult};
 use file_record::{FileInput, FileMetadataInput, FileRecord};
 use note_contact::{ActivityEvent, Contact, ContactInput, Note, NoteInput};
@@ -33,8 +36,17 @@ use work_item::{ProjectTemplate, ProjectTemplateInput, WorkItem, WorkItemInput};
 
 struct AppState {
     database: Mutex<Database>,
+    commercial_access: Mutex<CommercialAccess>,
     log_path: std::path::PathBuf,
     database_path: std::path::PathBuf,
+}
+
+fn current_commercial_access(state: &AppState) -> AppResult<CommercialAccess> {
+    state
+        .commercial_access
+        .lock()
+        .map(|access| *access)
+        .map_err(|_| AppError::internal("Entitlement state is unavailable."))
 }
 
 #[tauri::command]
@@ -129,10 +141,12 @@ fn list_projects(
 #[tauri::command]
 fn create_project(input: ProjectInput, state: tauri::State<'_, AppState>) -> AppResult<Project> {
     let input = project::validate_input(&input)?;
+    let commercial_access = current_commercial_access(&state)?;
     let mut database = state
         .database
         .lock()
         .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    require_project_activation(commercial_access, database.active_project_count()?)?;
     let root = database.get_project_root()?.path.ok_or_else(|| {
         AppError::from_technical(
             "PROJECT_ROOT_NOT_SET",
@@ -159,11 +173,15 @@ fn set_project_flag(
     pinned: Option<bool>,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<Project> {
-    state
+    let commercial_access = current_commercial_access(&state)?;
+    let mut database = state
         .database
         .lock()
-        .map_err(|_| AppError::internal("Database state is unavailable."))?
-        .set_project_flag(&id, archived, pinned)
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    if archived == Some(false) && database.is_project_archived(&id)? {
+        require_project_activation(commercial_access, database.active_project_count()?)?;
+    }
+    database.set_project_flag(&id, archived, pinned)
 }
 
 #[tauri::command]
@@ -262,6 +280,10 @@ fn bulk_set_work_item_status(
     status: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<usize> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::BulkOperations,
+    )?;
     state
         .database
         .lock()
@@ -281,6 +303,10 @@ fn create_project_template(
     input: ProjectTemplateInput,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<ProjectTemplate> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::ProjectTemplates,
+    )?;
     state
         .database
         .lock()
@@ -293,6 +319,10 @@ fn apply_project_template(
     project_id: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<usize> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::ProjectTemplates,
+    )?;
     state
         .database
         .lock()
@@ -306,6 +336,10 @@ fn preview_work_item_import(
     item_type: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<ImportPreview> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::SpreadsheetImport,
+    )?;
     state
         .database
         .lock()
@@ -319,6 +353,10 @@ fn import_work_items(
     item_type: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<usize> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::SpreadsheetImport,
+    )?;
     state
         .database
         .lock()
@@ -331,6 +369,16 @@ fn export_work_items(
     ids: Vec<String>,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<usize> {
+    if std::path::Path::new(&path)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("xlsx"))
+    {
+        require_feature(
+            current_commercial_access(&state)?,
+            CommercialFeature::SpreadsheetExport,
+        )?;
+    }
     state
         .database
         .lock()
@@ -438,6 +486,10 @@ fn export_rfi_pdf(
     output_path: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<String> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::ProfessionalReports,
+    )?;
     let mut database = state
         .database
         .lock()
@@ -793,6 +845,10 @@ fn export_operational_report(
     output_path: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<String> {
+    require_feature(
+        current_commercial_access(&state)?,
+        CommercialFeature::ProfessionalReports,
+    )?;
     state
         .database
         .lock()
@@ -965,6 +1021,7 @@ pub fn run() {
             );
             app.manage(AppState {
                 database: Mutex::new(database),
+                commercial_access: Mutex::new(CommercialAccess::Precommercial),
                 log_path,
                 database_path,
             });
