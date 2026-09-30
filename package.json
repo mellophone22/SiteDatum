@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql",
+    "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql supabase/tests/stripe_adapter.sql",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "preview": "vite preview",
