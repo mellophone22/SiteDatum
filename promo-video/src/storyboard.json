@@ -1,0 +1,94 @@
+{
+  "title": "SiteDatum Promo 30s",
+  "duration": 30.0,
+  "fps": 30,
+  "size": [1920, 1080],
+  "transition": 0.4,
+  "scenes": [
+    {
+      "kind": "opener",
+      "start": 0.0,
+      "end": 3.0,
+      "caption": "Project engineering, organized."
+    },
+    {
+      "kind": "screen",
+      "start": 3.0,
+      "end": 7.0,
+      "asset": "01-Portfolio-Overview-Light.png",
+      "kicker": "PORTFOLIO OVERVIEW",
+      "caption": "See what matters across every project.",
+      "motion": "push"
+    },
+    {
+      "kind": "screen",
+      "start": 7.0,
+      "end": 10.0,
+      "asset": "03-Project-Workspaces.png",
+      "kicker": "PROJECT WORKSPACES",
+      "caption": "Every project. One workspace.",
+      "motion": "right"
+    },
+    {
+      "kind": "screen",
+      "start": 10.0,
+      "end": 14.0,
+      "asset": "04-Task-Management.png",
+      "kicker": "TASK MANAGEMENT",
+      "caption": "Keep tasks and follow-ups moving.",
+      "motion": "push"
+    },
+    {
+      "kind": "screen",
+      "start": 14.0,
+      "end": 17.0,
+      "asset": "06-Attention-Queues.png",
+      "kicker": "ATTENTION QUEUES",
+      "caption": "Know exactly what needs attention.",
+      "motion": "left"
+    },
+    {
+      "kind": "screen",
+      "start": 17.0,
+      "end": 20.0,
+      "asset": "07-RFI-Register.png",
+      "kicker": "RFI REGISTER",
+      "caption": "Track RFIs without losing the thread.",
+      "motion": "right"
+    },
+    {
+      "kind": "screen",
+      "start": 20.0,
+      "end": 22.5,
+      "asset": "08-Submittal-Register.png",
+      "kicker": "SUBMITTAL REGISTER",
+      "caption": "Keep submittals visible and accountable.",
+      "motion": "right"
+    },
+    {
+      "kind": "screen",
+      "start": 22.5,
+      "end": 25.5,
+      "asset": "09-Project-Controls.png",
+      "kicker": "PROJECT CONTROLS",
+      "caption": "Project controls, centralized.",
+      "motion": "left"
+    },
+    {
+      "kind": "screen",
+      "start": 25.5,
+      "end": 27.5,
+      "asset": "10-Notes-And-Contacts.png",
+      "kicker": "PROJECT CONTEXT",
+      "caption": "Keep coordination context with the project.",
+      "motion": "push"
+    },
+    {
+      "kind": "final",
+      "start": 27.5,
+      "end": 30.0,
+      "caption": "Engineering Projects. Organized.",
+      "secondary": "Built for project engineers."
+    }
+  ]
+}

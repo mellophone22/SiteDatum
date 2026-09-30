@@ -4,6 +4,11 @@ import { defaultWorkspaceState, readWorkspaceState, workspaceReducer } from "./w
 const storage = (values: Record<string, string>) => ({ getItem: (key: string) => values[key] ?? null });
 
 describe("workspace state", () => {
+  it("opens and restores About without changing the working project", () => {
+    const state = { ...defaultWorkspaceState, currentProjectId: "project-2" };
+    expect(workspaceReducer(state, { type: "navigate", screen: "about" })).toMatchObject({ currentScreen: "about", currentProjectId: "project-2" });
+    expect(readWorkspaceState(storage({ "workspace.screen": "about" })).currentScreen).toBe("about");
+  });
   it("restores valid persisted context and rejects an invalid screen", () => {
     expect(readWorkspaceState(storage({ "workspace.screen": "rfis", "workspace.projectContext": "project-7" }))).toMatchObject({ currentScreen: "rfis", currentProjectId: "project-7" });
     expect(readWorkspaceState(storage({ "workspace.screen": "not-a-screen" })).currentScreen).toBe("attention");

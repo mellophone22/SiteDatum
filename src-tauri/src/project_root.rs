@@ -1,6 +1,6 @@
 use crate::error::{AppError, AppResult};
 use serde::Serialize;
-use std::{fs, path::Path};
+use std::{borrow::Cow, fs, path::Path};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +24,9 @@ pub enum PathKind {
 }
 
 pub fn validate_project_root(input: &str) -> AppResult<ProjectRootValidation> {
-    let path = input.trim();
+    let trimmed = input.trim();
+    let normalized = normalize_windows_path(trimmed);
+    let path = normalized.as_ref();
     if path.is_empty() {
         return Err(invalid_path("Enter a local or UNC folder path."));
     }
@@ -83,7 +85,22 @@ pub fn validate_project_root(input: &str) -> AppResult<ProjectRootValidation> {
         .map_err(|error| map_fs_error(error, "The project root cannot be read."))?;
     let canonical_path = fs::canonicalize(candidate)
         .map_err(|error| map_fs_error(error, "The project root could not be resolved."))?;
-    Ok(ProjectRootValidation { canonical_path: canonical_path.to_string_lossy().to_string(), path_kind: if is_unc { PathKind::Unc } else { PathKind::Local }, warning: (path.len() >= 248).then(|| "This path is long. File operations will be checked carefully for Windows path-length compatibility.".to_owned()) })
+    let canonical_text = canonical_path.to_string_lossy();
+    let canonical_normalized = normalize_windows_path(&canonical_text);
+    Ok(ProjectRootValidation { canonical_path: canonical_normalized.into_owned(), path_kind: if is_unc { PathKind::Unc } else { PathKind::Local }, warning: (path.len() >= 248).then(|| "This path is long. File operations will be checked carefully for Windows path-length compatibility.".to_owned()) })
+}
+
+fn normalize_windows_path(path: &str) -> Cow<'_, str> {
+    if path
+        .get(..8)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("\\\\?\\UNC\\"))
+    {
+        Cow::Owned(format!("\\\\{}", &path[8..]))
+    } else if let Some(normal) = path.strip_prefix("\\\\?\\") {
+        Cow::Borrowed(normal)
+    } else {
+        Cow::Borrowed(path)
+    }
 }
 
 fn is_windows_absolute_path(path: &str) -> bool {
@@ -117,7 +134,25 @@ fn map_fs_error(error: std::io::Error, message: &str) -> AppError {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_windows_absolute_path, map_fs_error, validate_project_root};
+    use super::{
+        is_windows_absolute_path, map_fs_error, normalize_windows_path, validate_project_root,
+    };
+
+    #[test]
+    fn normalizes_verbatim_drive_and_unc_paths() {
+        assert_eq!(
+            normalize_windows_path("\\\\?\\C:\\Projects"),
+            "C:\\Projects"
+        );
+        assert_eq!(
+            normalize_windows_path("\\\\?\\UNC\\server\\share\\Projects"),
+            "\\\\server\\share\\Projects"
+        );
+        assert_eq!(
+            normalize_windows_path("\\\\?\\unc\\server\\share"),
+            "\\\\server\\share"
+        );
+    }
 
     #[test]
     fn recognizes_absolute_drive_paths() {
@@ -155,6 +190,8 @@ mod tests {
         std::fs::create_dir(&directory).unwrap();
         let validation = validate_project_root(&directory.to_string_lossy()).unwrap();
         assert!(matches!(validation.path_kind, super::PathKind::Local));
+        assert!(!validation.canonical_path.starts_with("\\\\?\\"));
+        assert!(validate_project_root(&validation.canonical_path).is_ok());
         std::fs::remove_dir(directory).unwrap();
     }
 

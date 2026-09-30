@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
+import "./design.css";
+import { About } from "./About";
+import { Brand } from "./Brand";
+import { AppearanceSettings, ThemeToggle } from "./Theme";
+import { displayWindowsPath } from "./windowsPath";
 import { describeAppError } from "./error";
 import { Projects } from "./Projects";
 import { Tasks } from "./Tasks";
@@ -37,6 +42,7 @@ const projectModuleLabels:Record<ProjectModule,string>={tasks:"Tasks",rfis:"RFIs
 const firstRunPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).has("first-run-preview");
 
 const navIcons: Record<Screen, ReactNode> = {
+  about: <><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></>,
   overview: <><path d="M4 5h7v6H4zM13 5h7v10h-7zM4 13h7v6H4zM13 17h7v2h-7z"/></>,
   attention: <><path d="M12 3.5 3.7 18h16.6L12 3.5Z"/><path d="M12 9v4.5M12 16.5h.01"/></>,
   projects: <><path d="M3.5 6.5h6l1.7 2h9.3v10H3.5z"/><path d="M3.5 8.5h17"/></>,
@@ -143,6 +149,7 @@ function App() {
     setValidation(null);
     try {
       const result = await invoke<ProjectRootValidation>("validate_project_root_command", { path });
+      setPath(result.canonicalPath);
       setValidation(result);
       setMessage(`${result.pathKind === "unc" ? "UNC share" : "Local folder"} is available.`);
     } catch (caught) {
@@ -156,7 +163,7 @@ function App() {
   async function browseForFolder() {
     const selected = await open({ directory: true, multiple: false, title: "Select project root" });
     if (typeof selected === "string") {
-      setPath(selected);
+      setPath(displayWindowsPath(selected));
       setValidation(null);
       setMessage("Folder selected. Check the location before saving.");
       setError("");
@@ -213,7 +220,7 @@ function App() {
   async function changeReminders(enabled:boolean){try{const accepted=await setRemindersEnabled(enabled);setRemindersOn(accepted&&enabled);if(accepted&&enabled){const total=await runReminderCheck(true);setMessage(total?`Windows reminders enabled. ${total} items currently need attention.`:"Windows reminders enabled. Nothing is due now.")}else if(!enabled)setMessage("Windows reminders disabled.");else setError("Windows notification permission was not granted.")}catch(caught){setError(describeAppError(caught))}}
   const recoveryHealth = { missingFiles: missingFileCount, syncConflicts: cloudConflicts.length };
   const recoveryIssues = recoveryIssueCount(recoveryHealth);
-  const navButton = (destination: Screen, label: string, attention = false) => <button type="button" className={`nav-button${screen === destination ? " active" : ""}${destination === "recovery" && !attention ? " recovery-quiet" : ""}${attention ? " recovery-needed" : ""}`} title={label} aria-current={screen === destination ? "page" : undefined} onClick={() => navigate(destination)}><NavIcon screen={destination}/><span>{label}</span>{attention && <strong className="nav-count" aria-label={`${recoveryIssues} recovery issues`}>{recoveryIssues}</strong>}</button>;
+  const navButton = (destination: Screen, label: string, attention = false) => <button key={destination} type="button" className={`nav-button${screen === destination ? " active" : ""}${destination === "recovery" && !attention ? " recovery-quiet" : ""}${attention ? " recovery-needed" : ""}`} title={label} aria-current={screen === destination ? "page" : undefined} onClick={() => navigate(destination)}><NavIcon screen={destination}/><span>{label}</span>{attention && <strong className="nav-count" aria-label={`${recoveryIssues} recovery issues`}>{recoveryIssues}</strong>}</button>;
 
   if (firstRunStatus === "checking") return <main className="first-run-shell"><LoadingState>Checking local workspace…</LoadingState></main>;
   if (firstRunStatus === "needed") return <FirstRun onSkip={() => { setFirstRunStatus("complete"); navigate("settings"); }} onComplete={(project) => { setFirstRunStatus("complete"); setCurrentProject(project.id); refreshProjects(); void loadSetting(); navigate("overview"); }} />;
@@ -223,7 +230,7 @@ function App() {
       {confirmationDialog}
       <a className="skip-link" href="#workspace-content">Skip to workspace</a>
       <aside className="app-sidebar">
-        <div className="brand-row"><span className="brand-lockup" aria-label="SiteDatum"><img className="brand-mark" src={appIcon} alt="" aria-hidden="true"/><span className="brand-name"><span className="brand-name-site">Site</span><span className="brand-name-datum">Datum</span></span></span><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
+        <div className="brand-row"><Brand /><img className="brand-icon" src={appIcon} alt="" aria-hidden="true"/></div>
         <nav className="main-navigation" aria-label="Main navigation">
           <div className="primary-nav"><p className="nav-group-label">Global</p>{navButton("overview", "Home")}{navButton("attention", "Attention")}{navButton("projects", "Projects")}</div>
           <div className="workspace-nav" aria-label={selectedProject ? `${selectedProject.number} project workspace` : "All-project workspace"}>
@@ -235,18 +242,19 @@ function App() {
             {projectNavigation.map(destination=>navButton(destination,projectModuleLabels[destination]))}
           </div>
         </nav>
-        <div className="sidebar-footer"><p className="nav-group-label">System</p>{navButton("settings", "Settings")}{navButton("recovery", "Recovery", recoveryIssues > 0)}<span className="local-indicator"><i aria-hidden="true"/>Local workspace</span></div>
+        <div className="sidebar-footer"><p className="nav-group-label">System</p>{navButton("settings", "Settings")}{navButton("recovery", "Recovery", recoveryIssues > 0)}{navButton("about", "About SiteDatum")}<span className="local-indicator"><i aria-hidden="true"/>Local workspace</span></div>
       </aside>
       <div className="workspace-shell">
         <header className="app-header">
           <label className="project-context"><span>Current project</span><select aria-label="Current project" value={projectContext} onChange={(event) => changeProjectContext(event.target.value)}><option value="">All projects</option>{projectOptions.map((project) => <option key={project.id} value={project.id}>{project.number} — {project.name}</option>)}</select>{selectedProject && <small>{selectedProject.phase === "custom" ? selectedProject.customPhaseName : projectLabel(selectedProject.phase)} · {projectLabel(selectedProject.status)}</small>}</label>
-          <div className="header-actions"><button type="button" className="secondary quick-capture-trigger" onClick={()=>setCaptureOpen(true)}>Quick capture <kbd>Ctrl+Shift+N</kbd></button><button ref={searchButtonRef} type="button" className="search-trigger" aria-label="Search workspace" onClick={()=>setPaletteOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span>Search workspace</span><kbd>Ctrl+K</kbd></button></div>
+          <div className="header-actions"><ThemeToggle/><button type="button" className="secondary quick-capture-trigger" onClick={()=>setCaptureOpen(true)}>Quick capture <kbd>Ctrl+Shift+N</kbd></button><button ref={searchButtonRef} type="button" className="search-trigger" aria-label="Search workspace" onClick={()=>setPaletteOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span>Search workspace</span><kbd>Ctrl+K</kbd></button></div>
         </header>
         <div id="workspace-content" className="workspace-content" tabIndex={-1}>
       <SearchPalette open={paletteOpen} onClose={closePalette} onOpen={(item)=>{if(item.kind==="action")navigate(item.screen);else if(item.kind==="project"){setCurrentProject(item.id);navigate("overview")}else openRecord(item.screen,{type:item.type,id:item.id},item.projectId)}} />
       <QuickCapture open={captureOpen} projects={projectOptions} projectContext={projectContext} onClose={()=>setCaptureOpen(false)} onSaved={(value)=>{navigate(value as Screen);refreshWorkspace()}} />
-      {screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
+      {screen === "about" ? <About /> : screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
         <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, synchronization, reminders, and data safeguards.</p></div></div>
+        <section className="settings-section" aria-labelledby="appearance-settings-title"><div className="settings-section-heading"><h2 id="appearance-settings-title">Appearance</h2><p>Choose a fixed theme or follow the Light/Dark setting on this Windows computer.</p></div><AppearanceSettings/></section>
         <section className="settings-section" aria-labelledby="workspace-settings-title"><div className="settings-section-heading"><h2 id="workspace-settings-title">Workspace</h2><p>Select an existing local folder or UNC share. Application data remains in local application storage.</p></div>
         <div className="form-row">
           <label htmlFor="project-root">Existing folder path</label>

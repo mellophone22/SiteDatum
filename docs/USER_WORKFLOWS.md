@@ -61,6 +61,10 @@ Show Missing; offer Locate File / Remove Reference. Never silently delete metada
 ## Settings and recovery
 Settings -> configure the Workspace project root, optional Sync, and Notifications in distinct sections -> review Data & Recovery health -> create a local backup or open the full audit and recovery workspace. Recovery remains visually quiet when healthy; missing registered files or sync conflicts add a numbered sidebar indicator and a direct review action.
 
+## Appearance
+
+Use the header switch for an immediate Light/Dark change without leaving current work. Settings -> Appearance provides Light, Dark, and Windows default. Windows default follows changes to this computer's Windows app theme while SiteDatum is open; choosing Light or Dark holds that explicit preference across restarts.
+
 ## Consequential actions
 Choose a destructive or filesystem-changing action -> review a focused confirmation that names the affected record and consequence -> confirm or cancel with keyboard or pointer -> return focus to the initiating control. Reference removal states that the physical file is preserved; Move shows the source and destination; restore states that a safety backup is created first.
 

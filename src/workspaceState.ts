@@ -1,6 +1,6 @@
 export const screens = [
   "overview", "projects", "tasks", "rfis", "submittals", "files", "notes",
-  "operations", "attention", "recovery", "settings",
+  "operations", "attention", "recovery", "settings", "about",
 ] as const;
 
 export type Screen = (typeof screens)[number];

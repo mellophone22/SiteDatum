@@ -13,6 +13,8 @@ Dense registers use a shared non-modal detail-panel pattern: the list remains mo
 ## System
 Settings and Recovery are separated from daily navigation. Recovery remains available without competing with the normal project workflow.
 
+About SiteDatum sits in system navigation. It presents product identity, statement, creator credit, and the current software version without changing the active project. Search also finds About by product name or "version".
+
 ## Attention
 Grouped by usefulness: Overdue, Today, Follow-up/Waiting, Upcoming, RFI/Submittal queues.
 
