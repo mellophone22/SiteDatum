@@ -39,3 +39,19 @@ WP17 Project controls registers: meeting minutes/action ownership, procurement, 
 WP18 Field and commissioning registers: punch list, daily reports, startup/commissioning checklists, and commissioning issues with domain-specific validation and project relationships. (Completed 2026-09-22.)
 
 Each work package must be independently usable and tested before proceeding.
+
+## Commercial launch track
+
+Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BOUNDARY.md`; it does not replace the local-first product architecture.
+
+- **Commercial Phase 1 — audit and architecture:** repository audit, narrow operating-rule amendment, Free/Pro baseline, licensing boundary, threat model, provider evaluation criteria, launch blockers, and founder decisions. (Completed 2026-09-29; no billing behavior implemented.)
+- **C1 — entitlement domain:** provider-neutral capability policy, three-active-project Free limit, non-destructive downgrade rules, and pure tests.
+- **C2 — trusted desktop enforcement:** enforce consequential limits at Rust mutation boundaries while preserving all existing data access, editing, backup, and recovery.
+- **C3 — licensing service:** minimal paid identity, subscription projection, signed entitlements, authorization, rate limiting, audit logging, and operational health.
+- **C4 — merchant test adapter:** hosted checkout, verified and idempotent webhooks, customer portal, reconciliation, cancellation, refund, and failure-path tests.
+- **C5 — subscription UX:** Account/Subscription settings, real Free/Pro comparison, upgrade, pending/recovery states, portal access, and offline-grace messaging.
+- **C6 — release safety:** restrictive CSP, Windows code signing, signed updater, stable hosting, automated verification, migration safety, and rollback.
+- **C7 — commercial surfaces:** website, support, pricing, system requirements, and founder/legal-reviewed policies.
+- **C8 — launch audit:** disposable-profile install/upgrade, full payment lifecycle, reinstall/device recovery, offline behavior, incident response, and founder operations runbook.
+
+No commercial work package authorizes production provider accounts, secrets, deployment, or telemetry for a later package. Resolve and record its required founder decisions before implementation.

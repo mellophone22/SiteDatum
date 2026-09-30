@@ -18,3 +18,6 @@ Attention, Projects, Tasks, RFIs, Submittals, Drawings/Files, Notes, Contacts, A
 
 ## Success
 The user trusts the app enough to rely on it every workday to remember commitments.
+
+## Commercial direction
+SiteDatum may add a deliberately narrow Free/Pro commercial perimeter without changing its local-first operating model. Free remains accountless and supports up to three active projects. Pro is planned at $15 monthly or $150 annually. Paid identity, hosted billing, entitlement recovery, and signed updates remain separate from project data; expiration preserves access and editing and never deletes customer work. Architecture and launch gates are recorded in `docs/engineering/ADR-006-COMMERCIAL-LICENSING-BOUNDARY.md`.

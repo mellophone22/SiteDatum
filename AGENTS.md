@@ -5,8 +5,12 @@ Build a local-first Windows Project Engineer workspace. Priorities: (1) seamless
 Read `MASTER_PLAN.md`, then every file under `docs/`, then `.codex/skills/project-ui-design/SKILL.md` before coding.
 
 ## Hard rules
-- No AI/LLMs, embeddings, vector DB, API keys, or AI placeholders.
-- Single-user/local MVP: no auth, SaaS, billing, organizations, or cloud dependency.
+- No AI/LLMs, embeddings, vector DB, or AI placeholders.
+- SiteDatum remains a single-user, local-first Windows product. Do not add collaboration, organizations, RBAC, seat billing, or a cloud requirement for ordinary project work.
+- A narrowly scoped commercial boundary is permitted: minimal customer identity for paid entitlement recovery, merchant-of-record hosted checkout/customer portal, a trusted licensing service, signed updates, and privacy-safe operational telemetry only when separately approved.
+- Free local use must not require an account. Project records and documents remain local, and billing/licensing/telemetry systems must never receive project names, tasks, RFIs, submittals, notes, contacts, file paths, documents, or database contents.
+- Never ship secret keys, webhook secrets, signing private keys, service-role credentials, or billing-provider API keys in the desktop client or repository. Public client identifiers are permitted only when documented and protected by server-side authorization/RLS as applicable.
+- Subscription enforcement must be centralized, testable, and non-destructive. Expiration never deletes, moves, hides, or makes existing customer records uneditable; backup and essential data export remain available.
 - Real project documents remain normal Windows files.
 - No fake UI: every visible control works.
 - Never silently overwrite/delete/move files.
