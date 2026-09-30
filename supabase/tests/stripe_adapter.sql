@@ -1,13 +1,18 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(18);
 
 select has_table('licensing', 'checkout_correlations', 'checkout correlations exist');
 select has_table('licensing', 'provider_events', 'provider event ledger exists');
 select ok((select relrowsecurity from pg_class where oid = 'licensing.provider_events'::regclass), 'provider events use RLS');
 select ok(not has_schema_privilege('authenticated', 'licensing', 'USAGE'), 'billing tables are private');
 select ok(not has_function_privilege('authenticated', 'public.licensing_apply_stripe_subscription_event(text,text,text,timestamptz,text,text,uuid,text,text,timestamptz,timestamptz)', 'EXECUTE'), 'clients cannot project Stripe state');
+select ok(
+  pg_get_functiondef('public.licensing_apply_stripe_subscription_event(text,text,text,timestamptz,text,text,uuid,text,text,timestamptz,timestamptz)'::regprocedure)
+    like '%pg_advisory_xact_lock%',
+  'subscription projection serializes concurrent provider events'
+);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values ('20000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'stripe-test@example.invalid', '', clock_timestamp(), clock_timestamp(), clock_timestamp());

@@ -51,3 +51,5 @@ Before Stripe is selected for launch, execute the hosted test matrix for monthly
 - Test Ed25519 public key (raw base64): `EG2rGjHrrOM3gUikZvU3s8PCul9IgRFUXwmgVFQ9NSA=`.
 - Private signing material and the reconciliation secret exist only in Supabase Edge Function secrets.
 - Hosted functions use Supabase's injected server-only service-role credential; no database credential is duplicated in project configuration.
+- A sandbox monthly Checkout completed successfully against Stripe Managed Payments and projected an active `pro_monthly` subscription with a future paid-through date.
+- Stripe delivered the initial subscription, checkout, and invoice events concurrently. The first event applied correctly, while the other two exposed a correlation-consumption race in the initial projection function. A follow-up migration serializes events per provider subscription with a transaction-scoped advisory lock so later events re-read the committed subscription mapping instead of rejecting a valid correlation.
