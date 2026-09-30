@@ -29,7 +29,7 @@ export function projectStripeSubscription(subscription: StripeSubscription, mont
     ? (subscription.cancel_at_period_end ? "canceled" : "active")
     : subscription.status === "past_due" || subscription.status === "unpaid"
       ? "past_due"
-      : subscription.status === "canceled" && paidThrough * 1000 > Date.now() ? "canceled" : "expired";
+      : "expired";
   return {
     subscriptionRef: subscription.id, customerRef: subscription.customer,
     correlationId: subscription.metadata?.sitedatum_correlation_id ?? null,

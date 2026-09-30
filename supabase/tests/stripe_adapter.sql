@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(24);
 
 select has_table('licensing', 'checkout_correlations', 'checkout correlations exist');
 select has_table('licensing', 'provider_events', 'provider event ledger exists');
@@ -81,6 +81,19 @@ select is(
   (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
   'past_due:2030-02-01 00:00:00+00',
   'failed renewal does not grant an unpaid period'
+);
+
+select is(
+  public.licensing_apply_stripe_subscription_event(
+    'evt_canceled_terminal', 'customer.subscription.deleted', repeat('0', 64), '2030-01-26T00:00:00Z',
+    'sub_test', 'cus_test', null, 'pro_monthly', 'expired',
+    '2030-04-01T00:00:00Z', '2030-01-26T00:00:00Z'
+  ), 'applied', 'terminal cancellation is projected'
+);
+select is(
+  (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
+  'expired:2030-02-01 00:00:00+00',
+  'terminal cancellation cannot grant an unpaid period'
 );
 
 select is(

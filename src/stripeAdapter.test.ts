@@ -35,6 +35,7 @@ describe("Stripe adapter", () => {
   it("maps failed payment and terminal expiration without deleting anything", () => {
     const base = { id: "sub_test", customer: "cus_test", created: 2_000_000_000, items: { data: [{ current_period_end: 2_100_000_000, price: { id: "price_annual" } }] } };
     expect(projectStripeSubscription({ ...base, status: "past_due" }, "price_monthly", "price_annual").status).toBe("past_due");
+    expect(projectStripeSubscription({ ...base, status: "canceled" }, "price_monthly", "price_annual").status).toBe("expired");
     expect(projectStripeSubscription({ ...base, status: "incomplete_expired" }, "price_monthly", "price_annual").status).toBe("expired");
   });
 });
