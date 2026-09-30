@@ -4,6 +4,12 @@ SiteDatum is a local-first Windows desktop workspace for project engineers. It k
 
 Built with Tauri, React, TypeScript, Rust, and bundled SQLite, SiteDatum works offline and does not require a cloud account. Optional Supabase metadata synchronization and a dedicated OneDrive project root can be enabled when work needs to follow the user between trusted workstations.
 
+## Current status
+
+The latest packaged Windows release is **SiteDatum 1.4.0**. It includes the complete local project-engineering workspace described below, Light/Dark/Windows-default appearance modes, and corrected Windows project-root handling.
+
+The current development branch also contains the first two commercial-foundation packages: a provider-neutral Free/Pro entitlement policy and tested Rust enforcement boundaries. SiteDatum remains in explicit pre-commercial compatibility mode, so the packaged application does not currently require an account, accept payments, activate subscriptions, or restrict existing controls. The planned Free/Pro launch work is being added incrementally without moving project records or documents out of the local workspace.
+
 ## What SiteDatum can do
 
 ### Daily command center
@@ -84,9 +90,36 @@ Each register supports search, project filtering, constrained status and priorit
 
 ## Install
 
-Download the latest Windows installer from [GitHub Releases](https://github.com/kiktio123/SiteDatum/releases/latest). The current release artifacts are also kept under `releases/1.4.0` in this repository.
+SiteDatum is now hosted on [GitLab](https://gitlab.com/Kikito22/sitedatum). The current GitLab project is private, so you must be signed in with project access before downloading a release artifact.
 
-The current installer is not code-signed, so Windows SmartScreen may show an unrecognized-publisher warning.
+### Recommended: Windows installer
+
+1. Download [`SiteDatum_1.4.0_x64-setup.exe`](https://gitlab.com/Kikito22/sitedatum/-/raw/main/releases/1.4.0/SiteDatum_1.4.0_x64-setup.exe).
+2. Optionally verify the download in PowerShell:
+
+   ```powershell
+   Get-FileHash .\SiteDatum_1.4.0_x64-setup.exe -Algorithm SHA256
+   ```
+
+   Expected SHA-256:
+
+   ```text
+   913ABE895868D04BE3E7F7F1F27F464BF0DD4F3AD7C82A144F982D62C233D1F2
+   ```
+
+3. Run the installer. Existing SiteDatum installations keep their local database, settings, backups, project-root configuration, and optional synchronization session.
+
+### Portable executable
+
+For a no-installer copy, download [`SiteDatum.exe`](https://gitlab.com/Kikito22/sitedatum/-/raw/main/releases/1.4.0/SiteDatum.exe). Its expected SHA-256 is:
+
+```text
+F7985DB5AAB5ED885625F4991B70C994F697207A3316B047A6BA47ACE14249E2
+```
+
+Both files, release notes, and the checksum manifest are available in the [`releases/1.4.0`](https://gitlab.com/Kikito22/sitedatum/-/tree/main/releases/1.4.0) directory.
+
+The 1.4.0 installer and executable are not code-signed, so Windows SmartScreen may show an unrecognized-publisher warning. Verify the SHA-256 value before running a downloaded file. Windows code signing and signed application updates remain required before the public paid launch.
 
 ## Continue development on another workstation
 
@@ -98,7 +131,7 @@ Prerequisites:
 - Visual Studio 2022 Build Tools with the Desktop development with C++ workload
 
 ```powershell
-git clone https://github.com/kiktio123/SiteDatum.git
+git clone https://gitlab.com/Kikito22/sitedatum.git
 cd SiteDatum
 npm ci
 npm run tauri -- dev
