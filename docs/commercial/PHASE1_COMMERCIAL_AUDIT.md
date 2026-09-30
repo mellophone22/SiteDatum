@@ -10,7 +10,7 @@
 
 Proceed with an accountless Free edition and a narrowly isolated Pro licensing perimeter. Do not reuse the current optional-sync login as the commercial identity and do not connect the desktop directly to privileged merchant APIs. Evaluate Lemon Squeezy first as merchant of record, keep Paddle as the fallback, and place provider behavior behind a small trusted licensing service.
 
-Commercial implementation should not start until the remaining entitlement decisions are resolved and a dependable source/release host is available. Paid public launch additionally requires code signing, signed updates, legal/support surfaces, provider approval, and end-to-end payment/recovery testing.
+The entitlement decisions required for the local C1 policy package are resolved. Work that depends on external services should wait for a dependable source/release host and explicit provider authorization. Paid public launch additionally requires code signing, signed updates, legal/support surfaces, provider approval, and end-to-end payment/recovery testing.
 
 ## 1. Desktop, packaging, and updates
 
@@ -58,7 +58,7 @@ Commercial implementation should not start until the remaining entitlement decis
 
 The current product already implements Projects, Tasks, Attention, RFIs, Submittals, registered files/drawings, Notes, Contacts, Activity, Search/Command Palette, Project Controls, field and commissioning registers, calendar/reminders, project templates, bulk updates, CSV/Excel import/export, printable reports, backup/restore, recovery, appearance modes, first-run setup, and optional sync.
 
-The initial Free/Pro allocation is recorded in `docs/commercial/ENTITLEMENT_MATRIX.md`. Only the three-active-project limit and non-destructive downgrade behavior are fully settled. Project Controls creation, advanced export/report classification, sync inclusion, offline grace, and device count must be decided before gates are coded.
+The complete initial Free/Pro allocation is recorded in `docs/commercial/ENTITLEMENT_MATRIX.md`. Free includes full manual register workflows within three active projects plus backup and machine-readable portability. Pro adds unlimited projects, templates, bulk operations, advanced interchange, and professional outputs. Optional sync is deferred from initial public launch. Pro uses a 21-day verification grace period and supports two active Windows computers.
 
 ## 6. Settings and account UI
 
@@ -179,15 +179,15 @@ Do not choose a provider in code until test mode proves checkout, cancellation, 
 
 Each package requires its own plan, tests, verification, documentation, and commit. No package authorizes the next one's provider accounts or production deployment automatically.
 
-## Founder actions and unresolved decisions
+## Founder actions
 
-Required before C1 feature classification is finalized:
+Resolved commercial policy:
 
-- Decide Free Project Controls creation scope.
-- Classify essential versus advanced export/report capabilities.
-- Decide whether optional metadata sync ships as a Pro benefit or remains deferred.
-- Choose offline grace (recommended starting hypothesis: 21 days).
-- Choose supported device count (recommended starting hypothesis: two active computers for one individual subscriber).
+- Free includes complete manual register creation/editing within three active projects.
+- Backup, complete machine-readable CSV export, and user-data portability remain Free.
+- Excel interchange, batch import, templates, bulk actions, formatted reports, and generated professional deliverables are Pro.
+- Optional metadata synchronization is deferred from the initial commercial launch and may later return as Pro after redesign/security validation.
+- Pro receives a 21-day unavailable-verification grace period and supports two active Windows computers.
 
 Required before provider integration:
 
@@ -205,4 +205,4 @@ Required before paid launch:
 
 ## Phase 1 exit status
 
-Phase 1 architecture is documented and the repository operating rules now permit only the narrow commercial boundary described by ADR-006. No paid feature gating or external commercial dependency is implemented. C1 should not begin until the five entitlement decisions above are confirmed.
+Phase 1 architecture and product policy are documented, and the repository operating rules permit only the narrow commercial boundary described by ADR-006. All five entitlement decisions required for C1 are confirmed. No paid feature gating or external commercial dependency is implemented. C1 may begin as a local, provider-neutral domain package; external accounts and deployment remain separately gated.

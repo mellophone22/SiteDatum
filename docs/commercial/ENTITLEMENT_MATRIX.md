@@ -21,14 +21,17 @@ An active project is a project whose metadata is not archived. Archiving does no
 | View and edit existing projects/records | Yes | Yes |
 | Tasks, Attention, notes, contacts, files | Full core use | Full |
 | RFI and submittal core lifecycle | Full core use | Full |
-| Project Controls and field/commissioning registers | Existing records editable; creation policy to be finalized before gating | Full |
-| Saved views and project templates | Basic saved views; final boundary pending usability review | Full |
+| Project Controls and field/commissioning registers | Full manual creation and editing | Full |
+| Saved views | Full manual use | Full |
+| Project templates | No | Full |
 | Bulk operations | No | Yes |
 | CSV/Excel import | No | Yes |
-| Filtered CSV/Excel export and advanced reports | Essential export always available; advanced formats/reports pending exact classification | Full |
+| Complete machine-readable CSV export | Always available | Always available |
+| Native Excel export | No | Yes |
+| Branded/formatted reports and generated professional deliverables | No | Yes |
 | Local backup, restore, and recovery | Always available | Always available |
 | Global search and keyboard workflow | Full | Full |
-| Optional metadata synchronization | No planned Free entitlement | Planned Pro, subject to separate sync review |
+| Optional metadata synchronization | Not in initial public launch | Deferred; may become Pro after redesign/security validation |
 | Billing portal and entitlement recovery | Not applicable | Yes |
 
 ## Downgrade rules
@@ -40,6 +43,15 @@ An active project is a project whose metadata is not archived. Archiving does no
 - Existing records created through a Pro capability remain editable.
 - Backup, restore, missing-file recovery, and a reasonable data-export path are never paywalled.
 - Resubscription restores Pro creation and advanced operations after verified entitlement refresh.
+
+## Offline and device policy
+
+- One individual Pro subscription supports two active Windows computers.
+- Reinstalling on the same device should reuse its activation when identity can be established safely.
+- Customers must be able to deactivate or replace an old computer without routine founder support.
+- A last-known-active entitlement receives up to 21 days of offline verification grace.
+- Grace covers inability to verify; it does not extend a paid-through date after authoritative expiration is known.
+- Days 1–13 require no interruption, days 14–17 may show a quiet verification notice, and days 18–21 show a stronger recovery notice. Grace exhaustion applies the non-destructive Free policy.
 
 ## Policy API target
 
@@ -57,10 +69,6 @@ getEntitlementFreshness(): "verified" | "grace" | "expired";
 
 The backend and desktop must enforce consequential limits at their trusted mutation boundaries. Disabled buttons alone are not enforcement.
 
-## Open product decisions before feature gating
+## Initial commercial positioning
 
-1. Exact Project Controls creation available in Free.
-2. Which report/export formats are essential portability versus Pro productivity features.
-3. Whether optional metadata sync is included in Pro at launch or deferred.
-4. Offline entitlement grace interval within the approved 14–30 day range.
-5. Supported device/activation count for one individual subscription.
+Free provides the complete SiteDatum manual workflow for three active projects. Pro removes the project limit and adds time-saving templates, bulk operations, advanced interchange, professional outputs, and—only after a separate redesign and security gate—optional metadata synchronization.
