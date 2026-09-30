@@ -1,6 +1,7 @@
 mod cloud_auth;
 mod cloud_sync;
 mod data_exchange;
+pub mod entitlement;
 mod error;
 mod file_record;
 mod note_contact;
