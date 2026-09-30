@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(22);
 
 select has_table('licensing', 'checkout_correlations', 'checkout correlations exist');
 select has_table('licensing', 'provider_events', 'provider event ledger exists');
@@ -56,6 +56,32 @@ select is(
   ), 'ignored_stale', 'delayed state cannot regress cancellation'
 );
 select is((select status from licensing.subscriptions where external_subscription_ref = 'sub_test'), 'canceled', 'stale event leaves current state intact');
+
+select is(
+  public.licensing_apply_stripe_subscription_event(
+    'evt_subscription_past_due', 'customer.subscription.updated', repeat('f', 64), '2030-01-24T00:00:00Z',
+    'sub_test', 'cus_test', null, 'pro_monthly', 'past_due',
+    '2030-03-01T00:00:00Z', '2030-01-24T00:00:00Z'
+  ), 'applied', 'past-due subscription update is projected'
+);
+select is(
+  (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
+  'past_due:2030-02-01 00:00:00+00',
+  'past-due subscription update does not grant an unpaid period'
+);
+
+select is(
+  public.licensing_apply_stripe_subscription_event(
+    'evt_payment_failed', 'invoice.payment_failed', repeat('e', 64), '2030-01-25T00:00:00Z',
+    'sub_test', 'cus_test', null, 'pro_monthly', 'past_due',
+    '2030-03-01T00:00:00Z', '2030-01-25T00:00:00Z'
+  ), 'applied', 'failed renewal updates billing status'
+);
+select is(
+  (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
+  'past_due:2030-02-01 00:00:00+00',
+  'failed renewal does not grant an unpaid period'
+);
 
 select is(
   public.licensing_apply_stripe_subscription_event(
