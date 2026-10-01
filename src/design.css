@@ -354,6 +354,7 @@ tbody tr:hover td { background: #eef7f6; }
 :root[data-theme="dark"] .form-grid label,
 :root[data-theme="dark"] .form-stack label,
 :root[data-theme="dark"] .cloud-auth label { color: #d3e0e3; }
+:root[data-theme="dark"] .licensing-auth label { color: #d3e0e3; }
 :root[data-theme="dark"] .about-sheet { border-color: var(--line-strong); background: var(--surface); }
 :root[data-theme="dark"] .about-facts > div { border-color: var(--line); }
 :root[data-theme="dark"] .appearance-preview.light { filter: brightness(.86); }

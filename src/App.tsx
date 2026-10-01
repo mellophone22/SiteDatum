@@ -28,6 +28,7 @@ import { LoadingState, StatusNotice, useConfirmation } from "./Feedback";
 import { FirstRun } from "./FirstRun";
 import { needsFirstRun } from "./firstRunState";
 import appIcon from "./assets/branding/site-datum-app-icon-v2.png";
+import { SubscriptionSettings } from "./SubscriptionSettings";
 
 type ProjectRootSetting = { path: string | null };
 type ProjectRootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
@@ -253,7 +254,8 @@ function App() {
       <SearchPalette open={paletteOpen} onClose={closePalette} onOpen={(item)=>{if(item.kind==="action")navigate(item.screen);else if(item.kind==="project"){setCurrentProject(item.id);navigate("overview")}else openRecord(item.screen,{type:item.type,id:item.id},item.projectId)}} />
       <QuickCapture open={captureOpen} projects={projectOptions} projectContext={projectContext} onClose={()=>setCaptureOpen(false)} onSaved={(value)=>{navigate(value as Screen);refreshWorkspace()}} />
       {screen === "about" ? <About /> : screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
-        <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, synchronization, reminders, and data safeguards.</p></div></div>
+        <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, account, synchronization, reminders, and data safeguards.</p></div></div>
+        <SubscriptionSettings />
         <section className="settings-section" aria-labelledby="appearance-settings-title"><div className="settings-section-heading"><h2 id="appearance-settings-title">Appearance</h2><p>Choose a fixed theme or follow the Light/Dark setting on this Windows computer.</p></div><AppearanceSettings/></section>
         <section className="settings-section" aria-labelledby="workspace-settings-title"><div className="settings-section-heading"><h2 id="workspace-settings-title">Workspace</h2><p>Select an existing local folder or UNC share. Application data remains in local application storage.</p></div>
         <div className="form-row">

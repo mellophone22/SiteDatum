@@ -3,6 +3,7 @@ use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommercialAccess {
+    #[allow(dead_code)]
     Precommercial,
     // C3 will construct this from authenticated, tamper-resistant evidence.
     #[allow(dead_code)]

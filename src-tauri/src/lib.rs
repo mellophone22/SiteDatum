@@ -5,6 +5,7 @@ pub mod entitlement;
 mod entitlement_enforcement;
 mod error;
 mod file_record;
+mod licensing;
 mod note_contact;
 mod persistence;
 mod project;
@@ -47,6 +48,87 @@ fn current_commercial_access(state: &AppState) -> AppResult<CommercialAccess> {
         .lock()
         .map(|access| *access)
         .map_err(|_| AppError::internal("Entitlement state is unavailable."))
+}
+
+fn set_commercial_access(
+    state: &AppState,
+    entitlement: entitlement::EffectiveEntitlement,
+) -> AppResult<()> {
+    let mut access = state
+        .commercial_access
+        .lock()
+        .map_err(|_| AppError::internal("Entitlement state is unavailable."))?;
+    *access = CommercialAccess::Enforced(entitlement);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_licensing_status(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<licensing::LicensingStatus> {
+    let status = licensing::status()?;
+    set_commercial_access(
+        &state,
+        entitlement::EffectiveEntitlement {
+            plan: status.plan,
+            freshness: status.freshness,
+        },
+    )?;
+    Ok(status)
+}
+
+#[tauri::command]
+fn create_licensing_account(email: String, password: String) -> AppResult<String> {
+    licensing::create_account(email, password)
+}
+
+#[tauri::command]
+fn sign_in_licensing(
+    email: String,
+    password: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<licensing::AccountActionResult> {
+    let result = licensing::sign_in(email, password)?;
+    set_commercial_access(
+        &state,
+        entitlement::EffectiveEntitlement {
+            plan: result.status.plan,
+            freshness: result.status.freshness,
+        },
+    )?;
+    Ok(result)
+}
+
+#[tauri::command]
+fn refresh_licensing_entitlement(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<licensing::LicensingStatus> {
+    let status = licensing::refresh_entitlement()?;
+    set_commercial_access(
+        &state,
+        entitlement::EffectiveEntitlement {
+            plan: status.plan,
+            freshness: status.freshness,
+        },
+    )?;
+    Ok(status)
+}
+
+#[tauri::command]
+fn get_checkout_url(plan: entitlement::Plan) -> AppResult<String> {
+    licensing::checkout_url(plan)
+}
+
+#[tauri::command]
+fn get_billing_portal_url() -> AppResult<String> {
+    licensing::portal_url()
+}
+
+#[tauri::command]
+fn sign_out_licensing(state: tauri::State<'_, AppState>) -> AppResult<licensing::LicensingStatus> {
+    let status = licensing::sign_out()?;
+    set_commercial_access(&state, entitlement::EffectiveEntitlement::free())?;
+    Ok(status)
 }
 
 #[tauri::command]
@@ -993,6 +1075,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let local_data = app.path().app_local_data_dir().map_err(|error| {
                 AppError::from_technical(
@@ -1021,7 +1104,9 @@ pub fn run() {
             );
             app.manage(AppState {
                 database: Mutex::new(database),
-                commercial_access: Mutex::new(CommercialAccess::Precommercial),
+                commercial_access: Mutex::new(CommercialAccess::Enforced(
+                    licensing::effective_entitlement(),
+                )),
                 log_path,
                 database_path,
             });
@@ -1097,7 +1182,14 @@ pub fn run() {
             disconnect_cloud,
             sync_cloud_workspace,
             list_cloud_conflicts,
-            resolve_cloud_conflict
+            resolve_cloud_conflict,
+            get_licensing_status,
+            create_licensing_account,
+            sign_in_licensing,
+            refresh_licensing_entitlement,
+            get_checkout_url,
+            get_billing_portal_url,
+            sign_out_licensing
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SiteDatum");
