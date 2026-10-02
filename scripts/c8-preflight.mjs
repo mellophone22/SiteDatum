@@ -88,6 +88,17 @@ assert('C8-OPERATIONS-RUNBOOK', [
   'founder operations, incident, billing, and launch-hold procedures are present',
   'founder operations runbook is incomplete');
 
+const profileRunner = read('scripts/c8-disposable-profile.ps1');
+assert('C8-PROFILE-RUNNER', [
+  'DisposableProfileAcknowledged',
+  'existingInstallDetected',
+  'containsCustomerContent = $false',
+  "ArgumentList '/S'",
+  'startupRemainedRunning = $true',
+].every((statement) => profileRunner.includes(statement)),
+  'guarded disposable-profile installer and startup runner is present',
+  'disposable-profile runner is missing required safety gates');
+
 if (process.platform === 'win32' && existsSync(installer)) {
   try {
     const signature = execFileSync('pwsh.exe', ['-NoProfile', '-Command', `(Get-AuthenticodeSignature -LiteralPath '${installer.replaceAll("'", "''")}').Status`], { encoding: 'utf8', windowsHide: true }).trim();

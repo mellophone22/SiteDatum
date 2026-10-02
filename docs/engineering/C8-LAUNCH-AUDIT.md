@@ -32,6 +32,22 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 
 Use a dedicated local Windows test account or disposable virtual machine. Never point the test at a real project folder or copy a customer database into it.
 
+From inside that disposable profile, first inspect the candidate without changing state:
+
+```powershell
+.\scripts\c8-disposable-profile.ps1
+```
+
+The runner prints the profile, installer hash, signature state, proposed temporary root, and whether an existing installation was found. It refuses execution unless the profile name is clearly disposable, the test root stays under that profile's temporary directory, no existing per-user install is present, and the operator explicitly supplies both `-Execute` and `-DisposableProfileAcknowledged`.
+
+Run the eight-second clean-profile install/startup smoke with:
+
+```powershell
+.\scripts\c8-disposable-profile.ps1 -Execute -SmokeOnly -DisposableProfileAcknowledged
+```
+
+Omit `-SmokeOnly` to leave the application open for the manual checklist. The runner writes a content-free evidence JSON file under the disposable temporary root. It never removes the account, uninstalls SiteDatum, or deletes a test workspace automatically.
+
 1. Record candidate commit, version, installer SHA-256, and Authenticode status.
 2. Install and launch SiteDatum. Confirm the product name and first-run experience.
 3. Select a temporary test root and create only fictional records.
