@@ -17,7 +17,7 @@ The policy permits only packaged application resources, Tauri IPC, and Tauri's a
 
 The frontend job uses the documented Node.js 24 baseline and performs a clean locked install, ESLint, the Vitest suite, and the TypeScript/Vite production build. The Rust job uses the documented Rust 1.97 baseline, installs `rustfmt` plus only the Linux libraries needed to compile Tauri on a GitLab Docker runner, checks formatting, and runs the locked portable Rust test suite. The existing project-root acceptance test is explicitly Windows-only because it validates a real Windows temporary path; it remains part of the full local Windows suite. Both jobs use lockfile-keyed caches and are interruptible. GitLab secret detection remains enabled as a separate stage.
 
-The hosted Supabase pgTAP suite is intentionally not placed in this first CI slice. It requires a privileged Docker runner and isolated test-service configuration; adding it without confirming runner capabilities would leave ordinary pipelines pending or unsafe. Database tests remain a required local release gate until that runner boundary is implemented.
+The Supabase pgTAP suite runs on GitLab.com's ephemeral `saas-linux-small-amd64` hosted runner. Its TLS-protected Docker-in-Docker service is isolated to the newly provisioned job VM and receives no production credentials, linked hosted database, billing secret, signing key, or customer data. The repository-pinned Supabase CLI starts disposable local Postgres, applies repository migrations, runs both licensing and Stripe adapter test files, and removes the local volumes afterward. A persistent self-managed privileged runner is explicitly rejected in `ADR-008-SUPABASE-CI-RUNNER.md`.
 
 ## Dependency advisory policy
 
@@ -61,5 +61,4 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 ## Remaining C6 work
 
 - configure Windows Authenticode and Tauri updater signing with founder-controlled private-key custody;
-- publish signed update manifests and immutable release artifacts;
-- decide whether to provision a privileged GitLab runner for the local Supabase pgTAP suite.
+- publish signed update manifests and immutable release artifacts.

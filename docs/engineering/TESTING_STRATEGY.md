@@ -36,6 +36,8 @@ The persistence suite now covers a checkpointed backup copied and reopened as an
 
 Release-safety coverage builds a representative version-9 database, opens it through the current version-10 application boundary, and verifies that a valid version-9 snapshot exists before the migrated database is used. A deliberately invalid migration verifies that partial schema work and its migration marker roll back while the snapshot remains intact. A compatibility test records a future schema version and verifies that an older executable refuses to open it instead of writing through an unsupported schema.
 
+GitLab runs both Supabase pgTAP files on a disposable database inside an ephemeral hosted-runner VM. The CI job uses the pinned repository CLI, applies only committed migrations, has no hosted-project credentials, and destroys its local test volumes after completion. Persistent self-managed privileged runners are outside the accepted security boundary.
+
 The production gate builds both Windows bundle formats. Live UI automation was attempted during the final review but the host's trusted computer-control RPC service was not configured (`sky`); source-level keyboard/focus review and the Tauri development/runtime checks were completed, and the external automation limitation is recorded in `FINAL_VERIFICATION.md`.
 
 ## WP13-WP18 verified coverage
