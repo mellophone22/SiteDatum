@@ -1,3 +1,5 @@
+document.documentElement.classList.add('motion-ready');
+
 const navToggle = document.querySelector('[data-nav-toggle]');
 const nav = document.querySelector('[data-nav]');
 
@@ -40,9 +42,11 @@ const workflowContent = {
 
 const workflowTabs = document.querySelectorAll('[data-workflow-tab]');
 const workflowPanel = document.querySelector('[data-workflow-panel]');
+let workflowSequence = 0;
 
 workflowTabs.forEach((tab) => {
-  tab.addEventListener('click', () => {
+  tab.addEventListener('click', async () => {
+    const sequence = ++workflowSequence;
     const key = tab.getAttribute('data-workflow-tab');
     const content = key ? workflowContent[key] : undefined;
     if (!content || !workflowPanel) return;
@@ -51,6 +55,21 @@ workflowTabs.forEach((tab) => {
       item.classList.toggle('is-active', active);
       item.setAttribute('aria-pressed', String(active));
     });
+    const image = workflowPanel.querySelector('[data-workflow-image]');
+    const trigger = workflowPanel.querySelector('[data-screenshot-open]');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && image.animate) {
+      try {
+        image.getAnimations().forEach((animation) => animation.cancel());
+        await image.animate(
+          [{ opacity: 1, clipPath: 'inset(0)' }, { opacity: 0, clipPath: 'inset(0 0 0 14%)' }],
+          { duration: 130, easing: 'ease-in', fill: 'forwards' },
+        ).finished;
+      } catch {
+        // A newer tab choice interrupted this transition; continue with its content.
+      }
+    }
+    if (sequence !== workflowSequence) return;
     workflowPanel.querySelector('[data-workflow-title]').textContent = content.title;
     workflowPanel.querySelector('[data-workflow-copy]').textContent = content.copy;
     const list = workflowPanel.querySelector('[data-workflow-list]');
@@ -59,10 +78,34 @@ workflowTabs.forEach((tab) => {
       li.textContent = item;
       return li;
     }));
-    const image = workflowPanel.querySelector('[data-workflow-image]');
     image.src = content.image;
     image.alt = content.alt;
+    trigger.dataset.fullImage = content.image;
+    trigger.dataset.fullAlt = content.alt;
+    trigger.setAttribute('aria-label', `Open ${content.alt} at full resolution`);
+    if (!reduceMotion && image.animate) {
+      image.animate(
+        [{ opacity: 0, clipPath: 'inset(0 14% 0 0)' }, { opacity: 1, clipPath: 'inset(0)' }],
+        { duration: 280, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' },
+      );
+    }
   });
+});
+
+const screenshotDialog = document.querySelector('[data-screenshot-dialog]');
+const screenshotDialogImage = document.querySelector('[data-screenshot-dialog-image]');
+
+document.querySelectorAll('[data-screenshot-open]').forEach((trigger) => {
+  trigger.addEventListener('click', () => {
+    screenshotDialogImage.src = trigger.dataset.fullImage;
+    screenshotDialogImage.alt = trigger.dataset.fullAlt;
+    screenshotDialog.showModal();
+  });
+});
+
+document.querySelector('[data-screenshot-close]')?.addEventListener('click', () => screenshotDialog?.close());
+screenshotDialog?.addEventListener('click', (event) => {
+  if (event.target === screenshotDialog) screenshotDialog.close();
 });
 
 document.querySelectorAll('[data-year]').forEach((element) => {

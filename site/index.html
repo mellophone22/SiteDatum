@@ -13,7 +13,7 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header" data-header>
       <a class="brand" href="index.html" aria-label="SiteDatum home">
-        <img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="176" height="48" />
+        <img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="176" height="53" />
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-nav-toggle>
         <span class="nav-toggle__label">Menu</span>
@@ -41,8 +41,11 @@
         </div>
         <figure class="product-frame">
           <div class="product-frame__bar" aria-hidden="true"><span></span><span></span><span></span><b>SiteDatum · All active projects</b></div>
-          <img src="assets/images/portfolio-overview.png" alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" width="1600" height="1000" />
-          <figcaption>Actual SiteDatum 1.4.0 application screen. Illustrative project records are used in this promotional capture.</figcaption>
+          <button class="screenshot-trigger" type="button" data-screenshot-open data-full-image="assets/images/portfolio-overview.png" data-full-alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" aria-label="Open the portfolio overview at full resolution">
+            <img src="assets/images/portfolio-overview.png" alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" width="1440" height="1000" />
+            <span class="screenshot-trigger__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>View full resolution</span>
+          </button>
+          <figcaption>Actual SiteDatum 1.4.0 application screen with illustrative project records. Select the image to inspect it at full resolution.</figcaption>
         </figure>
       </section>
 
@@ -85,7 +88,10 @@
             </ul>
           </div>
           <figure>
-            <img data-workflow-image src="assets/images/task-management.png" alt="SiteDatum task register" width="1600" height="1000" />
+            <button class="screenshot-trigger" type="button" data-screenshot-open data-full-image="assets/images/task-management.png" data-full-alt="SiteDatum task register" aria-label="Open the SiteDatum task register at full resolution">
+              <img data-workflow-image src="assets/images/task-management.png" alt="SiteDatum task register" width="1440" height="1000" />
+              <span class="screenshot-trigger__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>View full resolution</span>
+            </button>
           </figure>
         </div>
       </section>
@@ -147,10 +153,17 @@
     </main>
 
     <footer class="site-footer">
-      <div><img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="152" height="42" /><p>The project record you control.</p></div>
+      <div><span class="footer-brand"><img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="152" height="46" /></span><p>The project record you control.</p></div>
       <nav aria-label="Legal and support"><a href="support.html">Support</a><a href="privacy.html">Privacy draft</a><a href="terms.html">Terms draft</a><a href="refunds.html">Refund policy draft</a></nav>
       <p>Created by Francisco Cabrera · <span data-year></span></p>
     </footer>
+    <dialog class="screenshot-dialog" data-screenshot-dialog aria-labelledby="screenshot-dialog-title">
+      <div class="screenshot-dialog__bar">
+        <h2 id="screenshot-dialog-title">SiteDatum application screen</h2>
+        <button type="button" data-screenshot-close aria-label="Close full-resolution image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg><span>Close</span></button>
+      </div>
+      <div class="screenshot-dialog__canvas"><img data-screenshot-dialog-image src="assets/images/portfolio-overview.png" alt="" width="1440" height="1000" /></div>
+    </dialog>
   </body>
 </html>
 
