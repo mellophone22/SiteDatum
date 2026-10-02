@@ -1,6 +1,10 @@
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::{backup::Backup, Connection, OptionalExtension};
 
 use crate::error::{AppError, AppResult};
 use crate::file_record::{self, FileInput, FileMetadataInput, FileRecord};
@@ -17,6 +21,23 @@ pub struct Database {
     pub(crate) connection: Connection,
 }
 
+const LATEST_MIGRATION_VERSION: i64 = 10;
+
+fn migrations() -> [(i64, &'static str); 10] {
+    [
+        (1_i64, include_str!("../migrations/0001_foundation.sql")),
+        (2_i64, include_str!("../migrations/0002_projects.sql")),
+        (3_i64, include_str!("../migrations/0003_tasks.sql")),
+        (4_i64, include_str!("../migrations/0004_rfis.sql")),
+        (5_i64, include_str!("../migrations/0005_submittals.sql")),
+        (6_i64, include_str!("../migrations/0006_files.sql")),
+        (7_i64, include_str!("../migrations/0007_notes_contacts.sql")),
+        (8_i64, include_str!("../migrations/0008_cloud_sync.sql")),
+        (9_i64, include_str!("../migrations/0009_rfi_pdf_fields.sql")),
+        (10_i64, include_str!("../migrations/0010_operations.sql")),
+    ]
+}
+
 impl Database {
     pub fn checkpoint(&self) -> AppResult<()> {
         self.connection
@@ -24,10 +45,14 @@ impl Database {
             .map_err(database_error)
     }
     pub fn open(path: &Path) -> AppResult<Self> {
+        let existed = path.is_file();
         let mut connection = Connection::open(path).map_err(database_error)?;
         connection
             .execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")
             .map_err(database_error)?;
+        if existed {
+            prepare_for_migrations(&connection, path)?;
+        }
         apply_migrations(&mut connection)?;
         Ok(Self { connection })
     }
@@ -805,20 +830,159 @@ impl Database {
     }
 }
 
+fn current_migration_version(connection: &Connection) -> AppResult<i64> {
+    let has_migration_table = connection
+        .query_row(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'",
+            [],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(database_error)?
+        .is_some();
+    if !has_migration_table {
+        return Ok(0);
+    }
+    connection
+        .query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(database_error)
+}
+
+fn prepare_for_migrations(connection: &Connection, database_path: &Path) -> AppResult<()> {
+    let current_version = current_migration_version(connection)?;
+    if current_version > LATEST_MIGRATION_VERSION {
+        return Err(AppError::from_technical(
+            "DATABASE_SCHEMA_NEWER_THAN_APP",
+            "This workspace was upgraded by a newer version of SiteDatum.",
+            "Install the newer SiteDatum version again. Do not replace or delete the workspace database.",
+            format!(
+                "database schema version {current_version}; supported version {LATEST_MIGRATION_VERSION}"
+            ),
+        ));
+    }
+    let applied_known_migrations: i64 = if current_version == 0 {
+        0
+    } else {
+        connection
+            .query_row(
+                "SELECT COUNT(*) FROM schema_migrations WHERE version BETWEEN 1 AND ?1",
+                [LATEST_MIGRATION_VERSION],
+                |row| row.get(0),
+            )
+            .map_err(database_error)?
+    };
+    if current_version == LATEST_MIGRATION_VERSION
+        && applied_known_migrations == LATEST_MIGRATION_VERSION
+    {
+        return Ok(());
+    }
+    create_pre_migration_backup(
+        connection,
+        database_path,
+        current_version,
+        LATEST_MIGRATION_VERSION,
+    )?;
+    Ok(())
+}
+
+fn create_pre_migration_backup(
+    connection: &Connection,
+    database_path: &Path,
+    from_version: i64,
+    to_version: i64,
+) -> AppResult<PathBuf> {
+    let parent = database_path.parent().ok_or_else(|| {
+        AppError::from_technical(
+            "MIGRATION_BACKUP_PATH_INVALID",
+            "A safety backup could not be created before upgrading the workspace.",
+            "Keep the workspace database in SiteDatum's application-data directory and try again.",
+            database_path.display().to_string(),
+        )
+    })?;
+    let backups = parent.join("backups");
+    fs::create_dir_all(&backups).map_err(|error| {
+        AppError::from_technical(
+            "MIGRATION_BACKUP_DIRECTORY_FAILED",
+            "A safety backup could not be created before upgrading the workspace.",
+            "Check available disk space and access to SiteDatum's application-data directory, then try again.",
+            error.to_string(),
+        )
+    })?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| {
+            AppError::from_technical(
+                "MIGRATION_BACKUP_CLOCK_FAILED",
+                "A safety backup could not be created before upgrading the workspace.",
+                "Correct the Windows system clock and try again.",
+                error.to_string(),
+            )
+        })?
+        .as_millis();
+    let file_stem = format!("pre-migration-v{from_version}-to-v{to_version}-{timestamp}");
+    let destination = backups.join(format!("{file_stem}.sqlite3"));
+    let temporary = backups.join(format!("{file_stem}.sqlite3.partial"));
+    let mut target = Connection::open(&temporary).map_err(|error| {
+        AppError::from_technical(
+            "MIGRATION_BACKUP_OPEN_FAILED",
+            "A safety backup could not be created before upgrading the workspace.",
+            "Check available disk space and access to SiteDatum's application-data directory, then try again.",
+            error.to_string(),
+        )
+    })?;
+    let backup = Backup::new(connection, &mut target).map_err(|error| {
+        AppError::from_technical(
+            "MIGRATION_BACKUP_START_FAILED",
+            "A safety backup could not be created before upgrading the workspace.",
+            "Close other tools using the workspace database and try again.",
+            error.to_string(),
+        )
+    })?;
+    backup
+        .run_to_completion(64, Duration::from_millis(10), None)
+        .map_err(|error| {
+            AppError::from_technical(
+                "MIGRATION_BACKUP_FAILED",
+                "A safety backup could not be created before upgrading the workspace.",
+                "Check available disk space, close other tools using the database, and try again.",
+                error.to_string(),
+            )
+        })?;
+    drop(backup);
+    target
+        .query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))
+        .map_err(database_error)
+        .and_then(|result| {
+            if result == "ok" {
+                Ok(())
+            } else {
+                Err(AppError::from_technical(
+                    "MIGRATION_BACKUP_INVALID",
+                    "The safety backup failed validation, so the workspace was not upgraded.",
+                    "Keep the existing workspace database unchanged and contact SiteDatum support.",
+                    result,
+                ))
+            }
+        })?;
+    drop(target);
+    fs::rename(&temporary, &destination).map_err(|error| {
+        AppError::from_technical(
+            "MIGRATION_BACKUP_PUBLISH_FAILED",
+            "The validated safety backup could not be finalized, so the workspace was not upgraded.",
+            "Check access to SiteDatum's application-data directory and try again.",
+            error.to_string(),
+        )
+    })?;
+    Ok(destination)
+}
+
 pub(crate) fn apply_migrations(connection: &mut Connection) -> AppResult<()> {
     connection.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at_utc TEXT NOT NULL);").map_err(database_error)?;
-    for (version, sql) in [
-        (1_i64, include_str!("../migrations/0001_foundation.sql")),
-        (2_i64, include_str!("../migrations/0002_projects.sql")),
-        (3_i64, include_str!("../migrations/0003_tasks.sql")),
-        (4_i64, include_str!("../migrations/0004_rfis.sql")),
-        (5_i64, include_str!("../migrations/0005_submittals.sql")),
-        (6_i64, include_str!("../migrations/0006_files.sql")),
-        (7_i64, include_str!("../migrations/0007_notes_contacts.sql")),
-        (8_i64, include_str!("../migrations/0008_cloud_sync.sql")),
-        (9_i64, include_str!("../migrations/0009_rfi_pdf_fields.sql")),
-        (10_i64, include_str!("../migrations/0010_operations.sql")),
-    ] {
+    for (version, sql) in migrations() {
         let applied = connection
             .query_row(
                 "SELECT 1 FROM schema_migrations WHERE version = ?1",
@@ -828,13 +992,17 @@ pub(crate) fn apply_migrations(connection: &mut Connection) -> AppResult<()> {
             .optional()
             .map_err(database_error)?;
         if applied.is_none() {
-            let transaction = connection.transaction().map_err(database_error)?;
-            transaction.execute_batch(sql).map_err(database_error)?;
-            transaction.execute("INSERT INTO schema_migrations (version, applied_at_utc) VALUES (?1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))", [version]).map_err(database_error)?;
-            transaction.commit().map_err(database_error)?;
+            apply_single_migration(connection, version, sql)?;
         }
     }
     Ok(())
+}
+
+fn apply_single_migration(connection: &mut Connection, version: i64, sql: &str) -> AppResult<()> {
+    let transaction = connection.transaction().map_err(database_error)?;
+    transaction.execute_batch(sql).map_err(database_error)?;
+    transaction.execute("INSERT INTO schema_migrations (version, applied_at_utc) VALUES (?1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))", [version]).map_err(database_error)?;
+    transaction.commit().map_err(database_error)
 }
 
 fn project_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Project> {
@@ -1090,11 +1258,15 @@ fn database_error(error: rusqlite::Error) -> AppError {
 
 #[cfg(test)]
 mod tests {
-    use super::{Database, TaskInput};
+    use super::{
+        apply_single_migration, create_pre_migration_backup, migrations, Database, TaskInput,
+        LATEST_MIGRATION_VERSION,
+    };
     use crate::file_record::{FileInput, FileMetadataInput};
     use crate::note_contact::{ContactInput, NoteInput};
     use crate::rfi::RfiInput;
     use crate::submittal::SubmittalInput;
+    use rusqlite::Connection;
 
     fn test_task_input(project_id: &str) -> TaskInput {
         TaskInput {
@@ -1112,6 +1284,140 @@ mod tests {
 
     fn insert_test_project(database: &Database) {
         database.connection.execute("INSERT INTO projects (id,number,name,project_path,created_at_utc,updated_at_utc) VALUES ('p1','P-100','Test Project','C:\\Projects\\P-100','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')", []).unwrap();
+    }
+
+    fn create_version_nine_database(path: &std::path::Path) {
+        let mut connection = Connection::open(path).unwrap();
+        connection
+            .execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at_utc TEXT NOT NULL);")
+            .unwrap();
+        for (version, sql) in migrations().into_iter().take(9) {
+            apply_single_migration(&mut connection, version, sql).unwrap();
+        }
+        connection.execute("INSERT INTO projects (id,number,name,project_path,created_at_utc,updated_at_utc) VALUES ('legacy','P-009','Legacy project','C:\\Projects\\P-009','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')", []).unwrap();
+        connection
+            .execute_batch("PRAGMA wal_checkpoint(FULL);")
+            .unwrap();
+    }
+
+    #[test]
+    fn opening_older_database_creates_valid_backup_before_migrating() {
+        let root = std::env::temp_dir().join(format!(
+            "sitedatum-migration-backup-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("workspace.sqlite3");
+        create_version_nine_database(&path);
+
+        {
+            let database = Database::open(&path).unwrap();
+            assert_eq!(
+                super::current_migration_version(&database.connection).unwrap(),
+                LATEST_MIGRATION_VERSION
+            );
+            assert_eq!(
+                database.list_projects(false).unwrap()[0].name,
+                "Legacy project"
+            );
+        }
+
+        let backup_paths = std::fs::read_dir(root.join("backups"))
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect::<Vec<_>>();
+        assert_eq!(backup_paths.len(), 1);
+        assert!(backup_paths[0]
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("pre-migration-v9-to-v10-"));
+        let backup = Connection::open(&backup_paths[0]).unwrap();
+        assert_eq!(super::current_migration_version(&backup).unwrap(), 9);
+        let project_name: String = backup
+            .query_row("SELECT name FROM projects WHERE id = 'legacy'", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(project_name, "Legacy project");
+        let integrity: String = backup
+            .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(integrity, "ok");
+        drop(backup);
+
+        drop(Database::open(&path).unwrap());
+        assert_eq!(std::fs::read_dir(root.join("backups")).unwrap().count(), 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_migration_rolls_back_and_leaves_recoverable_snapshot() {
+        let root = std::env::temp_dir().join(format!(
+            "sitedatum-migration-failure-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("workspace.sqlite3");
+        create_version_nine_database(&path);
+        let mut connection = Connection::open(&path).unwrap();
+        let backup_path =
+            create_pre_migration_backup(&connection, &path, 9, LATEST_MIGRATION_VERSION).unwrap();
+
+        let error = apply_single_migration(
+            &mut connection,
+            LATEST_MIGRATION_VERSION,
+            "CREATE TABLE migration_partial(id INTEGER); INSERT INTO table_that_does_not_exist VALUES (1);",
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "DATABASE_ERROR");
+        let partial_table: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'migration_partial'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(partial_table, 0);
+        assert_eq!(super::current_migration_version(&connection).unwrap(), 9);
+        drop(connection);
+
+        let backup = Connection::open(backup_path).unwrap();
+        let integrity: String = backup
+            .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(integrity, "ok");
+        let project_name: String = backup
+            .query_row("SELECT name FROM projects WHERE id = 'legacy'", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(project_name, "Legacy project");
+        drop(backup);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn older_app_refuses_database_with_newer_schema() {
+        let root =
+            std::env::temp_dir().join(format!("sitedatum-newer-schema-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("workspace.sqlite3");
+        {
+            let database = Database::open(&path).unwrap();
+            database
+                .connection
+                .execute(
+                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(11, '2026-10-02T00:00:00Z')",
+                    [],
+                )
+                .unwrap();
+            database.checkpoint().unwrap();
+        }
+        let error = Database::open(&path).err().unwrap();
+        assert_eq!(error.code, "DATABASE_SCHEMA_NEWER_THAN_APP");
+        assert!(!root.join("backups").exists());
+        std::fs::remove_dir_all(root).unwrap();
     }
     fn test_rfi_input(project_id: &str) -> RfiInput {
         RfiInput {

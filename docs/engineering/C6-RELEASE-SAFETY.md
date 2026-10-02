@@ -1,13 +1,15 @@
 # C6 — Release safety foundation
 
-Status: restrictive CSP, core CI, and dependency advisory gates implemented
+Status: restrictive CSP, core CI, dependency advisory gates, and migration recovery implemented
 
 ## Delivered boundary
 
-This slice adds two release-safety controls without changing SiteDatum data, licensing policy, subscription behavior, or rendered interface:
+The release-safety boundary includes these controls without changing licensing policy, subscription behavior, or the rendered interface:
 
 - the Tauri webview now uses an explicit restrictive Content Security Policy; and
 - GitLab CI now runs the existing frontend and Rust quality gates before the existing secret-detection stage.
+
+Migration recovery now creates and validates an app-local SQLite snapshot before an existing older database is upgraded. Each migration remains transactional, and an older executable refuses a database whose recorded schema is newer than it supports. The release and rollback procedures are recorded in `RELEASE_ROLLBACK_RUNBOOK.md`; the architecture boundary is recorded in `ADR-007-MIGRATION-RECOVERY.md`.
 
 The policy permits only packaged application resources, Tauri IPC, and Tauri's asset protocol. It denies embedded frames, form submission, plugins, inline styles, inline scripts, and arbitrary network connections. Stripe Checkout and the customer portal continue to open in the system browser through the separately allowlisted Tauri opener capability. Supabase licensing requests remain Rust-owned and are not webview connections.
 
@@ -60,5 +62,4 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 
 - configure Windows Authenticode and Tauri updater signing with founder-controlled private-key custody;
 - publish signed update manifests and immutable release artifacts;
-- add migration-time recovery coverage and finalize the release/rollback runbook; and
 - decide whether to provision a privileged GitLab runner for the local Supabase pgTAP suite.

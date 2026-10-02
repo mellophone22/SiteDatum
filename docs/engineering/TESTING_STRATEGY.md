@@ -34,6 +34,8 @@ Frontend unit coverage verifies saved task-view serialization and malformed-stor
 
 The persistence suite now covers a checkpointed backup copied and reopened as an independent SQLite database, including file/drawing metadata, current/superseded state, notes, and contacts. A realistic-volume integration test creates 500 tasks, verifies all corresponding activity events, and reopens the database to confirm no records were lost. Search focus has frontend tests for exact-record routing state, cross-screen preservation, and malformed-state recovery.
 
+Release-safety coverage builds a representative version-9 database, opens it through the current version-10 application boundary, and verifies that a valid version-9 snapshot exists before the migrated database is used. A deliberately invalid migration verifies that partial schema work and its migration marker roll back while the snapshot remains intact. A compatibility test records a future schema version and verifies that an older executable refuses to open it instead of writing through an unsupported schema.
+
 The production gate builds both Windows bundle formats. Live UI automation was attempted during the final review but the host's trusted computer-control RPC service was not configured (`sky`); source-level keyboard/focus review and the Tauri development/runtime checks were completed, and the external automation limitation is recorded in `FINAL_VERIFICATION.md`.
 
 ## WP13-WP18 verified coverage
