@@ -24,7 +24,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-10 | Two-device allowance | Activate two disposable device identities, reject third, deactivate and replace | Sandbox only; manual scenario pending |
 | C8-11 | Non-destructive downgrade | Existing records remain visible/editable; backup and essential export stay available | Automated domain coverage plus manual confirmation pending |
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Prior 200% pass recorded; repeat on release candidate |
-| C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Runbook foundation exists; private support contact pending |
+| C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Founder operations runbook implemented; private support contact pending |
 | C8-14 | Legal and public surfaces | Founder/legal-approved policies and publisher contacts | Drafts only; launch blocker |
 | C8-15 | Trusted distribution | Microsoft-signed MSIX or separately approved trusted route | C6 deferred; launch blocker |
 
@@ -56,3 +56,5 @@ Stop the audit and preserve evidence if any test causes record loss, overwrites 
 ## Launch decision
 
 C8 can report engineering readiness before every external gate is resolved, but public launch remains **NO-GO** until C8-14 and C8-15 are complete and every required manual release-candidate scenario passes. Deferred means unverified, not accepted.
+
+Founder routine operations, incident severity, billing recovery, outage, security/privacy, communications, and launch hold points are defined in `FOUNDER-OPERATIONS-RUNBOOK.md`.

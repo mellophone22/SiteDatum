@@ -76,6 +76,18 @@ const c6 = read('docs/engineering/C6-RELEASE-SAFETY.md');
 assert('C8-DISTRIBUTION-HOLD', c6.includes('trusted public distribution explicitly deferred'),
   'unsigned internal installer is not represented as trusted public distribution', 'C6 public-distribution hold is missing');
 
+const operationsRunbook = read('docs/engineering/FOUNDER-OPERATIONS-RUNBOOK.md');
+assert('C8-OPERATIONS-RUNBOOK', [
+  'Stripe sandbox',
+  'SEV-1',
+  'Webhook failed or delayed',
+  'Security or privacy incident',
+  'RELEASE_ROLLBACK_RUNBOOK.md',
+  'Do not open public purchase or download',
+].every((statement) => operationsRunbook.includes(statement)),
+  'founder operations, incident, billing, and launch-hold procedures are present',
+  'founder operations runbook is incomplete');
+
 if (process.platform === 'win32' && existsSync(installer)) {
   try {
     const signature = execFileSync('pwsh.exe', ['-NoProfile', '-Command', `(Get-AuthenticodeSignature -LiteralPath '${installer.replaceAll("'", "''")}').Status`], { encoding: 'utf8', windowsHide: true }).trim();
