@@ -1,16 +1,54 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/user/application_security/sast/#available-cicd-variables
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure/
-# Dependency Scanning customization: https://docs.gitlab.com/user/application_security/dependency_scanning/dependency_scanning_sbom/#customizing-analyzer-behavior
-# Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
 stages:
-- test
-- secret-detection
+  - test
+  - secret-detection
+
+default:
+  interruptible: true
+
 variables:
   SECRET_DETECTION_ENABLED: 'true'
+
+frontend_quality:
+  stage: test
+  image: node:24-bookworm
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  variables:
+    npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  script:
+    - npm ci --prefer-offline --no-audit
+    - npm run lint
+    - npm test -- --run
+    - npm run build
+
+rust_quality:
+  stage: test
+  image: rust:1.97-bookworm
+  cache:
+    key:
+      files:
+        - src-tauri/Cargo.lock
+    paths:
+      - .cargo/git/
+      - .cargo/registry/
+      - src-tauri/target/
+  variables:
+    CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+  before_script:
+    - rustup component add rustfmt
+    - apt-get update
+    - apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+  script:
+    - cd src-tauri
+    - cargo fmt --all -- --check
+    - cargo test --locked
+
 secret_detection:
   stage: secret-detection
+
 include:
-- template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml

@@ -183,6 +183,7 @@ mod tests {
         );
     }
 
+    #[cfg(windows)]
     #[test]
     fn accepts_an_existing_local_directory() {
         let directory =
