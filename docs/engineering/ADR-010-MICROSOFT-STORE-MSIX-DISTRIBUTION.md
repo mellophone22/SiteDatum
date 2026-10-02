@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted on 2026-10-02.
+Deferred on 2026-10-02 before Partner Center registration or package-identity reservation.
+
+Microsoft's current onboarding guidance reserves Individual developer accounts for non-commercial distribution and directs independent developers operating in relation to a business, trade, or profession to Company accounts. SiteDatum is a commercial product, but no verified business entity is currently available for Company-account enrollment. Public Store packaging therefore remains on hold rather than using an unsuitable account type.
 
 ## Context
 
@@ -11,6 +13,8 @@ Public distribution of an unsigned NSIS or MSI installer produces an untrusted W
 SiteDatum is a local-first Tauri application. Store distribution must not introduce a cloud requirement for ordinary project work, move project records or documents out of normal local storage, or couple billing identity to project content.
 
 ## Decision
+
+The following is the preferred no-recurring-signing-cost design once SiteDatum has a verified publisher entity. It is not yet an active production distribution channel.
 
 1. SiteDatum's public Windows distribution channel is a Microsoft Store MSIX package.
 2. Microsoft signs the submitted MSIX after certification and distributes Store updates. SiteDatum does not purchase Azure Artifact Signing while Store distribution remains sufficient.
@@ -23,6 +27,8 @@ SiteDatum is a local-first Tauri application. Store distribution must not introd
 
 ## Consequences
 
+- Development, local acceptance, and GitLab quality verification may continue while public distribution is deferred.
+- No Partner Center account, Store product identity, Azure signing resource, production certificate, or public release is created by this decision.
 - A free Partner Center developer account, identity verification, product-name reservation, and Store-assigned package identity are prerequisites for generating the committed release manifest.
 - MSIX installation and update behavior must be tested independently of the existing NSIS path, especially local database persistence and file-system access.
 - The Store controls certification, production signing, hosting, and update rollout for the public MSIX channel.

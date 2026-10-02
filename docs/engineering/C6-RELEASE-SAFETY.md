@@ -1,6 +1,6 @@
 # C6 — Release safety foundation
 
-Status: restrictive CSP, core CI, dependency advisory gates, migration recovery, and Store distribution boundary implemented
+Status: engineering safety foundation implemented; trusted public distribution explicitly deferred
 
 ## Delivered boundary
 
@@ -21,9 +21,11 @@ The Supabase pgTAP suite runs on GitLab.com's ephemeral `saas-linux-small-amd64`
 
 ## Windows distribution boundary
 
-`ADR-010-MICROSOFT-STORE-MSIX-DISTRIBUTION.md` selects a Microsoft Store MSIX package for public Windows distribution. Microsoft signs the certified package and provides Store update delivery, avoiding a recurring external code-signing charge and eliminating the need for a second application updater inside the Store build. The unsigned NSIS package remains useful for internal acceptance and recovery testing but is not a trusted public production channel.
+`ADR-010-MICROSOFT-STORE-MSIX-DISTRIBUTION.md` records a Microsoft Store MSIX package as the preferred future public Windows channel. Microsoft would sign the certified package and provide Store update delivery, avoiding a recurring external code-signing charge and eliminating the need for a second application updater inside the Store build. The unsigned NSIS package remains useful for internal acceptance and recovery testing but is not a trusted public production channel.
 
 MSIX packaging will use Microsoft's `winapp` CLI after Partner Center assigns SiteDatum's exact case-sensitive package identity and publisher values. Those values must be copied from the reserved Store product; the repository will not contain a fabricated production identity. Local package tests may use a self-signed development certificate only on disposable operator-controlled machines.
+
+Public distribution is currently deferred because SiteDatum does not yet have a verified business publisher for a Microsoft Store Company account, and its commercial subscription model is not appropriate for Microsoft's non-commercial Individual-account path. No Partner Center registration, Store identity, Azure signing resource, or signing expense has been created. Development and internal acceptance may continue, but an unsigned installer must not be promoted as a trusted public production release.
 
 ## Dependency advisory policy
 
@@ -66,6 +68,7 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 
 ## Remaining C6 work
 
+- establish and verify the commercial publisher entity, or approve another trusted signing route;
 - create the free Partner Center developer account and reserve the SiteDatum product name;
 - add the Store-assigned identity manifest and `winapp` MSIX packaging workflow;
 - pass Windows App Certification Kit and native MSIX acceptance checks; and
