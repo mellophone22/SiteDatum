@@ -16,14 +16,14 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-02 | Secret and environment boundary | GitLab secret detection plus repository live-token scan | Automated preflight and CI |
 | C8-03 | Frontend quality | Site validator, lint, Vitest, production build | Automated full preflight |
 | C8-04 | Native quality | Rust format and locked test suite | Automated full preflight |
-| C8-05 | Clean-profile install | Install internal candidate for a disposable Windows user; complete first run | Manual, pending |
-| C8-06 | Upgrade and migration | Upgrade representative prior-schema workspace; verify snapshot, records, and integrity | Domain tests pass; native scenario pending |
-| C8-07 | Uninstall/reinstall recovery | Reinstall without consuming an extra device and without deleting workspace data | Manual sandbox scenario, pending |
-| C8-08 | Offline behavior | Disconnect network; verify CRUD, search, backup/export, entitlement grace, and honest status | Domain coverage exists; native scenario pending |
+| C8-05 | Clean-profile install | Install internal candidate for a disposable Windows user; complete first run | Manual pass 2026-10-02 on dedicated `SiteDatumC8` profile |
+| C8-06 | Upgrade and migration | Upgrade representative prior-schema workspace; verify snapshot, records, and integrity | In-place corrected-candidate reinstall preserved current records; representative prior-schema migration remains pending |
+| C8-07 | Uninstall/reinstall recovery | Reinstall without consuming an extra device and without deleting workspace data | Local uninstall/reinstall recovery passed; licensed-device accounting remains pending |
+| C8-08 | Offline behavior | Disconnect network; verify CRUD, search, backup/export, entitlement grace, and honest status | Manual offline CRUD, search, backup, CSV export, and reconnect pass 2026-10-02 |
 | C8-09 | Payment lifecycle | Monthly and annual checkout, portal, failure, recovery, cancellation, expiration, and refund | Stripe/Supabase sandbox only; manual scenario pending |
 | C8-10 | Two-device allowance | Activate two disposable device identities, reject third, deactivate and replace | Sandbox only; manual scenario pending |
-| C8-11 | Non-destructive downgrade | Existing records remain visible/editable; backup and essential export stay available | Automated domain coverage plus manual confirmation pending |
-| C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Prior 200% pass recorded; repeat on release candidate |
+| C8-11 | Non-destructive downgrade | Existing records remain visible/editable; backup and essential export stay available | Free-mode record preservation, backup/restore, and CSV export passed; verified Pro-to-Free transition remains pending |
+| C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
 | C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Founder operations runbook implemented; private support contact pending |
 | C8-14 | Legal and public surfaces | Founder/legal-approved policies and publisher contacts | Drafts only; launch blocker |
 | C8-15 | Trusted distribution | Microsoft-signed MSIX or separately approved trusted route | C6 deferred; launch blocker |
@@ -58,6 +58,19 @@ Omit `-SmokeOnly` to leave the application open for the manual checklist. The ru
 8. Uninstall the application without deleting the test workspace, reinstall, and verify recovery.
 9. Inspect Home, Projects, Tasks, RFIs, Submittals, Files, Controls, Recovery, and Settings at exact 200% Windows scaling.
 10. Remove the disposable account or VM only after preserving the content-free test record and hashes.
+
+## Manual candidate evidence — 2026-10-02
+
+The unsigned internal NSIS candidate was exercised in the dedicated local `SiteDatumC8` Windows profile. The corrected candidate installer SHA-256 was `354697BA9F3072B282D8CC5669A10AB0F4F0D780156C4580E81A73AAF9D8CD59`; unsigned status remains expected only because trusted distribution is still deferred under C8-15.
+
+- Clean install, first-run root selection, fictional project creation, direct restart into the selected context, and normal per-user launch passed.
+- A task, RFI, submittal, registered ordinary Windows file, and project-control milestone persisted. An RFI optional-date serialization defect found during the run was corrected, regression-tested, repackaged, and verified in the same disposable profile.
+- The corrected installer preserved the current workspace in place. A representative older-schema migration and its pre-migration snapshot still require a separate fixture-based run.
+- Local backup preview and restore passed. A post-backup task was removed by restore while the backed-up task, RFI, submittal, milestone, registered file, and ordinary project files remained intact.
+- With networking disconnected, local task creation, workspace search, local backup, and CSV export passed. The application continued to present itself honestly as a local workspace and the new records remained available after reconnecting.
+- Windows uninstall left the fictional project folder and ordinary files intact. Reinstall reopened the existing project without repeating first-run setup and restored access to all tested metadata. Licensed-device reuse remains part of C8-10 rather than this Free-mode run.
+- In Free mode, manual RFI creation remained available while professional PDF output was refused as a Pro feature; the refusal did not discard the RFI. Backup/restore and essential CSV export remained available. A verified Pro-to-Free entitlement transition is still required before closing C8-11.
+- At exact 200% Windows scaling, Home, Attention, Projects, Tasks, RFIs, Submittals, Files, Project Controls, Recovery, and Settings remained usable. Project search opened from the keyboard, keyboard selection opened the RFI, Escape dismissed the context, and visible focus navigation passed.
 
 ## Sandbox payment procedure
 
