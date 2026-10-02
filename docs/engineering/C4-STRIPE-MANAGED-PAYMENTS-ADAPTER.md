@@ -1,6 +1,6 @@
 # C4 — Stripe Managed Payments adapter
 
-Status: hosted Supabase licensing foundation verified; Stripe test configuration and lifecycle proof pending.
+Status: hosted Supabase licensing foundation and core Stripe sandbox lifecycle verified; launch audit scenarios remain in progress.
 
 ## Decision
 
@@ -68,3 +68,9 @@ Before Stripe is selected for launch, execute the hosted test matrix for monthly
 - A partial refund followed by refunding the full remaining payment completed in the Stripe sandbox. Refund/charge objects did not enter the licensing event ledger, and neither operation changed the authoritative `expired` subscription projection or its last paid-through boundary. This confirms that refund transactions alone cannot accidentally revoke or extend entitlement; subscription cancellation/reconciliation remains authoritative.
 - Resending the exact terminal subscription webhook returned the adapter's duplicate result while retaining exactly one provider-event ledger row. The subscription projection remained `expired` with an unchanged paid-through boundary.
 - A controlled test-only drift changed the expired monthly projection to active. The separately authenticated reconciliation endpoint re-read both known Stripe sandbox subscriptions and repaired the drifted row to `expired` without extending paid-through. The reconciliation credential was rotated securely in Supabase and was neither printed nor stored locally.
+
+## C8 renewal-order correction — October 2, 2026
+
+A fresh monthly test-clock run reproduced an ordering case that the earlier failure test did not cover: Stripe first delivered an `active` `customer.subscription.updated` snapshot with the next period boundary, then delivered the `past_due` update and `invoice.payment_failed`. The earlier non-active trigger could not undo the extension because the unpaid boundary had already been stored while the subscription still appeared active.
+
+The projection boundary now allows an existing subscription's paid-through timestamp to advance only for an `invoice.paid` event or for payment-aware reconciliation whose expanded latest invoice is paid. Status, cancellation, and metadata updates can still converge without granting an unpaid period. A forward migration, payment-aware reconciliation update, and pgTAP coverage for the exact event order were deployed to the isolated sandbox. Hosted transactional verification confirmed that the pre-failure active update leaves the last successfully paid boundary unchanged. The affected fictional sandbox fixture was corrected back to its last paid invoice boundary; no customer or live-mode data was involved.

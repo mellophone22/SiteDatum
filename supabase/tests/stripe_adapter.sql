@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(28);
 
 select has_table('licensing', 'checkout_correlations', 'checkout correlations exist');
 select has_table('licensing', 'provider_events', 'provider event ledger exists');
@@ -59,6 +59,19 @@ select is((select status from licensing.subscriptions where external_subscriptio
 
 select is(
   public.licensing_apply_stripe_subscription_event(
+    'evt_active_unpaid_renewal', 'customer.subscription.updated', repeat('1', 64), '2030-01-23T00:00:00Z',
+    'sub_test', 'cus_test', null, 'pro_monthly', 'active',
+    '2030-03-01T00:00:00Z', '2030-01-23T00:00:00Z'
+  ), 'applied', 'active renewal update is projected before collection finishes'
+);
+select is(
+  (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
+  'active:2030-02-01 00:00:00+00',
+  'active subscription update cannot grant an unpaid renewal period'
+);
+
+select is(
+  public.licensing_apply_stripe_subscription_event(
     'evt_subscription_past_due', 'customer.subscription.updated', repeat('f', 64), '2030-01-24T00:00:00Z',
     'sub_test', 'cus_test', null, 'pro_monthly', 'past_due',
     '2030-03-01T00:00:00Z', '2030-01-24T00:00:00Z'
@@ -85,21 +98,34 @@ select is(
 
 select is(
   public.licensing_apply_stripe_subscription_event(
-    'evt_canceled_terminal', 'customer.subscription.deleted', repeat('0', 64), '2030-01-26T00:00:00Z',
+    'evt_recovery_paid', 'invoice.paid', repeat('2', 64), '2030-01-26T00:00:00Z',
+    'sub_test', 'cus_test', null, 'pro_monthly', 'active',
+    '2030-03-01T00:00:00Z', '2030-01-26T00:00:00Z'
+  ), 'applied', 'successful recovery payment is projected'
+);
+select is(
+  (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
+  'active:2030-03-01 00:00:00+00',
+  'paid invoice extends access after recovery'
+);
+
+select is(
+  public.licensing_apply_stripe_subscription_event(
+    'evt_canceled_terminal', 'customer.subscription.deleted', repeat('0', 64), '2030-01-27T00:00:00Z',
     'sub_test', 'cus_test', null, 'pro_monthly', 'expired',
-    '2030-04-01T00:00:00Z', '2030-01-26T00:00:00Z'
+    '2030-04-01T00:00:00Z', '2030-01-27T00:00:00Z'
   ), 'applied', 'terminal cancellation is projected'
 );
 select is(
   (select status || ':' || paid_through_utc::text from licensing.subscriptions where external_subscription_ref = 'sub_test'),
-  'expired:2030-02-01 00:00:00+00',
+  'expired:2030-03-01 00:00:00+00',
   'terminal cancellation cannot grant an unpaid period'
 );
 
 select is(
   public.licensing_apply_stripe_subscription_event(
     'evt_expired', 'customer.subscription.deleted', repeat('d', 64), '2030-02-01T00:00:01Z',
-    'sub_test', 'cus_test', null, 'pro_monthly', 'expired', '2030-02-01T00:00:00Z', '2030-02-01T00:00:01Z'
+    'sub_test', 'cus_test', null, 'pro_monthly', 'expired', '2030-03-01T00:00:00Z', '2030-03-01T00:00:01Z'
   ), 'applied', 'expiration is projected without deleting customer data'
 );
 select is((select status from licensing.subscriptions where external_subscription_ref = 'sub_test'), 'expired', 'expired status is stored');

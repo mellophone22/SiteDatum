@@ -1,4 +1,4 @@
-export { projectStripeSubscription, verifyStripeSignature } from "./stripe_contract.ts";
+export { latestSubscriptionInvoiceIsPaid, projectStripeSubscription, verifyStripeSignature } from "./stripe_contract.ts";
 
 export async function stripeRequest(path: string, init: RequestInit = {}): Promise<Record<string, unknown>> {
   const key = Deno.env.get("STRIPE_SECRET_KEY");

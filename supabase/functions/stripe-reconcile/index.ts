@@ -1,6 +1,6 @@
 import { licensingAdmin } from "../_shared/auth.ts";
 import { jsonResponse, requiredEnvironment, sha256Hex } from "../_shared/http.ts";
-import { projectStripeSubscription, stripeRequest } from "../_shared/stripe.ts";
+import { latestSubscriptionInvoiceIsPaid, projectStripeSubscription, stripeRequest } from "../_shared/stripe.ts";
 
 Deno.serve(async (request) => {
   const requestId = crypto.randomUUID();
@@ -14,13 +14,15 @@ Deno.serve(async (request) => {
   let reconciled = 0;
   for (const row of rows ?? []) {
     try {
-      const subscription = await stripeRequest(`/subscriptions/${encodeURIComponent(row.subscription_ref)}`);
+      const subscription = await stripeRequest(`/subscriptions/${encodeURIComponent(row.subscription_ref)}?expand[]=latest_invoice`);
       const projection = projectStripeSubscription(subscription as never, requiredEnvironment("STRIPE_MONTHLY_PRICE_ID"), requiredEnvironment("STRIPE_ANNUAL_PRICE_ID"));
       const snapshot = JSON.stringify(subscription);
       const now = new Date().toISOString();
       const { error: applyError } = await admin.rpc("licensing_apply_stripe_subscription_event", {
         p_event_ref: `reconcile_${requestId}_${row.subscription_ref}`,
-        p_event_type: "reconciliation",
+        p_event_type: latestSubscriptionInvoiceIsPaid(subscription as never)
+          ? "reconciliation.paid"
+          : "reconciliation",
         p_payload_sha256: await sha256Hex(snapshot),
         p_provider_created_at_utc: now,
         p_subscription_ref: projection.subscriptionRef,

@@ -5,9 +5,16 @@ type StripeSubscription = {
   id: string; customer: string; status: string; cancel_at_period_end?: boolean;
   cancel_at?: number | null;
   ended_at?: number | null; current_period_end?: number; created: number;
+  latest_invoice?: string | { status?: string; paid?: boolean } | null;
   metadata?: Record<string, string>;
   items?: { data?: Array<{ current_period_end?: number; price?: { id?: string } }> };
 };
+
+export function latestSubscriptionInvoiceIsPaid(subscription: StripeSubscription): boolean {
+  return typeof subscription.latest_invoice === "object"
+    && subscription.latest_invoice !== null
+    && (subscription.latest_invoice.paid === true || subscription.latest_invoice.status === "paid");
+}
 
 export type StripeProjection = {
   subscriptionRef: string; customerRef: string; correlationId: string | null;

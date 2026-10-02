@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { projectStripeSubscription, verifyStripeSignature } from "../supabase/functions/_shared/stripe_contract";
+import {
+  latestSubscriptionInvoiceIsPaid,
+  projectStripeSubscription,
+  verifyStripeSignature,
+} from "../supabase/functions/_shared/stripe_contract";
 
 async function sign(body: string, secret: string, timestamp: number): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -50,5 +54,18 @@ describe("Stripe adapter", () => {
     expect(projectStripeSubscription({ ...base, status: "past_due" }, "price_monthly", "price_annual").status).toBe("past_due");
     expect(projectStripeSubscription({ ...base, status: "canceled" }, "price_monthly", "price_annual").status).toBe("expired");
     expect(projectStripeSubscription({ ...base, status: "incomplete_expired" }, "price_monthly", "price_annual").status).toBe("expired");
+  });
+
+  it("recognizes a paid expanded latest invoice for reconciliation", () => {
+    const base = { id: "sub_test", customer: "cus_test", status: "active", created: 2_000_000_000 };
+    expect(latestSubscriptionInvoiceIsPaid({ ...base, latest_invoice: { status: "paid", paid: true } })).toBe(true);
+    expect(latestSubscriptionInvoiceIsPaid({ ...base, latest_invoice: { status: "open", paid: false } })).toBe(false);
+  });
+
+  it("does not trust an unexpanded latest invoice reference as payment evidence", () => {
+    expect(latestSubscriptionInvoiceIsPaid({
+      id: "sub_test", customer: "cus_test", status: "active", created: 2_000_000_000,
+      latest_invoice: "in_unexpanded",
+    })).toBe(false);
   });
 });
