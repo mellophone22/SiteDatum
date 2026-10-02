@@ -3,6 +3,7 @@ export type LicensedStatus = "active" | "past_due" | "canceled" | "expired";
 
 type StripeSubscription = {
   id: string; customer: string; status: string; cancel_at_period_end?: boolean;
+  cancel_at?: number | null;
   ended_at?: number | null; current_period_end?: number; created: number;
   metadata?: Record<string, string>;
   items?: { data?: Array<{ current_period_end?: number; price?: { id?: string } }> };
@@ -23,10 +24,14 @@ export function projectStripeSubscription(subscription: StripeSubscription, mont
   const priceId = item?.price?.id;
   const plan = priceId === monthlyPriceId ? "pro_monthly" : priceId === annualPriceId ? "pro_annual" : null;
   if (!plan) throw new Error("STRIPE_PRICE_UNMAPPED");
-  const paidThrough = item?.current_period_end ?? subscription.current_period_end ?? subscription.ended_at;
+  const periodEnd = item?.current_period_end ?? subscription.current_period_end ?? subscription.ended_at;
+  const scheduledCancellation = subscription.cancel_at_period_end || Boolean(subscription.cancel_at);
+  const paidThrough = periodEnd && subscription.cancel_at
+    ? Math.min(periodEnd, subscription.cancel_at)
+    : periodEnd;
   if (!paidThrough) throw new Error("STRIPE_PERIOD_END_MISSING");
   const status: LicensedStatus = subscription.status === "active" || subscription.status === "trialing"
-    ? (subscription.cancel_at_period_end ? "canceled" : "active")
+    ? (scheduledCancellation ? "canceled" : "active")
     : subscription.status === "past_due" || subscription.status === "unpaid"
       ? "past_due"
       : "expired";

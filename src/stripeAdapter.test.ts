@@ -32,6 +32,19 @@ describe("Stripe adapter", () => {
     expect(projection).toMatchObject({ plan: "pro_monthly", status: "canceled", correlationId: "correlation" });
   });
 
+  it("recognizes a scheduled cancel_at date and does not grant access beyond it", () => {
+    const projection = projectStripeSubscription({
+      id: "sub_test", customer: "cus_test", status: "active", cancel_at: 2_050_000_000,
+      created: 2_000_000_000,
+      items: { data: [{ current_period_end: 2_100_000_000, price: { id: "price_monthly" } }] },
+    }, "price_monthly", "price_annual");
+    expect(projection).toMatchObject({
+      plan: "pro_monthly",
+      status: "canceled",
+      paidThroughUtc: new Date(2_050_000_000 * 1000).toISOString(),
+    });
+  });
+
   it("maps failed payment and terminal expiration without deleting anything", () => {
     const base = { id: "sub_test", customer: "cus_test", created: 2_000_000_000, items: { data: [{ current_period_end: 2_100_000_000, price: { id: "price_annual" } }] } };
     expect(projectStripeSubscription({ ...base, status: "past_due" }, "price_monthly", "price_annual").status).toBe("past_due");
