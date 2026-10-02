@@ -7,7 +7,7 @@ This runbook covers a local-first Windows release that may contain SQLite migrat
 ## Roles and custody
 
 - The release operator builds and verifies the candidate from a clean tagged commit.
-- The founder controls Authenticode and Tauri updater private keys outside the repository and CI logs.
+- Azure Artifact Signing retains the Authenticode certificate key. The founder controls access to the narrowly scoped signing identity and the separate Tauri updater private key outside the repository and CI logs.
 - Only public verification material belongs in the application or repository.
 
 ## Release preparation

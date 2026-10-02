@@ -1,6 +1,6 @@
 # C6 — Release safety foundation
 
-Status: restrictive CSP, core CI, dependency advisory gates, and migration recovery implemented
+Status: restrictive CSP, core CI, dependency advisory gates, migration recovery, and Authenticode signing boundary implemented
 
 ## Delivered boundary
 
@@ -18,6 +18,12 @@ The policy permits only packaged application resources, Tauri IPC, and Tauri's a
 The frontend job uses the documented Node.js 24 baseline and performs a clean locked install, ESLint, the Vitest suite, and the TypeScript/Vite production build. The Rust job uses the documented Rust 1.97 baseline, installs `rustfmt` plus only the Linux libraries needed to compile Tauri on a GitLab Docker runner, checks formatting, and runs the locked portable Rust test suite. The existing project-root acceptance test is explicitly Windows-only because it validates a real Windows temporary path; it remains part of the full local Windows suite. Both jobs use lockfile-keyed caches and are interruptible. GitLab secret detection remains enabled as a separate stage.
 
 The Supabase pgTAP suite runs on GitLab.com's ephemeral `saas-linux-small-amd64` hosted runner. Its TLS-protected Docker-in-Docker service is isolated to the newly provisioned job VM and receives no production credentials, linked hosted database, billing secret, signing key, or customer data. The repository-pinned Supabase CLI starts disposable local Postgres, applies repository migrations, runs both licensing and Stripe adapter test files, and removes the local volumes afterward. A persistent self-managed privileged runner is explicitly rejected in `ADR-008-SUPABASE-CI-RUNNER.md`.
+
+## Windows signing boundary
+
+`ADR-009-WINDOWS-RELEASE-SIGNING.md` selects Azure Artifact Signing with a Public Trust certificate profile. The release-only Tauri configuration delegates Authenticode operations to `scripts/sign-windows-artifact.ps1`. That helper accepts only `.exe` and `.msi` files, validates the Azure endpoint, requires a narrowly scoped Azure identity, writes public signing metadata to a unique temporary file, invokes Microsoft's Artifact Signing client integration, verifies the resulting Authenticode signature, and removes the temporary metadata in a `finally` block.
+
+The normal Tauri configuration does not reference this helper, so development and unsigned verification builds do not acquire signing authority. Production release automation must explicitly merge `tauri.release.conf.json`, run only from a protected version tag, and receive protected Azure variables. No certificate private key exists in SiteDatum custody because Microsoft retains it in the managed signing service.
 
 ## Dependency advisory policy
 
@@ -60,5 +66,6 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 
 ## Remaining C6 work
 
-- configure Windows Authenticode and Tauri updater signing with founder-controlled private-key custody;
+- complete Azure identity validation and create the Public Trust account/profile and least-privilege CI identity;
+- generate and escrow the independent Tauri updater keypair, then configure the updater public key and endpoint;
 - publish signed update manifests and immutable release artifacts.
