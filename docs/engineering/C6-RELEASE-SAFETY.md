@@ -1,6 +1,6 @@
 # C6 — Release safety foundation
 
-Status: first vertical slice implemented locally; GitLab pipeline execution pending
+Status: restrictive CSP, core CI, and dependency advisory gates implemented
 
 ## Delivered boundary
 
@@ -17,6 +17,14 @@ The frontend job uses the documented Node.js 24 baseline and performs a clean lo
 
 The hosted Supabase pgTAP suite is intentionally not placed in this first CI slice. It requires a privileged Docker runner and isolated test-service configuration; adding it without confirming runner capabilities would leave ordinary pipelines pending or unsafe. Database tests remain a required local release gate until that runner boundary is implemented.
 
+## Dependency advisory policy
+
+The frontend quality job runs `npm audit --audit-level=high` against the committed lockfile after a clean install. This checks runtime and build dependencies and fails the pipeline for high or critical npm advisories. Lower-severity findings remain visible for maintenance review rather than silently disappearing.
+
+The Rust quality job installs the explicitly pinned `cargo-audit 0.22.2` tool with its own locked dependency graph, caches the executable, and checks `src-tauri/Cargo.lock` against the current RustSec advisory database. RustSec vulnerability advisories fail the job. Informational warnings such as unmaintained, unsound, or yanked transitive crates remain visible and require review, but do not automatically fail a release unless they are also classified as vulnerabilities or a direct impact is established.
+
+GitLab's existing secret-detection stage remains separate. These advisory checks do not upload SiteDatum project records or customer data; they submit dependency names and versions to the relevant public advisory services.
+
 ## Verification
 
 Completed locally on Windows:
@@ -32,6 +40,12 @@ Completed locally on Windows:
 - production Tauri build and NSIS bundle generation: pass; and
 - five-second production-binary startup smoke: pass, with only the launched process stopped afterward.
 
+Dependency advisory baseline on 2026-10-01:
+
+- complete npm dependency tree: zero known vulnerabilities;
+- RustSec vulnerability scan across 581 locked crates: zero vulnerabilities; and
+- RustSec maintenance warnings: `proc-macro-error` is unmaintained, `glib 0.18.5` has an unsound iterator advisory, and `yoke-derive 0.8.3` is yanked. These are transitive dependencies and remain recorded for upgrade tracking.
+
 No visual comparison is required because the rendered UI is unchanged. GitLab must still run the new pipeline successfully after the changes are pushed before this slice is considered hosted-verified.
 
 ## Remaining C6 work
@@ -39,6 +53,5 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 - configure Windows Authenticode and Tauri updater signing with founder-controlled private-key custody;
 - publish signed update manifests and immutable release artifacts;
 - add migration-time recovery coverage and finalize the release/rollback runbook;
-- add dependency/security audit gates with an explicit maintenance policy;
 - decide whether to provision a privileged GitLab runner for the local Supabase pgTAP suite; and
 - complete the native Windows acceptance and 200% zoom review recorded in the release documentation.

@@ -21,6 +21,7 @@ frontend_quality:
     npm_config_cache: "$CI_PROJECT_DIR/.npm"
   script:
     - npm ci --prefer-offline --no-audit
+    - npm audit --audit-level=high
     - npm run lint
     - npm test -- --run
     - npm run build
@@ -30,9 +31,11 @@ rust_quality:
   image: rust:1.97-bookworm
   cache:
     key:
+      prefix: rust-1.97-cargo-audit-0.22.2
       files:
         - src-tauri/Cargo.lock
     paths:
+      - .cargo/bin/cargo-audit
       - .cargo/git/
       - .cargo/registry/
       - src-tauri/target/
@@ -42,8 +45,10 @@ rust_quality:
     - rustup component add rustfmt
     - apt-get update
     - apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+    - test -x "$CARGO_HOME/bin/cargo-audit" || cargo install cargo-audit --version 0.22.2 --locked
   script:
     - cd src-tauri
+    - cargo audit --file Cargo.lock
     - cargo fmt --all -- --check
     - cargo test --locked
 
