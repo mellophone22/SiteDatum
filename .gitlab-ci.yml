@@ -24,6 +24,7 @@ frontend_quality:
     - npm audit --audit-level=high
     - npm run lint
     - npm test -- --run
+    - npm run test:site
     - npm run build
 
 rust_quality:

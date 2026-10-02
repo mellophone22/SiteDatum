@@ -1,0 +1,44 @@
+{
+  "title": "Choose the SiteDatum commercial-site structure",
+  "question": "All three preserve SiteDatum's existing identity and use real product evidence. Choose the composition that should lead C7.",
+  "options": [
+    {
+      "id": "field-desk",
+      "label": "The Field Desk",
+      "kicker": "THE ROLL",
+      "lineage": "project engineer's working desk",
+      "thesis": "One working surface moves from today's pressure to the project record that resolves it.",
+      "palette": ["#102440", "#087f89", "#ed8a40", "#f3f6f7"],
+      "materials": ["drafting paper", "register rules", "annotated application capture"],
+      "viewport": "A wide application capture sits beside one decisive statement, followed by a compact daily-loop rail.",
+      "risk": "The interface evidence must remain legible without making the page feel like product documentation.",
+      "comp": ".impeccable/mocks/decision/c7-field-desk.png"
+    },
+    {
+      "id": "command-center-proof",
+      "label": "Command Center Proof",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "operations overview and evidence trail",
+      "thesis": "Lead with the real command center, then prove speed, ownership, and local control in that order.",
+      "palette": ["#102440", "#087f89", "#ed8a40", "#f3f6f7"],
+      "materials": ["software title sheet", "thin separators", "real interface screenshots"],
+      "viewport": "The SiteDatum title and promise anchor a full-width overview capture with a restrained follow-development action.",
+      "risk": "This is the clearest structure and therefore needs exceptionally disciplined typography to remain distinctive.",
+      "comp": ".impeccable/mocks/decision/c7-command-center.png"
+    },
+    {
+      "id": "project-dossier",
+      "label": "The Project Dossier",
+      "lineage": "issued project record and transmittal cover",
+      "thesis": "The site reads like a controlled project record: purpose, evidence, capabilities, terms, and issue status.",
+      "palette": ["#102440", "#087f89", "#ed8a40", "#f3f6f7"],
+      "materials": ["title block", "revision table", "application plates"],
+      "viewport": "A precise title block frames the product statement and an inset screenshot as the first issued plate.",
+      "risk": "Formal document structure can feel austere if the product capture does not carry enough energy.",
+      "comp": ".impeccable/mocks/decision/c7-project-dossier.png"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "comp", "toggle": true},
+  "steer": true
+}

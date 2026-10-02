@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:site": "node scripts/validate-commercial-site.mjs",
     "audit:npm": "npm audit --audit-level=high",
     "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql supabase/tests/stripe_adapter.sql",
     "supabase:start": "supabase start",
