@@ -40,6 +40,14 @@ Completed locally on Windows:
 - production Tauri build and NSIS bundle generation: pass; and
 - five-second production-binary startup smoke: pass, with only the launched process stopped afterward.
 
+Native installer acceptance on 2026-10-02:
+
+- the locally built `SiteDatum_1.4.0_x64-setup.exe` completed a silent current-user installation with exit code `0`;
+- the installed executable was present at `%LOCALAPPDATA%\SiteDatum\SiteDatum.exe` with file version `1.4.0`; and
+- the installed executable opened a native window titled `SiteDatum` and remained running after a five-second startup observation.
+
+The 200% Windows display-scaling review remains open. The automation session used for the installer check did not expose native windows for screenshot or accessibility inspection, so no visual pass is claimed from process health alone.
+
 Dependency advisory baseline on 2026-10-01:
 
 - complete npm dependency tree: zero known vulnerabilities;
