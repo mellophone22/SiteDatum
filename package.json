@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:site": "node scripts/validate-commercial-site.mjs",
     "audit:npm": "npm audit --audit-level=high",
+    "audit:c8": "node scripts/c8-preflight.mjs",
+    "audit:c8:full": "node scripts/c8-preflight.mjs --full",
     "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql supabase/tests/stripe_adapter.sql",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
