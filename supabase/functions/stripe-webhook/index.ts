@@ -1,8 +1,14 @@
 import { licensingAdmin } from "../_shared/auth.ts";
-import { jsonResponse, requiredEnvironment, sha256Hex } from "../_shared/http.ts";
+import {
+  jsonResponse,
+  requiredEnvironment,
+} from "../_shared/http.ts";
+import { PayloadTooLargeError, readTextBodyLimited } from "../_shared/request_body.ts";
+import { sha256Hex } from "../_shared/sha256.ts";
 import { projectStripeSubscription, stripeRequest, verifyStripeSignature } from "../_shared/stripe.ts";
 
 type StripeEvent = { id: string; type: string; created: number; data: { object: Record<string, unknown> } };
+const MAXIMUM_WEBHOOK_BYTES = 1024 * 1024;
 
 function subscriptionRef(event: StripeEvent): string | null {
   const object = event.data.object;
@@ -19,7 +25,14 @@ function subscriptionRef(event: StripeEvent): string | null {
 Deno.serve(async (request) => {
   const requestId = crypto.randomUUID();
   if (request.method !== "POST") return jsonResponse(405, { code: "METHOD_NOT_ALLOWED", requestId });
-  const rawBody = await request.text();
+  let rawBody: string;
+  try {
+    rawBody = await readTextBodyLimited(request, MAXIMUM_WEBHOOK_BYTES);
+  } catch (error) {
+    return error instanceof PayloadTooLargeError
+      ? jsonResponse(413, { code: "PAYLOAD_TOO_LARGE", requestId })
+      : jsonResponse(400, { code: "PAYLOAD_INVALID", requestId });
+  }
   try {
     await verifyStripeSignature(rawBody, request.headers.get("stripe-signature") ?? "", requiredEnvironment("STRIPE_WEBHOOK_SECRET"));
   } catch { return jsonResponse(400, { code: "SIGNATURE_INVALID", requestId }); }

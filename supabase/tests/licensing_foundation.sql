@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(34);
 
 select has_schema('licensing', 'licensing schema exists');
 select has_table('licensing', 'customers', 'customers table exists');
@@ -23,6 +23,8 @@ select ok(not has_function_privilege('anon', 'public.licensing_activate_device(u
 select ok(not has_function_privilege('authenticated', 'public.licensing_activate_device(uuid,text,timestamptz)', 'EXECUTE'), 'authenticated cannot activate devices directly');
 select ok(not has_function_privilege('anon', 'public.licensing_project_subscription(uuid,text,text,timestamptz,text,text,uuid)', 'EXECUTE'), 'anon cannot project subscriptions');
 select ok(not has_function_privilege('authenticated', 'public.licensing_project_subscription(uuid,text,text,timestamptz,text,text,uuid)', 'EXECUTE'), 'authenticated cannot project subscriptions directly');
+select ok(not has_function_privilege('anon', 'public.licensing_consume_rate_limit(text,text,integer,integer,timestamptz)', 'EXECUTE'), 'anon cannot consume rate-limit buckets');
+select ok(not has_function_privilege('authenticated', 'public.licensing_consume_rate_limit(text,text,integer,integer,timestamptz)', 'EXECUTE'), 'authenticated cannot consume rate-limit buckets');
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -106,6 +108,15 @@ select ok(public.licensing_consume_rate_limit(
 select ok(not public.licensing_consume_rate_limit(
   repeat('d', 64), 'entitlement_issue', 2, 3600, '2030-01-01T00:02:00Z'
 ), 'request above the rate limit is denied');
+select ok(public.licensing_consume_rate_limit(
+  repeat('d', 64), 'stripe_checkout', 1, 3600, '2030-01-01T00:02:00Z'
+), 'separate actions use separate rate-limit buckets');
+select ok(not public.licensing_consume_rate_limit(
+  repeat('d', 64), 'stripe_checkout', 1, 3600, '2030-01-01T00:03:00Z'
+), 'checkout bucket denies requests above its limit');
+select ok(public.licensing_consume_rate_limit(
+  repeat('d', 64), 'stripe_checkout', 1, 3600, '2030-01-01T01:02:01Z'
+), 'checkout bucket resets after its fixed window');
 
 select * from finish();
 rollback;

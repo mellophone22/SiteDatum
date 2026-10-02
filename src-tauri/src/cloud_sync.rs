@@ -127,24 +127,83 @@ fn portable_path(path: &str, root: &Path) -> String {
     }
 }
 
-fn local_path(path: &str, root: &Path) -> String {
-    if let Some(relative) = path.strip_prefix("@root/") {
-        return root
-            .join(relative.replace('/', "\\"))
-            .to_string_lossy()
-            .into_owned();
+fn valid_portable_component(component: &str) -> bool {
+    if component.is_empty()
+        || component == "."
+        || component == ".."
+        || component.ends_with(['.', ' '])
+        || component.chars().any(|value| {
+            value.is_control() || matches!(value, '<' | '>' | ':' | '"' | '\\' | '|' | '?' | '*')
+        })
+    {
+        return false;
     }
-    if let Some(name) = path.strip_prefix("@external/") {
-        return root
-            .join(".anydesk-missing")
-            .join(name)
-            .to_string_lossy()
-            .into_owned();
+    let stem = component.split('.').next().unwrap_or_default();
+    !matches!(
+        stem.to_ascii_uppercase().as_str(),
+        "CON"
+            | "PRN"
+            | "AUX"
+            | "NUL"
+            | "COM1"
+            | "COM2"
+            | "COM3"
+            | "COM4"
+            | "COM5"
+            | "COM6"
+            | "COM7"
+            | "COM8"
+            | "COM9"
+            | "COM¹"
+            | "COM²"
+            | "COM³"
+            | "LPT1"
+            | "LPT2"
+            | "LPT3"
+            | "LPT4"
+            | "LPT5"
+            | "LPT6"
+            | "LPT7"
+            | "LPT8"
+            | "LPT9"
+            | "LPT¹"
+            | "LPT²"
+            | "LPT³"
+    )
+}
+
+fn portable_components(value: &str, single_component: bool) -> AppResult<Vec<&str>> {
+    let components = value.split('/').collect::<Vec<_>>();
+    if components.is_empty()
+        || (single_component && components.len() != 1)
+        || components
+            .iter()
+            .any(|part| !valid_portable_component(part))
+    {
+        return Err(sync_error(
+            "SYNC_PAYLOAD_INVALID",
+            "Cloud data could not be applied safely.",
+            "A synchronized file path was not a safe portable relative path.",
+        ));
     }
-    root.join(".anydesk-missing")
-        .join("unavailable-file")
-        .to_string_lossy()
-        .into_owned()
+    Ok(components)
+}
+
+fn local_path(path: &str, root: &Path) -> AppResult<String> {
+    let rebased = if let Some(relative) = path.strip_prefix("@root/") {
+        portable_components(relative, false)?
+            .into_iter()
+            .fold(root.to_path_buf(), |path, component| path.join(component))
+    } else if let Some(name) = path.strip_prefix("@external/") {
+        portable_components(name, true)?
+            .into_iter()
+            .fold(root.join(".anydesk-missing"), |path, component| {
+                path.join(component)
+            })
+    } else {
+        root.join(".anydesk-missing").join("unavailable-file")
+    };
+    Ok(rebased.to_string_lossy().into_owned())
 }
 
 impl Database {
@@ -212,6 +271,26 @@ impl Database {
             )
         })?;
         let root = Path::new(&root);
+        let mut tables = snapshot.tables.clone();
+        for (table, rows) in &mut tables {
+            for row in rows {
+                for (path_table, field) in PATH_FIELDS {
+                    if *path_table == table.as_str() {
+                        match row.get_mut(*field) {
+                            Some(Value::String(path)) => *path = local_path(path, root)?,
+                            Some(_) => {
+                                return Err(sync_error(
+                                    "SYNC_PAYLOAD_INVALID",
+                                    "Cloud data could not be applied safely.",
+                                    "A synchronized file path was not text.",
+                                ));
+                            }
+                            None => {}
+                        }
+                    }
+                }
+            }
+        }
         let transaction = self.connection.transaction().map_err(db_error)?;
         transaction
             .execute_batch("PRAGMA defer_foreign_keys=ON;")
@@ -222,7 +301,7 @@ impl Database {
                 .map_err(db_error)?;
         }
         for table in TABLES {
-            let rows = snapshot.tables.get(*table).cloned().unwrap_or_default();
+            let rows = tables.get(*table).cloned().unwrap_or_default();
             let allowed: Vec<String> = {
                 let mut statement = transaction
                     .prepare(&format!("PRAGMA table_info({table})"))
@@ -234,14 +313,7 @@ impl Database {
                     .map_err(db_error)?;
                 columns
             };
-            for mut row in rows {
-                for (path_table, field) in PATH_FIELDS {
-                    if *path_table == *table {
-                        if let Some(Value::String(path)) = row.get_mut(*field) {
-                            *path = local_path(path, root);
-                        }
-                    }
-                }
+            for row in rows {
                 if row.keys().any(|column| !allowed.contains(column)) {
                     return Err(sync_error(
                         "SYNC_PAYLOAD_INVALID",
@@ -573,6 +645,87 @@ mod tests {
         assert_eq!(second.list_tasks().unwrap().len(), 1);
         drop(first);
         drop(second);
+        std::fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn portable_paths_reject_windows_escape_and_device_forms() {
+        let root = Path::new(r"C:\Projects");
+        for malicious in [
+            "@root/../escape",
+            "@root/folder/../../escape",
+            r"@root/..\escape",
+            r"@root/folder\..\escape",
+            "@root/C:/escape",
+            "@root/C:escape",
+            "@root//server/share",
+            r"@root/\\server\share",
+            r"@root/\\?\C:\escape",
+            r"@root/\\.\C:\escape",
+            "@root/file:stream",
+            "@root/CON.txt",
+            "@root/folder/NUL",
+            "@root/COM¹.txt",
+            "@root/LPT³.log",
+            "@external/folder/file.txt",
+            "@external/../file.txt",
+            r"@external/..\file.txt",
+        ] {
+            let error = local_path(malicious, root).unwrap_err();
+            assert_eq!(error.code, "SYNC_PAYLOAD_INVALID", "{malicious}");
+        }
+    }
+
+    #[test]
+    fn portable_paths_preserve_safe_nested_and_external_names() {
+        let root = Path::new(r"\\server\share\Projects");
+        assert_eq!(
+            Path::new(&local_path("@root/100 – Café/02 Submittals/file.pdf", root).unwrap()),
+            root.join("100 – Café")
+                .join("02 Submittals")
+                .join("file.pdf")
+        );
+        assert_eq!(
+            Path::new(&local_path("@external/field photo 01.jpg", root).unwrap()),
+            root.join(".anydesk-missing").join("field photo 01.jpg")
+        );
+    }
+
+    #[test]
+    fn invalid_snapshot_path_does_not_replace_existing_workspace() {
+        let base = std::env::temp_dir().join(format!("anydesk-sync-invalid-{}", Uuid::new_v4()));
+        let root = base.join("projects");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut database = Database::open(&base.join("workspace.sqlite3")).unwrap();
+        database.save_project_root(&root.to_string_lossy()).unwrap();
+        database.connection.execute(
+            "INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES('existing','E-1','Existing',?1,'2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')",
+            [root.join("E-1 - Existing").to_string_lossy().to_string()],
+        ).unwrap();
+
+        let clean_snapshot = database.export_workspace_snapshot().unwrap();
+        for (table, field) in PATH_FIELDS {
+            let mut snapshot = clean_snapshot.clone();
+            let row = if *table == "projects" {
+                &mut snapshot.tables.get_mut(*table).unwrap()[0]
+            } else {
+                snapshot.tables.get_mut(*table).unwrap().push(Map::new());
+                snapshot.tables.get_mut(*table).unwrap().last_mut().unwrap()
+            };
+            row.insert((*field).into(), Value::String("@root/../escape".into()));
+            let error = database.import_workspace_snapshot(&snapshot).unwrap_err();
+            assert_eq!(error.code, "SYNC_PAYLOAD_INVALID", "{table}.{field}");
+        }
+        let count: i64 = database
+            .connection
+            .query_row(
+                "SELECT count(*) FROM projects WHERE id='existing'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+        drop(database);
         std::fs::remove_dir_all(base).unwrap();
     }
 }

@@ -17,6 +17,8 @@ The integration stays behind the provider-neutral licensing boundary introduced 
 - Event ledger: unique Stripe event IDs provide idempotency; payloads are represented only by SHA-256 hashes. Delayed snapshots cannot overwrite a newer provider projection.
 - Expiration is non-destructive. It changes entitlement status only; local projects remain visible and editable under the C1 policy.
 
+The authenticated Checkout boundary consumes a hashed-subject rate-limit bucket before creating a correlation or calling Stripe. The public webhook boundary reads at most 1 MiB by counting streamed bytes before signature verification; it does not trust `Content-Length` as the sole control. Oversized requests receive HTTP 413 and never reach Stripe or the licensing database. The cap is deliberately far above SiteDatum's small allowlisted event payloads while bounding pre-authentication memory use.
+
 ## Refund behavior
 
 Stripe Managed Payments owns the refund transaction and customer workflow. SiteDatum does not infer entitlement loss from a refund object alone. The authoritative Stripe subscription state determines entitlement: if Stripe cancels or ends the subscription, the normal subscription webhook/reconciliation path projects that result. This avoids accidental loss of access from a partial refund while still converging after full cancellation.

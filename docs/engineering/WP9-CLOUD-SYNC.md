@@ -9,6 +9,7 @@ WP9 adds opt-in, single-user synchronization between Windows workstations. OneDr
 - Manual **Sync now** action; local operation remains available without a network connection.
 - A complete metadata snapshot covering projects, tasks, RFIs, submittals, relationships, attachment references, registered files, notes, contacts, and activity.
 - Project-root-relative path serialization so two computers may have different absolute OneDrive paths. References outside the selected root become visible missing references on another computer instead of exposing or guessing another device's path.
+- Import accepts only the portable path forms emitted by SiteDatum. Root-relative values are validated component by component before any database replacement, and external references accept one safe filename only. Traversal, absolute/drive/device forms, mixed separators, reserved Windows device names, and invalid Windows filename characters reject the entire snapshot atomically.
 - Server-side RLS and atomic version comparison. Concurrent offline edits create a durable local conflict and require **Keep this computer** or **Use cloud version**.
 - Automatic app-local SQLite safety backup before every sync and conflict resolution. Sync never copies, overwrites, moves, or deletes OneDrive file bytes.
 
@@ -20,4 +21,4 @@ The Supabase Free plan may pause after inactivity and does not provide downloada
 
 ## Verification
 
-The Rust suite covers a full metadata export/import between two different local project roots and verifies path rebasing. The existing persistence and domain suite remains green. Frontend build, lint, Vitest, native development launch, Supabase security advisor, and NSIS production packaging pass. The owner creates and confirms one application user in Supabase Authentication → Users, then uses the same email and password on each workstation.
+The Rust suite covers a full metadata export/import between two different local project roots, safe nested and UNC-root rebasing, malicious portable-path rejection, and preservation of the existing workspace after a rejected snapshot. The existing persistence and domain suite remains green. Frontend build, lint, Vitest, native development launch, Supabase security advisor, and NSIS production packaging pass. The owner creates and confirms one application user in Supabase Authentication → Users, then uses the same email and password on each workstation.

@@ -1,4 +1,5 @@
 import { authenticatedUserId, licensingAdmin } from "../_shared/auth.ts";
+import { consumeCheckoutRateLimit } from "../_shared/checkout_rate_limit.ts";
 import { jsonResponse, requiredEnvironment } from "../_shared/http.ts";
 import { stripeRequest } from "../_shared/stripe.ts";
 
@@ -14,6 +15,14 @@ Deno.serve(async (request) => {
     if (body?.plan !== "pro_monthly" && body?.plan !== "pro_annual") throw new Error();
     plan = body.plan;
   } catch { return jsonResponse(400, { code: "PLAN_INVALID", requestId }); }
+
+  const rateLimit = await consumeCheckoutRateLimit(admin, userId);
+  if (rateLimit === "unavailable") {
+    return jsonResponse(503, { code: "CHECKOUT_UNAVAILABLE", requestId });
+  }
+  if (rateLimit === "limited") {
+    return jsonResponse(429, { code: "RATE_LIMITED", requestId });
+  }
 
   const { data: correlation, error } = await admin.rpc("licensing_create_checkout_correlation", {
     p_auth_user_id: userId, p_plan: plan,
