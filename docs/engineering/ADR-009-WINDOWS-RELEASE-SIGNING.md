@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted on 2026-10-02.
+Superseded on 2026-10-02 by `ADR-010-MICROSOFT-STORE-MSIX-DISTRIBUTION.md` before any Azure Artifact Signing account or production signing identity was created.
 
 ## Context
 
@@ -30,4 +30,6 @@ Neither private signing authority may be committed to the public repository, emb
 - New publishers may still receive Microsoft SmartScreen reputation prompts while reputation develops; signing is necessary but does not promise immediate reputation.
 - Losing the Tauri updater private key prevents publishing updates that existing installations will accept. The encrypted recovery copy is therefore a launch gate.
 - The repository may contain the Azure endpoint, account name, certificate profile name, updater public key, and download URLs. It must not contain Azure client secrets, federated tokens, updater private keys/passwords, or other signing credentials.
+
+This decision was not activated. SiteDatum incurred no Artifact Signing service charge and retains this record only to explain why the paid direct-download signing route was rejected.
 

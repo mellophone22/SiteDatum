@@ -7,7 +7,7 @@ This runbook covers a local-first Windows release that may contain SQLite migrat
 ## Roles and custody
 
 - The release operator builds and verifies the candidate from a clean tagged commit.
-- Azure Artifact Signing retains the Authenticode certificate key. The founder controls access to the narrowly scoped signing identity and the separate Tauri updater private key outside the repository and CI logs.
+- Microsoft Store retains production signing authority for the public MSIX package. Any self-signed development certificate is restricted to disposable operator-controlled test machines and remains outside the repository and CI logs.
 - Only public verification material belongs in the application or repository.
 
 ## Release preparation
@@ -21,8 +21,8 @@ This runbook covers a local-first Windows release that may contain SQLite migrat
 7. If the release adds a database migration, test both:
    - upgrade from the last public schema with representative records; and
    - deliberate migration failure, confirming transaction rollback and a valid pre-migration snapshot.
-8. Sign the approved installer and updater artifacts. Record hashes, versions, signing identity, build commit, and publication time without recording private keys.
-9. Publish immutable versioned artifacts first. Promote the signed update manifest only after artifact download and signature verification succeed.
+8. Build the MSIX using the Partner Center-assigned identity, then run the Windows App Certification Kit and native MSIX acceptance checks.
+9. Submit the immutable package to Partner Center. Record hashes, version, package identity, build commit, certification result, and publication time. Microsoft signs and publishes the certified Store package.
 
 ## Automatic migration safety
 
@@ -38,7 +38,7 @@ The safety snapshot is named `pre-migration-v{from}-to-v{to}-{timestamp}.sqlite3
 
 ## Release monitoring and stop conditions
 
-Stop promotion and withdraw the update manifest if any of these occur:
+Stop the Store submission or halt its rollout if any of these occur:
 
 - signature or hash mismatch;
 - installer or startup failure on a supported Windows baseline;
@@ -54,8 +54,8 @@ Preserve the failed release artifact, commit, logs, correlation IDs, and a copy 
 
 ### No schema change
 
-1. Withdraw the affected update manifest.
-2. Republish or directly provide the last known-good signed installer.
+1. Halt the affected Store submission or rollout.
+2. Restore the last known-good Store package as the available production version through Partner Center.
 3. Install the known-good version over the affected version.
 4. Launch SiteDatum and verify project counts, representative records, backup, and essential export.
 
@@ -63,11 +63,11 @@ Do not replace the workspace database when the schema did not change.
 
 ### Schema advanced but the new application still opens
 
-Prefer a forward fix. Withdraw the affected manifest, correct the application or add a new forward migration, execute the full release gates, and publish a higher version. Do not run ad-hoc downgrade SQL against a customer database.
+Prefer a forward fix. Halt the affected Store rollout, correct the application or add a new forward migration, execute the full release gates, and submit a higher package version. Do not run ad-hoc downgrade SQL against a customer database.
 
 ### Schema advanced and the application cannot operate safely
 
-1. Disconnect automatic update promotion by withdrawing the manifest.
+1. Halt the affected Store rollout in Partner Center.
 2. Preserve the current `workspace.sqlite3` and every file in its `backups/` directory. Do not overwrite either.
 3. Identify the snapshot whose name matches the prior and affected schema versions.
 4. Validate the snapshot with the SiteDatum recovery preview or SQLite `PRAGMA integrity_check` on an operator-controlled copy.
