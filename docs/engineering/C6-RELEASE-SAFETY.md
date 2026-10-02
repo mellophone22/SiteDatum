@@ -46,7 +46,7 @@ Native installer acceptance on 2026-10-02:
 - the installed executable was present at `%LOCALAPPDATA%\SiteDatum\SiteDatum.exe` with file version `1.4.0`; and
 - the installed executable opened a native window titled `SiteDatum` and remained running after a five-second startup observation.
 
-The 200% Windows display-scaling review remains open. The automation session used for the installer check did not expose native windows for screenshot or accessibility inspection, so no visual pass is claimed from process health alone.
+Manual native Windows display-scaling acceptance was completed on 2026-10-02 at 200% scaling. The installed application remained usable without reported clipping, overlap, inaccessible controls, or unusable dialogs. This closes the native Windows acceptance and 200% scaling gate.
 
 Dependency advisory baseline on 2026-10-01:
 
@@ -60,6 +60,5 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 
 - configure Windows Authenticode and Tauri updater signing with founder-controlled private-key custody;
 - publish signed update manifests and immutable release artifacts;
-- add migration-time recovery coverage and finalize the release/rollback runbook;
-- decide whether to provision a privileged GitLab runner for the local Supabase pgTAP suite; and
-- complete the native Windows acceptance and 200% zoom review recorded in the release documentation.
+- add migration-time recovery coverage and finalize the release/rollback runbook; and
+- decide whether to provision a privileged GitLab runner for the local Supabase pgTAP suite.
