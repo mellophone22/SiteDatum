@@ -41,7 +41,41 @@ for (const required of [
 
 for (const page of ['privacy.html', 'terms.html', 'refunds.html']) {
   const source = await readFile(resolve(site, page), 'utf8');
-  if (!source.includes('Founder/legal review draft — not yet effective')) failures.push(`${page}: policy draft status is not explicit`);
+  if (!source.includes('Founder-approved — effective October 3, 2026')) failures.push(`${page}: effective founder-approval status is missing`);
+  if (source.includes('not yet effective') || source.includes('Policy Draft') || source.includes('Terms Draft')) failures.push(`${page}: stale draft language remains`);
+}
+
+const legalRequirements = {
+  'privacy.html': [
+    'Scope and local project data',
+    'Information used for Pro licensing',
+    'Service providers',
+    'Retention and deletion',
+    'Choices and requests',
+    'supportsitedatum@protonmail.com',
+  ],
+  'terms.html': [
+    'Subscriptions and renewal',
+    'Devices and connectivity',
+    'Cancellation and expiration',
+    'Warranty',
+    'Limitation of liability',
+    'Disputes and governing law',
+    'supportsitedatum@protonmail.com',
+  ],
+  'refunds.html': [
+    'Merchant of record',
+    'Refund requests',
+    'Effect of a refund',
+    'supportsitedatum@protonmail.com',
+  ],
+};
+
+for (const [page, requiredStatements] of Object.entries(legalRequirements)) {
+  const source = await readFile(resolve(site, page), 'utf8');
+  for (const required of requiredStatements) {
+    if (!source.includes(required)) failures.push(`${page}: missing policy subject: ${required}`);
+  }
 }
 
 if (failures.length) {

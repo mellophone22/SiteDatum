@@ -69,8 +69,26 @@ assert('C8-HOSTED-URL-BOUNDARY', licensing.includes('checkout.stripe.com') && li
 const privacy = read('site/privacy.html');
 const terms = read('site/terms.html');
 const refunds = read('site/refunds.html');
-assert('C8-POLICY-DRAFTS', [privacy, terms, refunds].every((value) => value.includes('Founder/legal review draft — not yet effective')),
-  'all legal surfaces remain explicitly non-effective drafts', 'one or more legal surfaces could be mistaken for an effective policy');
+assert('C8-POLICY-SURFACES', [privacy, terms, refunds].every((value) => value.includes('Founder-approved — effective October 3, 2026')) &&
+  [privacy, terms, refunds].every((value) => !value.includes('not yet effective')),
+  'all founder-approved policy surfaces carry the matching effective date',
+  'one or more policy surfaces are missing founder approval or retain stale draft language');
+
+const legalReviewPackage = read('docs/commercial/C8-LEGAL-REVIEW-PACKAGE.md');
+assert('C8-LEGAL-PACKAGE', [
+  'Founder risk acceptance',
+  'Publisher identity and capacity',
+  'Governing law and venue',
+  'Florida, United States',
+  'Retention schedule',
+  'Founder-approved retention schedule',
+  'Refund eligibility',
+  'no separate fixed SiteDatum refund window',
+  'Warranty and liability',
+  'Qualified legal review waived',
+].every((statement) => legalReviewPackage.includes(statement)),
+  'founder policy decisions and legal-review risk acceptance are recorded',
+  'legal package is missing a founder decision or risk-acceptance record');
 
 const c6 = read('docs/engineering/C6-RELEASE-SAFETY.md');
 assert('C8-DISTRIBUTION-HOLD', c6.includes('trusted public distribution explicitly deferred'),
@@ -128,7 +146,7 @@ if (process.platform === 'win32' && existsSync(installer)) {
 
 record('C8-CLEAN-PROFILE', 'deferred', 'interactive install, first run, upgrade, uninstall/reinstall, and 200% review require a disposable Windows profile');
 record('C8-PAYMENT-LIFECYCLE', 'deferred', 'manual hosted lifecycle uses Stripe and Supabase sandboxes only; never live mode');
-record('C8-LEGAL', 'deferred', 'founder/legal approval and publisher contact details are required before launch');
+record('C8-LEGAL', 'pass', 'founder-approved policies are effective and the decision to proceed without qualified legal review is recorded');
 
 if (full) {
   const npmCli = resolve(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');

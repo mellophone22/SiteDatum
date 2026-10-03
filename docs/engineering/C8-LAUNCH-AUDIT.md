@@ -1,6 +1,6 @@
 # C8 — Launch audit
 
-**Status:** Preflight harness implemented; release remains blocked pending manual, legal, and C6 distribution gates — 2026-10-02
+**Status:** Preflight harness implemented; release remains blocked pending manual and C6 distribution gates — 2026-10-03
 
 ## Purpose
 
@@ -25,7 +25,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-11 | Non-destructive downgrade | Existing records remain visible/editable; backup and essential export stay available | Free-mode record preservation, backup/restore, and CSV export passed; verified Pro-to-Free transition remains pending |
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
 | C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Passed 2026-10-03: private inbox delivery verified; redacted public intake and content-free incident workflow implemented |
-| C8-14 | Legal and public surfaces | Founder/legal-approved policies and publisher contacts | Drafts only; launch blocker |
+| C8-14 | Legal and public surfaces | Founder-approved policies and publisher contacts | Passed 2026-10-03: policies effective; founder decision to proceed without qualified legal review recorded as accepted risk |
 | C8-15 | Trusted distribution | Microsoft-signed MSIX or separately approved trusted route | C6 deferred; launch blocker |
 
 ## Disposable-profile procedure
@@ -99,6 +99,6 @@ Stop the audit and preserve evidence if any test causes record loss, overwrites 
 
 ## Launch decision
 
-C8 can report engineering readiness before every external gate is resolved, but public launch remains **NO-GO** until C8-14 and C8-15 are complete and every required manual release-candidate scenario passes. Deferred means unverified, not accepted.
+C8 can report engineering readiness before every external gate is resolved, but public launch remains **NO-GO** until C8-15 is complete and every required manual release-candidate scenario passes. Deferred means unverified, not accepted.
 
 Founder routine operations, incident severity, billing recovery, outage, security/privacy, communications, and launch hold points are defined in `FOUNDER-OPERATIONS-RUNBOOK.md`.
