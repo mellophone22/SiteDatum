@@ -1300,15 +1300,184 @@ mod tests {
             .unwrap();
     }
 
+    fn create_representative_version_nine_workspace(
+        root: &std::path::Path,
+        database_path: &std::path::Path,
+    ) -> std::path::PathBuf {
+        create_version_nine_database(database_path);
+
+        let project_directory = root.join("project-files").join("P-009 - Legacy project");
+        std::fs::create_dir_all(&project_directory).unwrap();
+        let ordinary_file = project_directory.join("coordination-drawing.txt");
+        std::fs::write(&ordinary_file, b"representative customer document\n").unwrap();
+
+        let connection = Connection::open(database_path).unwrap();
+        connection
+            .execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")
+            .unwrap();
+        connection
+            .execute(
+                "UPDATE projects SET project_path = ?1, customer = 'Fictional Customer', phase = 'construction' WHERE id = 'legacy'",
+                [project_directory.to_string_lossy().as_ref()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO app_settings(key,value,updated_at_utc) VALUES('project_root_path',?1,'2026-09-22T00:00:00Z')",
+                [root.join("project-files").to_string_lossy().as_ref()],
+            )
+            .unwrap();
+        connection.execute_batch(
+            "INSERT INTO tasks(id,project_id,title,description,priority,status,category,due_date,created_at_utc,updated_at_utc)
+             VALUES('legacy-task','legacy','Review legacy coordination drawing','Preserve this task during upgrade','high','open','Engineering','2026-10-15','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z');
+             INSERT INTO rfis(id,project_id,number,subject,question,recipient,status,created_date,submitted_date,response_due_date,notes,created_at_utc,updated_at_utc,rfi_location,drawing_number,cost_impact,time_delay,suggested_solution,requested_by)
+             VALUES('legacy-rfi','legacy','RFI-009','Legacy control sequence','Confirm the intended sequence.','Design Engineer','open','2026-09-22','2026-09-22','2026-10-08','Preserve this RFI during upgrade','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z','Mechanical room','M-401','None anticipated','None anticipated','Use sequence B','Project Engineer');
+             INSERT INTO rfi_task_relationships(rfi_id,task_id,created_at_utc)
+             VALUES('legacy-rfi','legacy-task','2026-09-22T00:00:00Z');
+             INSERT INTO submittals(id,project_id,number,name,package,revision,recipient,status,created_date,submitted_date,notes,created_at_utc,updated_at_utc)
+             VALUES('legacy-submittal','legacy','SUB-009','Legacy control panel','Controls','','General Contractor','under_review','2026-09-22','2026-09-23','Preserve this submittal during upgrade','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z');
+             INSERT INTO submittal_task_relationships(submittal_id,task_id,created_at_utc)
+             VALUES('legacy-submittal','legacy-task','2026-09-22T00:00:00Z');
+             INSERT INTO notes(id,project_id,body,created_at_utc,updated_at_utc)
+             VALUES('legacy-note','legacy','Legacy project note','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z');
+             INSERT INTO contacts(id,name,company,email,phone,role,created_at_utc,updated_at_utc)
+             VALUES('legacy-contact','Fictional Engineer','Example Design','engineer@example.invalid','555-0100','Engineer','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z');
+             INSERT INTO sync_local_records(entity_type,entity_id,content_hash,cloud_version)
+             VALUES('project','legacy','representative-v9-hash',4);
+             INSERT INTO activity_events(id,event_type,entity_type,entity_id,summary,occurred_at_utc)
+             VALUES('legacy-event','task.created','task','legacy-task','Legacy task created','2026-09-22T00:00:00Z');"
+        ).unwrap();
+        let file_path = ordinary_file.to_string_lossy();
+        connection
+            .execute(
+                "INSERT INTO rfi_attachment_references(id,rfi_id,file_path,display_name,created_at_utc) VALUES('legacy-rfi-file','legacy-rfi',?1,'coordination-drawing.txt','2026-09-22T00:00:00Z')",
+                [file_path.as_ref()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO submittal_attachment_references(id,submittal_id,file_path,display_name,created_at_utc) VALUES('legacy-submittal-file','legacy-submittal',?1,'coordination-drawing.txt','2026-09-22T00:00:00Z')",
+                [file_path.as_ref()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO registered_files(id,project_id,file_name,file_path,operation,discipline,drawing_number,title,revision,is_current,created_at_utc,updated_at_utc) VALUES('legacy-file','legacy','coordination-drawing.txt',?1,'register','Controls','M-401','Legacy coordination drawing','A',1,'2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')",
+                [file_path.as_ref()],
+            )
+            .unwrap();
+        connection
+            .execute_batch("PRAGMA wal_checkpoint(FULL);")
+            .unwrap();
+        ordinary_file
+    }
+
+    fn assert_representative_version_nine_records(
+        connection: &Connection,
+        ordinary_file: &std::path::Path,
+    ) {
+        for (table, expected) in [
+            ("projects", 1_i64),
+            ("tasks", 1),
+            ("rfis", 1),
+            ("rfi_task_relationships", 1),
+            ("rfi_attachment_references", 1),
+            ("submittals", 1),
+            ("submittal_task_relationships", 1),
+            ("submittal_attachment_references", 1),
+            ("registered_files", 1),
+            ("notes", 1),
+            ("contacts", 1),
+            ("sync_local_records", 1),
+            ("activity_events", 1),
+        ] {
+            let count: i64 = connection
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(count, expected, "unexpected row count for {table}");
+        }
+
+        let stored_file_path: String = connection
+            .query_row(
+                "SELECT file_path FROM registered_files WHERE id = 'legacy-file'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored_file_path, ordinary_file.to_string_lossy());
+        for (sql, expected) in [
+            (
+                "SELECT title FROM tasks WHERE id = 'legacy-task'",
+                "Review legacy coordination drawing",
+            ),
+            (
+                "SELECT subject FROM rfis WHERE id = 'legacy-rfi'",
+                "Legacy control sequence",
+            ),
+            (
+                "SELECT name FROM submittals WHERE id = 'legacy-submittal'",
+                "Legacy control panel",
+            ),
+            (
+                "SELECT body FROM notes WHERE id = 'legacy-note'",
+                "Legacy project note",
+            ),
+            (
+                "SELECT name FROM contacts WHERE id = 'legacy-contact'",
+                "Fictional Engineer",
+            ),
+        ] {
+            let value: String = connection.query_row(sql, [], |row| row.get(0)).unwrap();
+            assert_eq!(value, expected);
+        }
+        for table in [
+            "rfi_attachment_references",
+            "submittal_attachment_references",
+        ] {
+            let attachment_path: String = connection
+                .query_row(&format!("SELECT file_path FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(attachment_path, ordinary_file.to_string_lossy());
+        }
+        let related_task: String = connection
+            .query_row(
+                "SELECT task_id FROM rfi_task_relationships WHERE rfi_id = 'legacy-rfi'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(related_task, "legacy-task");
+        let project_identity: (String, String, String) = connection
+            .query_row(
+                "SELECT number,name,customer FROM projects WHERE id = 'legacy'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            project_identity,
+            (
+                "P-009".to_owned(),
+                "Legacy project".to_owned(),
+                "Fictional Customer".to_owned()
+            )
+        );
+    }
+
     #[test]
-    fn opening_older_database_creates_valid_backup_before_migrating() {
+    fn representative_version_nine_workspace_upgrades_with_valid_snapshot_and_preserved_data() {
         let root = std::env::temp_dir().join(format!(
             "sitedatum-migration-backup-{}",
             uuid::Uuid::new_v4()
         ));
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("workspace.sqlite3");
-        create_version_nine_database(&path);
+        let ordinary_file = create_representative_version_nine_workspace(&root, &path);
+        let original_file_bytes = std::fs::read(&ordinary_file).unwrap();
 
         {
             let database = Database::open(&path).unwrap();
@@ -1316,11 +1485,29 @@ mod tests {
                 super::current_migration_version(&database.connection).unwrap(),
                 LATEST_MIGRATION_VERSION
             );
-            assert_eq!(
-                database.list_projects(false).unwrap()[0].name,
-                "Legacy project"
-            );
+            assert_representative_version_nine_records(&database.connection, &ordinary_file);
+            let integrity: String = database
+                .connection
+                .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(integrity, "ok");
+            let foreign_keys: i64 = database
+                .connection
+                .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(foreign_keys, 1);
+            let operations_table: i64 = database
+                .connection
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'work_items'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(operations_table, 1);
         }
+
+        assert_eq!(std::fs::read(&ordinary_file).unwrap(), original_file_bytes);
 
         let backup_paths = std::fs::read_dir(root.join("backups"))
             .unwrap()
@@ -1334,20 +1521,24 @@ mod tests {
             .starts_with("pre-migration-v9-to-v10-"));
         let backup = Connection::open(&backup_paths[0]).unwrap();
         assert_eq!(super::current_migration_version(&backup).unwrap(), 9);
-        let project_name: String = backup
-            .query_row("SELECT name FROM projects WHERE id = 'legacy'", [], |row| {
-                row.get(0)
-            })
-            .unwrap();
-        assert_eq!(project_name, "Legacy project");
+        assert_representative_version_nine_records(&backup, &ordinary_file);
         let integrity: String = backup
             .query_row("PRAGMA integrity_check", [], |row| row.get(0))
             .unwrap();
         assert_eq!(integrity, "ok");
+        let operations_table: i64 = backup
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'work_items'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(operations_table, 0);
         drop(backup);
 
         drop(Database::open(&path).unwrap());
         assert_eq!(std::fs::read_dir(root.join("backups")).unwrap().count(), 1);
+        assert_eq!(std::fs::read(&ordinary_file).unwrap(), original_file_bytes);
         std::fs::remove_dir_all(root).unwrap();
     }
 
