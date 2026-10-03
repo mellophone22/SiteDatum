@@ -12,7 +12,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 
 | ID | Gate | Evidence | Current state |
 |---|---|---|---|
-| C8-01 | Candidate provenance | Clean commit, matching package/Tauri/Rust version, installer hash | Automated version check; clean tagged candidate remains required |
+| C8-01 | Candidate provenance | Clean commit, matching package/Tauri/Rust version, installer hash | Provisional 1.4.1 candidate recorded from clean commit `a9ab136`; disposable-profile acceptance and release tag pending |
 | C8-02 | Secret and environment boundary | GitLab secret detection plus repository live-token scan | Automated preflight and CI |
 | C8-03 | Frontend quality | Site validator, lint, Vitest, production build | Automated full preflight |
 | C8-04 | Native quality | Rust format and locked test suite | Automated full preflight |
@@ -73,6 +73,10 @@ The unsigned internal NSIS candidate was exercised in the dedicated local `SiteD
 - At exact 200% Windows scaling, Home, Attention, Projects, Tasks, RFIs, Submittals, Files, Project Controls, Recovery, and Settings remained usable. Project search opened from the keyboard, keyboard selection opened the RFI, Escape dismissed the context, and visible focus navigation passed.
 - In the isolated Stripe/Supabase sandbox, monthly Checkout activated Pro, the signed entitlement unlocked professional RFI PDF output, and the hosted billing portal loaded the correct sandbox subscription. Scheduling cancellation preserved Pro through the paid-through date. The run exposed Stripe's `cancel_at` representation for portal-scheduled cancellation; the adapter was corrected, regression-tested, deployed to the sandbox webhook and reconciliation functions, and verified with a new webhook delivery projecting the subscription as canceled without shortening paid access. The previously recorded C4 annual Checkout and renewal evidence completes the annual path.
 - A separate fictional monthly test-clock fixture reached a failed renewal and projected `past_due`. That run exposed an earlier `active` subscription-update event advancing `current_period_end` before collection failed. The database projection now requires `invoice.paid` (or payment-aware reconciliation with a paid latest invoice) before extending an existing paid-through boundary. The forward migration and reconciliation update passed 62 local database assertions and a rollback-only hosted ordering check. After replacing the failed test card, Stripe's scheduled retry paid the invoice on its second attempt, restored `active`, and advanced paid-through by one month only when the applied `invoice.paid` event arrived. Scheduling cancellation and advancing past that paid period produced an applied `customer.subscription.deleted` event, projected `expired`, and preserved the final paid-through boundary. A partial refund followed by refunding the full remaining renewal payment left that projection and boundary unchanged and produced no refund entries in the licensing event ledger. C8-09 is complete.
+
+## Provisional 1.4.1 Early Access candidate — 2026-10-03
+
+The first candidate built under ADR-011 is recorded in `C8-1.4.1-EARLY-ACCESS-CANDIDATE.md`. It was built from commit `a9ab136d43de9777dbf970c3b6ddef091baebb90`, passed the matching GitLab pipeline, passed the complete local gate, and produced SHA-256 `CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7`. Authenticode reports `NotSigned`, as the Early Access disclosure requires, and Microsoft Defender found no threats. It remains unpublished until the exact artifact passes disposable-profile and public-origin acceptance.
 
 ## Sandbox payment procedure
 
