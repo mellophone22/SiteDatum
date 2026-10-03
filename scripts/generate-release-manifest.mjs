@@ -46,11 +46,12 @@ function repositoryPath(value, label) {
 
 function authenticodeStatus(installer) {
   if (process.platform !== 'win32') fail('Authenticode inspection requires Windows');
-  const script = '$signature = Get-AuthenticodeSignature -LiteralPath $args[0]; $signature.Status.ToString()';
+  const quotedInstaller = `'${installer.replaceAll("'", "''")}'`;
+  const script = `(Get-AuthenticodeSignature -LiteralPath ${quotedInstaller}).Status.ToString()`;
   const shells = ['pwsh.exe', 'powershell.exe'];
   for (const shell of shells) {
     try {
-      return normalizeAuthenticodeStatus(execFileSync(shell, ['-NoProfile', '-NonInteractive', '-Command', script, installer], {
+      return normalizeAuthenticodeStatus(execFileSync(shell, ['-NoProfile', '-NonInteractive', '-Command', script], {
         encoding: 'utf8',
         windowsHide: true,
       }));
