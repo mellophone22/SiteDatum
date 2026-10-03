@@ -20,6 +20,8 @@ frontend_quality:
   variables:
     npm_config_cache: "$CI_PROJECT_DIR/.npm"
   script:
+    - test ! -e "assets/templates/Blank RFI.xls"
+    - test ! -e "src-tauri/resources/templates/blank-rfi-template.pdf"
     - npm ci --prefer-offline --no-audit
     - npm audit --audit-level=high
     - npm run lint

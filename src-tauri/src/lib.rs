@@ -14,6 +14,7 @@ mod recovery;
 mod reports;
 mod rfi;
 mod rfi_pdf;
+mod rfi_pdf_settings;
 mod submittal;
 mod task;
 mod work_item;
@@ -30,6 +31,7 @@ use persistence::Database;
 use project::{Project, ProjectFolderPreview, ProjectInput};
 use project_root::{validate_project_root, ProjectRootSetting, ProjectRootValidation};
 use rfi::{AttachmentReference, Rfi, RfiInput};
+use rfi_pdf_settings::{RfiPdfSettings, RfiTemplateMode};
 use submittal::{AttachmentReference as SubmittalAttachmentReference, Submittal, SubmittalInput};
 use task::{AttentionSection, Task, TaskInput};
 use tauri::Manager;
@@ -186,6 +188,33 @@ fn save_project_root(
         "Project root setting saved.",
     );
     Ok(saved)
+}
+
+#[tauri::command]
+fn get_rfi_pdf_settings(state: tauri::State<'_, AppState>) -> AppResult<RfiPdfSettings> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .get_rfi_pdf_settings()
+}
+
+#[tauri::command]
+fn save_rfi_pdf_settings(
+    settings: RfiPdfSettings,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<RfiPdfSettings> {
+    if settings.template_mode == RfiTemplateMode::Custom {
+        require_feature(
+            current_commercial_access(&state)?,
+            CommercialFeature::ProfessionalReports,
+        )?;
+    }
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .save_rfi_pdf_settings(settings)
 }
 
 #[tauri::command]
@@ -578,8 +607,9 @@ fn export_rfi_pdf(
         .map_err(|_| AppError::internal("Database state is unavailable."))?;
     let rfi = database.get_rfi(&id)?;
     let project = database.get_project(&rfi.project_id)?;
+    let settings = database.get_rfi_pdf_settings()?;
     let destination = std::path::Path::new(&output_path);
-    rfi_pdf::write(&rfi, &project, destination)?;
+    rfi_pdf::write(&rfi, &project, &settings, destination)?;
     if let Err(error) = database.add_rfi_attachment(&id, &output_path) {
         return Err(AppError::from_technical(
             "RFI_PDF_REFERENCE_FAILED",
@@ -1116,6 +1146,8 @@ pub fn run() {
             get_project_root,
             validate_project_root_command,
             save_project_root,
+            get_rfi_pdf_settings,
+            save_rfi_pdf_settings,
             preview_project_folder,
             list_projects,
             create_project,

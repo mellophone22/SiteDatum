@@ -12,6 +12,7 @@ use crate::note_contact::{self, ActivityEvent, Contact, ContactInput, Note, Note
 use crate::project::{Project, ProjectInput};
 use crate::project_root::ProjectRootSetting;
 use crate::rfi::{self, AttachmentReference, Rfi, RfiInput};
+use crate::rfi_pdf_settings::{self, RfiPdfSettings};
 use crate::submittal::{
     self, AttachmentReference as SubmittalAttachmentReference, Submittal, SubmittalInput,
 };
@@ -76,6 +77,32 @@ impl Database {
         Ok(ProjectRootSetting {
             path: Some(path.to_owned()),
         })
+    }
+    pub fn get_rfi_pdf_settings(&self) -> AppResult<RfiPdfSettings> {
+        let value = self
+            .connection
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = ?1",
+                [rfi_pdf_settings::SETTINGS_KEY],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(database_error)?;
+        rfi_pdf_settings::decode(value)
+    }
+    pub fn save_rfi_pdf_settings(&mut self, settings: RfiPdfSettings) -> AppResult<RfiPdfSettings> {
+        let (settings, value) = rfi_pdf_settings::encode(settings)?;
+        let transaction = self.connection.transaction().map_err(database_error)?;
+        transaction.execute(
+            "INSERT INTO app_settings (key, value, updated_at_utc) VALUES (?1, ?2, strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at_utc = excluded.updated_at_utc",
+            [rfi_pdf_settings::SETTINGS_KEY, value.as_str()],
+        ).map_err(database_error)?;
+        transaction.execute(
+            "INSERT INTO activity_events (event_type, entity_type, entity_id, summary, occurred_at_utc) VALUES ('rfi.pdf_settings.saved', 'setting', ?1, 'RFI PDF settings updated', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+            [rfi_pdf_settings::SETTINGS_KEY],
+        ).map_err(database_error)?;
+        transaction.commit().map_err(database_error)?;
+        Ok(settings)
     }
     pub fn list_projects(&self, include_archived: bool) -> AppResult<Vec<Project>> {
         let mut statement = self.connection.prepare("SELECT id, number, name, status, phase, custom_phase_name, customer, general_contractor, engineer, project_manager, superintendent, location, start_date, target_date, description, important_notes, project_path, is_pinned, archived_at_utc, created_at_utc, updated_at_utc FROM projects WHERE (?1 = 1 OR archived_at_utc IS NULL) ORDER BY is_pinned DESC, updated_at_utc DESC").map_err(database_error)?;
