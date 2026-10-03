@@ -21,7 +21,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-07 | Uninstall/reinstall recovery | Reinstall without consuming an extra device and without deleting workspace data | Local uninstall/reinstall recovery passed; licensed-device accounting remains pending |
 | C8-08 | Offline behavior | Disconnect network; verify CRUD, search, backup/export, entitlement grace, and honest status | Manual offline CRUD, search, backup, CSV export, and reconnect pass 2026-10-02 |
 | C8-09 | Payment lifecycle | Monthly and annual checkout, portal, failure, recovery, cancellation, expiration, and refund | Passed in the isolated Stripe/Supabase sandbox |
-| C8-10 | Two-device allowance | Activate two disposable device identities, reject third, deactivate and replace | Sandbox only; manual scenario pending |
+| C8-10 | Two-device allowance | Activate two disposable device identities, reject third, deactivate and replace | Hosted Supabase sandbox transactional pass 2026-10-03; no test identity or licensing rows retained |
 | C8-11 | Non-destructive downgrade | Existing records remain visible/editable; backup and essential export stay available | Free-mode record preservation, backup/restore, and CSV export passed; verified Pro-to-Free transition remains pending |
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
 | C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Founder operations runbook implemented; private support contact pending |
@@ -79,6 +79,19 @@ The unsigned internal NSIS candidate was exercised in the dedicated local `SiteD
 All billing work stays in the connected Stripe and Supabase sandboxes. Use fictional customer details and Stripe test payment methods. Confirm the Dashboard says sandbox/test mode before every mutation.
 
 Evidence should record event IDs, subscription state transitions, HTTP delivery status, entitlement plan/state, paid-through behavior, and anonymized device counts. Do not paste secrets, payment details, passwords, project records, databases, or private customer information into the repository, GitLab, or Slack.
+
+## C8-10 hosted device-allowance evidence — 2026-10-03
+
+The linked `SiteDatum Licensing Test` Supabase sandbox ran `supabase/tests/c8_device_allowance.sql` through the hosted database boundary. The acceptance script uses one fictional Auth subject, a provider-neutral fictional Pro subscription, and deterministic disposable fingerprint hashes inside a single transaction.
+
+- The first device activated and a repeat request reused the same device without consuming another slot.
+- A distinct second device activated.
+- A third active device was rejected with `LICENSING_DEVICE_LIMIT_REACHED`.
+- Deactivating the first device removed its entitlement association.
+- The previously rejected fingerprint then activated as the replacement, retained Pro entitlement, and restored the active count to exactly two.
+- Every assertion is fail-closed through a raised database exception. The transaction was rolled back, and a separate read-only check confirmed zero matching rows in both `auth.users` and `licensing.customers`.
+
+This closes the authoritative hosted allowance/replacement rule. A future native multi-profile exercise may supplement the evidence for Windows Credential Manager behavior, but it is not required to repeat the already verified server limit.
 
 ## Stop conditions
 

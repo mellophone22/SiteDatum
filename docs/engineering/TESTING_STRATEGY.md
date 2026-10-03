@@ -38,6 +38,8 @@ Release-safety coverage builds a representative version-9 workspace with project
 
 GitLab runs both Supabase pgTAP files on a disposable database inside an ephemeral hosted-runner VM. The CI job uses the pinned repository CLI, applies only committed migrations, has no hosted-project credentials, and destroys its local test volumes after completion. Persistent self-managed privileged runners are outside the accepted security boundary.
 
+The operator-run C8 device allowance acceptance uses `supabase/tests/c8_device_allowance.sql` against the linked licensing sandbox. It creates a fictional Auth subject and subscription inside a transaction, asserts activation, same-device reuse, the two-device ceiling, third-device rejection, ownership-scoped deactivation, replacement activation, and entitlement availability, then rolls back. A separate read-only query verifies that no test Auth or licensing customer remains. The script never contacts Stripe, uses no live-mode resource, and stores no project or customer content.
+
 The production gate builds both Windows bundle formats. Live UI automation was attempted during the final review but the host's trusted computer-control RPC service was not configured (`sky`); source-level keyboard/focus review and the Tauri development/runtime checks were completed, and the external automation limitation is recorded in `FINAL_VERIFICATION.md`.
 
 ## WP13-WP18 verified coverage
