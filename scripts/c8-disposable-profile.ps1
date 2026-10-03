@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$InstallerPath = (Join-Path $PSScriptRoot '..\src-tauri\target\release\bundle\nsis\SiteDatum_1.4.0_x64-setup.exe'),
+    [string]$InstallerPath = (Join-Path $PSScriptRoot '..\src-tauri\target\release\bundle\nsis\SiteDatum_1.4.1_x64-setup.exe'),
     [string]$TestRoot = (Join-Path $env:TEMP ('SiteDatum-C8-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))),
     [switch]$Execute,
     [switch]$SmokeOnly,

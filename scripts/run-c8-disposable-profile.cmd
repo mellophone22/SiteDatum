@@ -6,7 +6,7 @@ cd /d "%~dp0"
 echo Starting the SiteDatum C8 disposable-profile test...
 echo.
 
-pwsh.exe -NoProfile -File "%~dp0c8-disposable-profile.ps1" -InstallerPath "%~dp0SiteDatum_1.4.0_x64-setup.exe" -Execute -DisposableProfileAcknowledged
+pwsh.exe -NoProfile -File "%~dp0c8-disposable-profile.ps1" -InstallerPath "%~dp0SiteDatum_1.4.1_x64-setup.exe" -Execute -DisposableProfileAcknowledged
 set "siteDatumExitCode=%ERRORLEVEL%"
 
 echo.
