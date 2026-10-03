@@ -12,13 +12,13 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 
 | ID | Gate | Evidence | Current state |
 |---|---|---|---|
-| C8-01 | Candidate provenance | Clean commit, matching package/Tauri/Rust version, installer hash | Provisional 1.4.1 candidate recorded from clean commit `a9ab136`; disposable-profile acceptance and release tag pending |
+| C8-01 | Candidate provenance | Clean commit, matching package/Tauri/Rust version, installer hash | 1.4.1 candidate recorded from clean commit `a9ab136`; copied hash and disposable-profile acceptance passed; release tag pending |
 | C8-02 | Secret and environment boundary | GitLab secret detection plus repository live-token scan | Automated preflight and CI |
 | C8-03 | Frontend quality | Site validator, lint, Vitest, production build | Automated full preflight |
 | C8-04 | Native quality | Rust format and locked test suite | Automated full preflight |
 | C8-05 | Clean-profile install | Install internal candidate for a disposable Windows user; complete first run | Manual pass 2026-10-02 on dedicated `SiteDatumC8` profile |
 | C8-06 | Upgrade and migration | Upgrade representative prior-schema workspace; verify snapshot, records, and integrity | Automated representative schema-v9 to schema-v10 upgrade passed 2026-10-03; corrected-candidate reinstall separately preserved current records |
-| C8-07 | Uninstall/reinstall recovery | Reinstall without consuming an extra device and without deleting workspace data | Local uninstall/reinstall recovery passed; licensed-device accounting remains pending |
+| C8-07 | Uninstall/reinstall recovery | Reinstall without consuming an extra device and without deleting workspace data | Exact 1.4.1 candidate uninstall/reinstall preserved the fictional workspace and verified Pro entitlement; hosted device-accounting rules passed under C8-10 |
 | C8-08 | Offline behavior | Disconnect network; verify CRUD, search, backup/export, entitlement grace, and honest status | Manual offline CRUD, search, backup, CSV export, and reconnect pass 2026-10-02 |
 | C8-09 | Payment lifecycle | Monthly and annual checkout, portal, failure, recovery, cancellation, expiration, and refund | Passed in the isolated Stripe/Supabase sandbox |
 | C8-10 | Two-device allowance | Activate two disposable device identities, reject third, deactivate and replace | Hosted Supabase sandbox transactional pass 2026-10-03; no test identity or licensing rows retained |
@@ -26,7 +26,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
 | C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Passed 2026-10-03: private inbox delivery verified; redacted public intake and content-free incident workflow implemented |
 | C8-14 | Legal and public surfaces | Founder-approved policies and publisher contacts | Passed 2026-10-03: policies effective; founder decision to proceed without qualified legal review recorded as accepted risk |
-| C8-15 | Controlled Early Access distribution | Pre-purchase and pre-download unsigned disclosure; immutable artifact metadata; public-origin install and refund/support evidence | Route approved in ADR-011; final artifact and end-to-end evidence pending |
+| C8-15 | Controlled Early Access distribution | Pre-purchase and pre-download unsigned disclosure; immutable artifact metadata; public-origin install and refund/support evidence | Exact 1.4.1 artifact passed local disposable-profile acceptance; immutable hosting and public-origin verification pending |
 
 ## Disposable-profile procedure
 
@@ -76,7 +76,13 @@ The unsigned internal NSIS candidate was exercised in the dedicated local `SiteD
 
 ## Provisional 1.4.1 Early Access candidate — 2026-10-03
 
-The first candidate built under ADR-011 is recorded in `C8-1.4.1-EARLY-ACCESS-CANDIDATE.md`. It was built from commit `a9ab136d43de9777dbf970c3b6ddef091baebb90`, passed the matching GitLab pipeline, passed the complete local gate, and produced SHA-256 `CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7`. Authenticode reports `NotSigned`, as the Early Access disclosure requires, and Microsoft Defender found no threats. It remains unpublished until the exact artifact passes disposable-profile and public-origin acceptance.
+The first candidate built under ADR-011 is recorded in `C8-1.4.1-EARLY-ACCESS-CANDIDATE.md`. It was built from commit `a9ab136d43de9777dbf970c3b6ddef091baebb90`, passed the matching GitLab pipeline, passed the complete local gate, and produced SHA-256 `CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7`. Authenticode reports `NotSigned`, as the Early Access disclosure requires, and Microsoft Defender found no threats.
+
+The exact copied artifact then passed manual acceptance in the dedicated `SiteDatumC8` profile. The guarded runner confirmed the expected hash and `NotSigned` state and correctly refused unattended execution because version 1.4.0 was already installed. A deliberate direct install upgraded that existing profile to 1.4.1. No SmartScreen prompt appeared on this test device; that observation does not predict warning or policy behavior on another computer. SiteDatum reopened directly into the existing fictional workspace, reported version 1.4.1, and retained both tasks after filters were cleared, the RFI, the submittal, and the registered file.
+
+The neutral SiteDatum RFI PDF exported successfully without the removed company-specific template. While the sandbox Pro entitlement remained verified, a customer-owned one-page PDF was selected as the temporary custom template, validated without copying or modifying the source, and produced a readable custom-layout export. The setting was restored to the SiteDatum layout after the test. Uninstall left the fictional project folder and ordinary files intact; reinstalling the exact 1.4.1 candidate skipped first-run setup, reopened the existing workspace with all checked records, and retained the expected verified Pro entitlement.
+
+The candidate remains unpublished. C8-15 still requires immutable hosting, canonical-page artifact metadata, a fresh download from the public origin, digest comparison against the recorded candidate, and public-path install/support evidence.
 
 ## Sandbox payment procedure
 
