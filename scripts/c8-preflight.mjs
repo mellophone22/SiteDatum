@@ -86,13 +86,25 @@ assert('C8-LEGAL-PACKAGE', [
   'no separate fixed SiteDatum refund window',
   'Warranty and liability',
   'Qualified legal review waived',
+  'Unsigned Early Access distribution',
+  'controlled unsigned Windows Early Access risk position',
 ].every((statement) => legalReviewPackage.includes(statement)),
   'founder policy decisions and legal-review risk acceptance are recorded',
   'legal package is missing a founder decision or risk-acceptance record');
 
 const c6 = read('docs/engineering/C6-RELEASE-SAFETY.md');
-assert('C8-DISTRIBUTION-HOLD', c6.includes('trusted public distribution explicitly deferred'),
-  'unsigned internal installer is not represented as trusted public distribution', 'C6 public-distribution hold is missing');
+const earlyAccessDecision = read('docs/engineering/ADR-011-CONTROLLED-UNSIGNED-EARLY-ACCESS.md');
+assert('C8-EARLY-ACCESS-BOUNDARY', [
+  'controlled unsigned Early Access route approved but not yet opened',
+  'must not instruct a customer to disable or weaken Windows or organizational security controls',
+  'version, source commit, SHA-256 digest, Authenticode status, and publication date',
+].every((statement) => c6.includes(statement)) && [
+  'disclosed before purchase, again before download',
+  'Customers are told not to disable Microsoft Defender',
+  'Automatic application updating is not enabled',
+].every((statement) => earlyAccessDecision.includes(statement)),
+  'controlled unsigned Early Access policy and safety boundaries are recorded',
+  'unsigned Early Access decision or customer safeguards are incomplete');
 
 const operationsRunbook = read('docs/engineering/FOUNDER-OPERATIONS-RUNBOOK.md');
 assert('C8-OPERATIONS-RUNBOOK', [
@@ -136,9 +148,9 @@ assert('C8-PROFILE-RUNNER', [
 if (process.platform === 'win32' && existsSync(installer)) {
   try {
     const signature = execFileSync('pwsh.exe', ['-NoProfile', '-Command', `(Get-AuthenticodeSignature -LiteralPath '${installer.replaceAll("'", "''")}').Status`], { encoding: 'utf8', windowsHide: true }).trim();
-    record('C8-SIGNATURE', 'deferred', `installer signature status is ${signature}; public release remains blocked by C6`);
+    record('C8-SIGNATURE', 'deferred', `installer signature status is ${signature}; Early Access publication still requires final C8-15 artifact evidence`);
   } catch {
-    record('C8-SIGNATURE', 'deferred', 'Authenticode inspection is unavailable on this host; public release remains blocked by C6');
+    record('C8-SIGNATURE', 'deferred', 'Authenticode inspection is unavailable on this host; Early Access publication still requires final C8-15 artifact evidence');
   }
 } else {
   record('C8-SIGNATURE', 'deferred', 'Windows Authenticode inspection requires the Windows candidate host');

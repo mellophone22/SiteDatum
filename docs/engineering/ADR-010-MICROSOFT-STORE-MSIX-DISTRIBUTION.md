@@ -2,7 +2,7 @@
 
 ## Status
 
-Deferred on 2026-10-02 before Partner Center registration or package-identity reservation.
+Deferred on 2026-10-02 before Partner Center registration or package-identity reservation. Retained as the preferred future trusted general-availability route; `ADR-011-CONTROLLED-UNSIGNED-EARLY-ACCESS.md` separately authorizes a constrained unsigned Early Access channel.
 
 Microsoft's current onboarding guidance reserves Individual developer accounts for non-commercial distribution and directs independent developers operating in relation to a business, trade, or profession to Company accounts. SiteDatum is a commercial product, but no verified business entity is currently available for Company-account enrollment. Public Store packaging therefore remains on hold rather than using an unsuitable account type.
 
@@ -18,7 +18,7 @@ The following is the preferred no-recurring-signing-cost design once SiteDatum h
 
 1. SiteDatum's public Windows distribution channel is a Microsoft Store MSIX package.
 2. Microsoft signs the submitted MSIX after certification and distributes Store updates. SiteDatum does not purchase Azure Artifact Signing while Store distribution remains sufficient.
-3. The existing NSIS build remains an internal acceptance and recovery artifact. It is not represented as a trusted public production installer while unsigned.
+3. The existing NSIS build remains the internal acceptance and recovery artifact. ADR-011 permits the same verified artifact in a controlled unsigned Early Access channel, but it is not represented as a trusted public production installer.
 4. Packaging uses Microsoft's `winapp` CLI with the release executable produced from the verified Tauri commit.
 5. `Package.appxmanifest` must use the exact case-sensitive package identity and publisher values assigned in Partner Center after the SiteDatum product name is reserved. No invented identity or placeholder manifest may enter a release.
 6. Local MSIX testing may use a self-signed development certificate that is generated and trusted only on disposable operator-controlled machines. Development certificates and passwords remain ignored and must never be published or treated as production trust.
@@ -27,11 +27,11 @@ The following is the preferred no-recurring-signing-cost design once SiteDatum h
 
 ## Consequences
 
-- Development, local acceptance, and GitLab quality verification may continue while public distribution is deferred.
+- Development, local acceptance, GitLab quality verification, and the separately controlled ADR-011 Early Access path may continue while Store distribution is deferred.
 - No Partner Center account, Store product identity, Azure signing resource, production certificate, or public release is created by this decision.
 - A free Partner Center developer account, identity verification, product-name reservation, and Store-assigned package identity are prerequisites for generating the committed release manifest.
 - MSIX installation and update behavior must be tested independently of the existing NSIS path, especially local database persistence and file-system access.
 - The Store controls certification, production signing, hosting, and update rollout for the public MSIX channel.
-- Direct public distribution outside the Store still requires a separately trusted signing method and is not authorized by this decision.
+- Trusted direct general-availability distribution outside the Store still requires a separately approved signing method. The limited unsigned Early Access exception is governed only by ADR-011.
 - The Tauri updater is not used for the Store package; Store update delivery avoids a second updater-signing key and competing update mechanisms.
 

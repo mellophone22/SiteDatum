@@ -1,12 +1,12 @@
 # C7 — Commercial surfaces
 
-**Status:** Implemented locally; policies founder-approved and effective; public hosting remains deferred — 2026-10-03
+**Status:** Implemented and hosted; controlled unsigned Early Access route approved but purchase/download remain closed pending a final immutable candidate — 2026-10-03
 
 ## Delivered surface
 
 The repository now includes a static commercial site under `site/`. Its selected visual direction is **Command Center Proof**: a restrained product page centered on a real SiteDatum application capture, a single honest development call to action, a compact proof band, an interactive workflow explanation, the approved Free/Pro matrix, and explicit Windows requirements.
 
-The page does not offer purchase or download controls. Public distribution remains deferred under C6 until a trusted Windows signing route is available. The only external action links to the public GitLab repository or its public issue tracker.
+The page does not yet offer purchase or download controls because no final Early Access artifact has been published. It now gives the required pre-purchase warning that the Windows installer will be unsigned, may trigger Microsoft Defender SmartScreen, and may be completely blocked by Smart App Control or organizational policy. A dedicated Early Access guide repeats the warning before download, prohibits weakening device security, explains artifact verification, and routes policy-blocked installation to private support and the refund process.
 
 ## Product claims and privacy boundary
 
@@ -27,11 +27,11 @@ Privacy, terms, and cancellation/refund pages are founder-approved and effective
 
 ## Verification
 
-Run `npm run test:site`. The validator checks all five pages, local references, required product statements, and policy-draft labels. GitLab frontend quality also runs this check.
+Run `npm run test:site`. The validator checks all six pages, local references, the Early Access disclosures, required product statements, and policy-draft labels. GitLab frontend quality also runs this check.
 
 ## Remaining launch gates
 
 1. Keep the published private support inbox and its recovery method available to the founder.
-2. Select and configure public hosting and its domain.
-3. Complete the C6 trusted Windows signing/distribution gate.
-4. Replace the development-only call to action only after a signed public release is genuinely available.
+2. Produce the immutable Early Access candidate and publish its version, commit, SHA-256, Authenticode status, and date.
+3. Put the same unsigned-installer disclosure into the real hosted checkout before accepting payment.
+4. Verify the public-origin download/install and policy-blocked refund/support paths before replacing the development-only call to action.

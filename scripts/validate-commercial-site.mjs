@@ -5,7 +5,7 @@ import process from 'node:process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const site = resolve(root, 'site');
-const pages = ['index.html', 'support.html', 'privacy.html', 'terms.html', 'refunds.html'];
+const pages = ['index.html', 'early-access.html', 'support.html', 'privacy.html', 'terms.html', 'refunds.html'];
 const failures = [];
 
 const redirects = await readFile(resolve(site, '.htaccess'), 'utf8');
@@ -32,8 +32,21 @@ for (const page of pages) {
 }
 
 const index = await readFile(resolve(site, 'index.html'), 'utf8');
-for (const required of ['Public distribution is deferred', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.0 application screen']) {
+for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.0 application screen']) {
   if (!index.includes(required)) failures.push(`index.html: missing approved statement: ${required}`);
+}
+
+const earlyAccess = await readFile(resolve(site, 'early-access.html'), 'utf8');
+for (const required of [
+  'unsigned Windows Early Access build',
+  'before purchasing',
+  'may block installation completely',
+  'Do not disable Microsoft Defender',
+  'SHA-256',
+  'No installer is published yet',
+  'supportsitedatum@protonmail.com',
+]) {
+  if (!earlyAccess.includes(required)) failures.push(`early-access.html: missing safety disclosure: ${required}`);
 }
 
 const support = await readFile(resolve(site, 'support.html'), 'utf8');
@@ -63,6 +76,8 @@ const legalRequirements = {
     'supportsitedatum@protonmail.com',
   ],
   'terms.html': [
+    'Windows Early Access',
+    'without a trusted Windows publisher signature',
     'Subscriptions and renewal',
     'Devices and connectivity',
     'Cancellation and expiration',
@@ -73,6 +88,8 @@ const legalRequirements = {
   ],
   'refunds.html': [
     'Merchant of record',
+    'Unsigned-installer compatibility',
+    'cannot safely install the build',
     'Refund requests',
     'Effect of a refund',
     'supportsitedatum@protonmail.com',

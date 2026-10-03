@@ -1,6 +1,6 @@
 # C6 — Release safety foundation
 
-Status: engineering safety foundation implemented; trusted public distribution explicitly deferred
+Status: engineering safety foundation implemented; controlled unsigned Early Access route approved but not yet opened
 
 ## Delivered boundary
 
@@ -21,11 +21,15 @@ The Supabase pgTAP suite runs on GitLab.com's ephemeral `saas-linux-small-amd64`
 
 ## Windows distribution boundary
 
-`ADR-010-MICROSOFT-STORE-MSIX-DISTRIBUTION.md` records a Microsoft Store MSIX package as the preferred future public Windows channel. Microsoft would sign the certified package and provide Store update delivery, avoiding a recurring external code-signing charge and eliminating the need for a second application updater inside the Store build. The unsigned NSIS package remains useful for internal acceptance and recovery testing but is not a trusted public production channel.
+`ADR-011-CONTROLLED-UNSIGNED-EARLY-ACCESS.md` authorizes a narrowly scoped direct-download Early Access channel for the verified NSIS package. The channel must disclose before purchase and download that the installer is unsigned, that Windows may warn or block it, and that managed devices may not permit installation. It must never be described as trusted, signed, Microsoft-certified, or generally available. Support must not instruct a customer to disable or weaken Windows or organizational security controls.
+
+Every published Early Access installer must be byte-for-byte identical to a candidate that passed the complete local C8 gate and the matching GitLab pipeline. The canonical HTTPS release page must publish its version, source commit, SHA-256 digest, Authenticode status, and publication date. A rebuild or repackaging is a new candidate. Automatic application updating remains disabled for this channel; upgrades are manually obtained as separately verified installers.
+
+`ADR-010-MICROSOFT-STORE-MSIX-DISTRIBUTION.md` remains the preferred future trusted general-availability route. Microsoft would sign a certified MSIX and provide Store updates without a recurring external code-signing charge. That later route does not change SiteDatum's local-first data boundary.
 
 MSIX packaging will use Microsoft's `winapp` CLI after Partner Center assigns SiteDatum's exact case-sensitive package identity and publisher values. Those values must be copied from the reserved Store product; the repository will not contain a fabricated production identity. Local package tests may use a self-signed development certificate only on disposable operator-controlled machines.
 
-Public distribution is currently deferred because SiteDatum does not yet have a verified business publisher for a Microsoft Store Company account, and its commercial subscription model is not appropriate for Microsoft's non-commercial Individual-account path. No Partner Center registration, Store identity, Azure signing resource, or signing expense has been created. Development and internal acceptance may continue, but an unsigned installer must not be promoted as a trusted public production release.
+The founder does not currently qualify for the intended Microsoft Store Company-account path and will not use an unsuitable Individual-account classification. No Store identity, Azure signing resource, production certificate, or signing expense has been created. This no longer prevents a controlled unsigned Early Access release, but purchase and download remain closed until the real immutable artifact metadata, checkout disclosure, refund route, and public-origin download/install acceptance are complete.
 
 ## Dependency advisory policy
 
@@ -68,8 +72,17 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 
 ## Remaining C6 work
 
-- establish and verify the commercial publisher entity, or approve another trusted signing route;
-- create the free Partner Center developer account and reserve the SiteDatum product name;
-- add the Store-assigned identity manifest and `winapp` MSIX packaging workflow;
-- pass Windows App Certification Kit and native MSIX acceptance checks; and
-- submit the immutable MSIX package for Store certification and Microsoft-managed signing.
+For unsigned Early Access:
+
+- produce the final immutable candidate from a clean tagged commit and record its SHA-256 and `NotSigned` Authenticode state;
+- add the real artifact metadata and destination to the canonical public release page;
+- place the required disclosure in the actual pre-purchase and pre-download journey;
+- test the public-origin download, Windows warning or block behavior, install, upgrade, rollback, and refund/support path; and
+- keep the download closed whenever the artifact, digest, disclosure, or matching CI evidence is missing.
+
+For later trusted general availability:
+
+- establish a qualified publisher/signing route;
+- add the assigned package identity and packaging workflow for that route;
+- complete its certification and native acceptance checks; and
+- publish only the immutable signed artifact approved by that channel.

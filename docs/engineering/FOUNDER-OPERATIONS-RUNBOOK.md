@@ -24,7 +24,7 @@ Until production promotion is separately approved, every billing action uses the
 2. Confirm zero failed gates and review every deferred gate.
 3. Confirm GitLab frontend, Rust, Supabase, and secret-detection jobs passed for the same commit.
 4. Record the commit, version, installer SHA-256, Authenticode status, and test environment in private operator notes.
-5. Confirm the public download remains unavailable while C6 signing is deferred.
+5. Confirm an unsigned Early Access download remains unavailable unless the canonical page shows the exact candidate version, commit, SHA-256, `NotSigned` status, publication date, and required warning.
 
 ### Before each sandbox billing test
 
@@ -40,7 +40,17 @@ Until production promotion is separately approved, every billing action uses the
 2. Compare known Stripe sandbox subscriptions with the licensing projection; use reconciliation only when drift is suspected or after a delivery incident.
 3. Review Supabase function failures, rate-limit anomalies, and licensing audit outcomes without exporting private rows.
 4. Review dependency and secret-detection results from the latest GitLab pipeline.
-5. Confirm no legal draft is presented as effective and no unsigned installer is presented as a trusted public release.
+5. Confirm no legal draft is presented as effective and no unsigned installer is presented as signed, Microsoft-certified, trusted, or generally available.
+
+### Before opening or changing an Early Access download
+
+1. Confirm `npm run audit:c8:full` and the matching GitLab pipeline passed for the exact candidate commit.
+2. Calculate SHA-256 from the immutable installer and confirm Authenticode reports `NotSigned`.
+3. Confirm the canonical HTTPS release page and the actual checkout both disclose the unsigned status before payment or download.
+4. Download the file from its public origin and confirm the downloaded digest exactly matches the published digest.
+5. Exercise both outcomes on disposable Windows profiles: the warning path when an override is available and the blocked path when security policy refuses execution.
+6. Never tell a customer to disable Defender, Smart App Control, antivirus, or an organization policy. Route a blocked installation to private support and the published refund process.
+7. Remove the download immediately for an artifact mismatch, unexpected signature state, malware detection, misleading disclosure, compromised hosting, or failed install/upgrade/rollback test.
 
 ## Evidence record
 

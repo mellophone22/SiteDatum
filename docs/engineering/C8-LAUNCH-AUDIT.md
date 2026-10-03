@@ -1,10 +1,10 @@
 # C8 — Launch audit
 
-**Status:** Preflight harness implemented; release remains blocked pending manual and C6 distribution gates — 2026-10-03
+**Status:** Preflight harness implemented; unsigned Early Access route approved but remains blocked pending its final distribution evidence — 2026-10-03
 
 ## Purpose
 
-C8 gathers evidence that SiteDatum can be installed, upgraded, licensed, disconnected, recovered, and operated without risking customer work. It does not authorize live Stripe mode, real charges, production secrets, public distribution of an unsigned installer, or collection of project content.
+C8 gathers evidence that SiteDatum can be installed, upgraded, licensed, disconnected, recovered, and operated without risking customer work. It does not authorize live Stripe mode, real charges, production secrets, collection of project content, or publication of an unsigned installer outside the controlled Early Access rules in ADR-011.
 
 Run the static boundary check with `npm run audit:c8`. Run the complete local frontend and Rust gate with `npm run audit:c8:full`.
 
@@ -26,7 +26,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
 | C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Passed 2026-10-03: private inbox delivery verified; redacted public intake and content-free incident workflow implemented |
 | C8-14 | Legal and public surfaces | Founder-approved policies and publisher contacts | Passed 2026-10-03: policies effective; founder decision to proceed without qualified legal review recorded as accepted risk |
-| C8-15 | Trusted distribution | Microsoft-signed MSIX or separately approved trusted route | C6 deferred; launch blocker |
+| C8-15 | Controlled Early Access distribution | Pre-purchase and pre-download unsigned disclosure; immutable artifact metadata; public-origin install and refund/support evidence | Route approved in ADR-011; final artifact and end-to-end evidence pending |
 
 ## Disposable-profile procedure
 
@@ -61,7 +61,7 @@ Omit `-SmokeOnly` to leave the application open for the manual checklist. The ru
 
 ## Manual candidate evidence — 2026-10-02
 
-The unsigned internal NSIS candidate was exercised in the dedicated local `SiteDatumC8` Windows profile. The corrected candidate installer SHA-256 was `354697BA9F3072B282D8CC5669A10AB0F4F0D780156C4580E81A73AAF9D8CD59`; unsigned status remains expected only because trusted distribution is still deferred under C8-15.
+The unsigned internal NSIS candidate was exercised in the dedicated local `SiteDatumC8` Windows profile. The corrected candidate installer SHA-256 was `354697BA9F3072B282D8CC5669A10AB0F4F0D780156C4580E81A73AAF9D8CD59`. That evidence proves the tested internal candidate only; it does not make the file the final public Early Access artifact or authorize a download link.
 
 - Clean install, first-run root selection, fictional project creation, direct restart into the selected context, and normal per-user launch passed.
 - A task, RFI, submittal, registered ordinary Windows file, and project-control milestone persisted. An RFI optional-date serialization defect found during the run was corrected, regression-tested, repackaged, and verified in the same disposable profile.
@@ -99,6 +99,6 @@ Stop the audit and preserve evidence if any test causes record loss, overwrites 
 
 ## Launch decision
 
-C8 can report engineering readiness before every external gate is resolved, but public launch remains **NO-GO** until C8-15 is complete and every required manual release-candidate scenario passes. Deferred means unverified, not accepted.
+C8 can report engineering readiness before every external gate is resolved, but paid unsigned Early Access remains **NO-GO** until C8-15 is complete and every required manual release-candidate scenario passes. C8-11 remains pending and is not waived by the distribution decision. Trusted general availability remains deferred until a signed route is separately completed. Deferred means unverified, not accepted.
 
 Founder routine operations, incident severity, billing recovery, outage, security/privacy, communications, and launch hold points are defined in `FOUNDER-OPERATIONS-RUNBOOK.md`.

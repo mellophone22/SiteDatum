@@ -10,6 +10,8 @@ This package records verified product behavior, the founder’s policy decisions
 
 On 2026-10-03, Francisco Cabrera directed SiteDatum to bypass qualified legal approval and proceed with implementation. The founder accepts the risk that the founder-drafted Terms, Privacy Policy, and Cancellation/Refund Policy may require correction for a particular jurisdiction, distribution channel, provider term, or future product change. Mandatory legal rights remain unaffected, and future legal review may revise these policies.
 
+On 2026-10-03, the founder also approved a controlled unsigned Windows Early Access route instead of waiting for Microsoft Store Company-account eligibility or a paid signing service. The founder accepts the resulting installation friction, customer-trust, support, refund, and security-communication risk. This approval does not permit SiteDatum to call the build signed, trusted, certified, or generally available, and it does not permit support to advise customers to weaken device security.
+
 ## Verified product facts already reflected in the drafts
 
 - SiteDatum is single-user, local-first Windows software created by Francisco Cabrera.
@@ -22,6 +24,7 @@ On 2026-10-03, Francisco Cabrera directed SiteDatum to bypass qualified legal ap
 - Stripe Managed Payments is the intended merchant of record for eligible transactions. Supabase hosts the separate authentication and licensing boundary.
 - No product analytics, remote crash reporting, or operational telemetry are authorized for the initial release.
 - Private support, billing, and security intake is `supportsitedatum@protonmail.com`; external delivery has been verified.
+- The planned Windows Early Access installer is unsigned. Windows or organization policy may warn or block it, and this must be disclosed before purchase and download.
 
 ## Blocking founder and legal decisions
 
@@ -36,6 +39,7 @@ On 2026-10-03, Francisco Cabrera directed SiteDatum to bypass qualified legal ap
 | Policy-change notice | Material changes should be communicated before taking effect | Define delivery method, minimum notice where appropriate, acceptance mechanics, and treatment of existing paid periods. |
 | Privacy rights and international processing | Requests route privately; provider-controlled data may require provider action | Honor applicable mandatory rights and update the policy before expanding collection or launch markets. |
 | Qualified legal review waived | Founder elected to proceed without counsel on 2026-10-03 | This is a risk acceptance, not evidence of legal compliance. Revisit after any material provider, market, data-collection, or publisher-entity change. |
+| Unsigned Early Access distribution | Founder approved the controlled ADR-011 route on 2026-10-03, with pre-purchase and pre-download disclosure and no security-disable guidance | Confirm that the actual checkout and download journey use the approved warning, that the merchant supports the policy-blocked installation refund path, and that no listing implies trusted signing or Microsoft certification. |
 
 ## Founder-approved retention schedule for counsel to review
 
@@ -59,6 +63,7 @@ Backups must age out on a documented schedule after deletion from the active sys
 3. The final policy should use the merchant-approved refund window and preserve all mandatory regional rights rather than promise a period that the merchant or law does not support.
 4. A refund object alone does not delete local records or independently determine entitlement. Authoritative subscription state controls the plan projection.
 5. No support channel requests full payment-card information.
+6. A customer whose device or organization policy blocks the unsigned Early Access installer may request safe installation support or a refund through the original merchant workflow; support does not require disabling security controls.
 
 ## Implementation checklist
 
@@ -68,8 +73,9 @@ Backups must age out on a documented schedule after deletion from the active sys
 - [ ] Refund eligibility and regional withdrawal rights are approved.
 - [x] Founder approves Florida governing law, informal resolution, warranty, and liability language.
 - [x] Founder accepts proceeding without jurisdiction-specific legal review.
+- [x] Founder approves the controlled unsigned Windows Early Access risk position.
 - [x] Terms, Privacy, and Cancellation/Refund pages carry the matching effective date.
-- [ ] Checkout presents the applicable terms, renewal, cancellation, and refund disclosures before purchase.
+- [ ] Checkout presents the applicable terms, renewal, cancellation, refund, and unsigned-installer disclosures before purchase.
 - [ ] Public website and Store listing link to the effective policies, not review drafts.
 - [x] Founder approval and risk acceptance are recorded in this package and repository history.
 
