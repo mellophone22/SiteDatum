@@ -25,6 +25,7 @@ Until production promotion is separately approved, every billing action uses the
 3. Confirm GitLab frontend, Rust, Supabase, and secret-detection jobs passed for the same commit.
 4. Record the commit, version, installer SHA-256, Authenticode status, and test environment in private operator notes.
 5. Confirm an unsigned Early Access download remains unavailable unless the canonical page shows the exact candidate version, commit, SHA-256, `NotSigned` status, publication date, and required warning.
+6. Generate the content-free staged manifest with `npm run release:manifest -- --source-commit <candidate-commit>` from a clean repository. Keep the output private until disposable-profile acceptance is complete; manifest generation never uploads or publishes the installer.
 
 ### Before each sandbox billing test
 
