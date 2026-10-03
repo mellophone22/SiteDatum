@@ -160,9 +160,21 @@ Use `RELEASE_ROLLBACK_RUNBOOK.md`. Prefer a forward fix after a schema advance. 
 ## Communications
 
 - Public GitLab issues are appropriate only for reproducible software problems stripped of customer and billing information.
-- Slack may carry a status summary and content-free record ID, never secrets, provider payloads, private customer data, or workspace content.
-- Billing disputes, account recovery, and security reports require private channels before launch. Until those contacts exist, paid public launch is blocked.
+- The private customer-facing intake for billing disputes, account or entitlement recovery, and security/privacy reports is `supportsitedatum@protonmail.com`.
+- Keep the original message in the private support inbox. Assign a content-free record ID before referring to it in operator notes or Slack.
+- Slack may carry only the record ID, severity, environment, owner, status, and next-update time. Never forward or paste the customer's message, email address, secrets, provider payloads, private customer data, payment information, or workspace content.
+- If no private internal Slack channel is available, keep triage in the private inbox and private operator notes; never fall back to a public channel.
+- Reply from the support address. Ask only for the smallest redacted evidence needed, and never request a workspace database, project document, password, authentication code, or full payment-card information by email.
 - Every incident update should state environment, impact, safe workaround (if any), and next update time.
+
+### Support intake triage
+
+1. Classify the message as general support, billing/account, security/privacy, or software defect.
+2. Assign a content-free record ID and severity. Do not put the customer's name or email address in the record ID.
+3. For a public-safe software defect, reproduce it with fictional data before creating a GitLab issue; do not forward the customer's original message.
+4. Keep billing/account and security/privacy cases private. Escalate suspected secret exposure, cross-customer access, live-mode contact, or project-content collection as SEV-1.
+5. Record only redacted request/event identifiers that are necessary to diagnose the case. Never store authentication material or payment details.
+6. Close the case only after recording the resolution, remaining risk, and any safe customer follow-up.
 
 ## Launch-day hold points
 

@@ -88,6 +88,22 @@ assert('C8-OPERATIONS-RUNBOOK', [
   'founder operations, incident, billing, and launch-hold procedures are present',
   'founder operations runbook is incomplete');
 
+const support = read('site/support.html');
+const securityPolicy = read('SECURITY.md');
+const bugTemplate = read('.gitlab/issue_templates/Bug.md');
+assert('C8-PRIVATE-SUPPORT', [
+  'mailto:supportsitedatum@protonmail.com',
+  'Do not email passwords',
+].every((statement) => support.includes(statement)) && [
+  'supportsitedatum@protonmail.com',
+  'Do not open a public GitLab issue',
+].every((statement) => securityPolicy.includes(statement)) && [
+  'Do not include',
+  'supportsitedatum@protonmail.com',
+].every((statement) => bugTemplate.includes(statement)),
+  'private support contact and public-intake redaction boundaries are present',
+  'private support contact or public-intake safeguards are incomplete');
+
 const profileRunner = read('scripts/c8-disposable-profile.ps1');
 assert('C8-PROFILE-RUNNER', [
   'DisposableProfileAcknowledged',

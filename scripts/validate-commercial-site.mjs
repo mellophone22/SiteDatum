@@ -28,6 +28,17 @@ for (const required of ['Public distribution is deferred', '$15 monthly or $150 
   if (!index.includes(required)) failures.push(`index.html: missing approved statement: ${required}`);
 }
 
+const support = await readFile(resolve(site, 'support.html'), 'utf8');
+for (const required of [
+  'mailto:supportsitedatum@protonmail.com',
+  'billing questions',
+  'suspected security or privacy problems',
+  'Do not email passwords',
+  'issuable_template=Bug',
+]) {
+  if (!support.includes(required)) failures.push(`support.html: missing private-intake safeguard: ${required}`);
+}
+
 for (const page of ['privacy.html', 'terms.html', 'refunds.html']) {
   const source = await readFile(resolve(site, page), 'utf8');
   if (!source.includes('Founder/legal review draft — not yet effective')) failures.push(`${page}: policy draft status is not explicit`);

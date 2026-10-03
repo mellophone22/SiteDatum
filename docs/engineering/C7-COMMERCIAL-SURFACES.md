@@ -21,7 +21,7 @@ Screenshots are actual SiteDatum 1.4.0 application captures using illustrative p
 
 ## Support and policy status
 
-The support page points to the public GitLab issue tracker and prominently warns users not to post private project, customer, billing, or secret information. A private billing-support channel is still required before paid launch.
+The support page separates public, fictional-data software reports from private support. Billing, account or entitlement recovery, and security/privacy reports route to `supportsitedatum@protonmail.com`. The public GitLab bug template prominently warns users not to post private project, customer, billing, credential, or secret information. The founder runbook defines content-free internal triage and prohibits copying customer messages or private data into Slack or GitLab. External delivery to the private inbox was verified on 2026-10-03.
 
 Privacy, terms, and cancellation/refund pages are included only as review drafts. Each is explicitly labeled **Founder/legal review draft — not yet effective**. They must not be represented as effective policies until publisher identity, contact information, jurisdiction-specific terms, retention details, and merchant-of-record behavior have been reviewed and completed.
 
@@ -32,7 +32,7 @@ Run `npm run test:site`. The validator checks all five pages, local references, 
 ## Remaining launch gates
 
 1. Complete founder and qualified legal review of all policy drafts.
-2. Establish public support and private billing-support contact channels.
+2. Keep the published private support inbox and its recovery method available to the founder.
 3. Select and configure public hosting and its domain.
 4. Complete the C6 trusted Windows signing/distribution gate.
 5. Replace the development-only call to action only after a signed public release is genuinely available.

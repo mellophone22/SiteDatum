@@ -24,7 +24,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-10 | Two-device allowance | Activate two disposable device identities, reject third, deactivate and replace | Hosted Supabase sandbox transactional pass 2026-10-03; no test identity or licensing rows retained |
 | C8-11 | Non-destructive downgrade | Existing records remain visible/editable; backup and essential export stay available | Free-mode record preservation, backup/restore, and CSV export passed; verified Pro-to-Free transition remains pending |
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
-| C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Founder operations runbook implemented; private support contact pending |
+| C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Passed 2026-10-03: private inbox delivery verified; redacted public intake and content-free incident workflow implemented |
 | C8-14 | Legal and public surfaces | Founder/legal-approved policies and publisher contacts | Drafts only; launch blocker |
 | C8-15 | Trusted distribution | Microsoft-signed MSIX or separately approved trusted route | C6 deferred; launch blocker |
 
