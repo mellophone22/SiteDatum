@@ -1,0 +1,5 @@
+RewriteEngine On
+
+# Keep one public origin while preserving the requested path and query string.
+RewriteCond %{HTTP_HOST} ^www\.sitedatum\.site$ [NC]
+RewriteRule ^ https://sitedatum.site%{REQUEST_URI} [R=301,L,NE]

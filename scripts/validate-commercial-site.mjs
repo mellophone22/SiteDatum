@@ -8,6 +8,14 @@ const site = resolve(root, 'site');
 const pages = ['index.html', 'support.html', 'privacy.html', 'terms.html', 'refunds.html'];
 const failures = [];
 
+const redirects = await readFile(resolve(site, '.htaccess'), 'utf8');
+for (const required of [
+  'RewriteCond %{HTTP_HOST} ^www\\.sitedatum\\.site$ [NC]',
+  'RewriteRule ^ https://sitedatum.site%{REQUEST_URI} [R=301,L,NE]',
+]) {
+  if (!redirects.includes(required)) failures.push(`.htaccess: missing canonical redirect rule: ${required}`);
+}
+
 for (const page of pages) {
   const source = await readFile(resolve(site, page), 'utf8');
   for (const required of ['<meta name="viewport"', '<main', 'site.css']) {
