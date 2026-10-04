@@ -95,7 +95,7 @@ assert('C8-LEGAL-PACKAGE', [
 const c6 = read('docs/engineering/C6-RELEASE-SAFETY.md');
 const earlyAccessDecision = read('docs/engineering/ADR-011-CONTROLLED-UNSIGNED-EARLY-ACCESS.md');
 assert('C8-EARLY-ACCESS-BOUNDARY', [
-  'controlled unsigned Early Access route approved but not yet opened',
+  'completed for controlled unsigned Early Access; trusted signed general availability deferred',
   'must not instruct a customer to disable or weaken Windows or organizational security controls',
   'version, source commit, SHA-256 digest, Authenticode status, and publication date',
 ].every((statement) => c6.includes(statement)) && [

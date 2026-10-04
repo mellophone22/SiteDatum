@@ -90,36 +90,26 @@ Each register supports search, project filtering, constrained status and priorit
 
 ## Install
 
-SiteDatum is now hosted on [GitLab](https://gitlab.com/Kikito22/sitedatum). The current GitLab project is private, so you must be signed in with project access before downloading a release artifact.
+SiteDatum source is hosted publicly on [GitLab](https://gitlab.com/Kikito22/sitedatum). The controlled unsigned Windows Early Access installer is distributed only from the canonical SiteDatum HTTPS domain.
 
 ### Recommended: Windows installer
 
-1. Download [`SiteDatum_1.4.0_x64-setup.exe`](https://gitlab.com/Kikito22/sitedatum/-/raw/main/releases/1.4.0/SiteDatum_1.4.0_x64-setup.exe).
+1. Read the unsigned-installer warning and download [`SiteDatum_1.4.1_x64-setup.exe`](https://sitedatum.site/early-access.html).
 2. Optionally verify the download in PowerShell:
 
    ```powershell
-   Get-FileHash .\SiteDatum_1.4.0_x64-setup.exe -Algorithm SHA256
+   Get-FileHash .\SiteDatum_1.4.1_x64-setup.exe -Algorithm SHA256
    ```
 
    Expected SHA-256:
 
    ```text
-   913ABE895868D04BE3E7F7F1F27F464BF0DD4F3AD7C82A144F982D62C233D1F2
+   CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7
    ```
 
 3. Run the installer. Existing SiteDatum installations keep their local database, settings, backups, project-root configuration, and optional synchronization session.
 
-### Portable executable
-
-For a no-installer copy, download [`SiteDatum.exe`](https://gitlab.com/Kikito22/sitedatum/-/raw/main/releases/1.4.0/SiteDatum.exe). Its expected SHA-256 is:
-
-```text
-F7985DB5AAB5ED885625F4991B70C994F697207A3316B047A6BA47ACE14249E2
-```
-
-Both files, release notes, and the checksum manifest are available in the [`releases/1.4.0`](https://gitlab.com/Kikito22/sitedatum/-/tree/main/releases/1.4.0) directory.
-
-The 1.4.0 installer and executable are not code-signed, so Windows SmartScreen may show an unrecognized-publisher warning. Verify the SHA-256 value before running a downloaded file. Windows code signing and signed application updates remain required before the public paid launch.
+The 1.4.1 installer is not code-signed. Windows SmartScreen may warn, and Smart App Control, antivirus software, or organizational policy may block it. Do not disable or weaken those controls. Verify the SHA-256 value before installation and use the published [support](https://sitedatum.site/support.html) or [refund](https://sitedatum.site/refunds.html) route if the device cannot safely install it. Automatic updates are not enabled for this channel.
 
 ## Continue development on another workstation
 

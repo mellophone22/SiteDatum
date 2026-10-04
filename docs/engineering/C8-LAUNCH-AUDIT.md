@@ -12,7 +12,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 
 | ID | Gate | Evidence | Current state |
 |---|---|---|---|
-| C8-01 | Candidate provenance | Clean commit, matching package/Tauri/Rust version, installer hash | 1.4.1 candidate recorded from clean commit `a9ab136`; copied hash and disposable-profile acceptance passed; release tag pending |
+| C8-01 | Candidate provenance | Clean commit, matching package/Tauri/Rust version, installer hash | Passed: 1.4.1 candidate recorded from clean commit `a9ab136`; copied hash and disposable-profile acceptance passed; prerelease provenance tag `v1.4.1-early-access.1` identifies the exact source without representing a signed GA release |
 | C8-02 | Secret and environment boundary | GitLab secret detection plus repository live-token scan | Automated preflight and CI |
 | C8-03 | Frontend quality | Site validator, lint, Vitest, production build | Automated full preflight |
 | C8-04 | Native quality | Rust format and locked test suite | Automated full preflight |

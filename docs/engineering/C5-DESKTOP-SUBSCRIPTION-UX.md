@@ -1,6 +1,6 @@
 # C5 — Desktop subscription UX
 
-**Status:** Implemented locally; hosted account/checkout acceptance pending — 2026-10-01
+**Status:** Implemented and accepted in the isolated hosted sandbox — 2026-10-03
 
 ## Delivered vertical slice
 
@@ -35,7 +35,7 @@ Production key custody, environment promotion, code signing, updater signing, an
 
 Automated checks cover URL allowlisting, accountless Free status, provider-neutral entitlement evaluation, project/feature enforcement, existing persistence behavior, frontend lint, TypeScript/Vite build, and the full Rust suite.
 
-Hosted acceptance still requires one founder-controlled sandbox account:
+Hosted acceptance completed with the founder-controlled sandbox account:
 
 1. Create and confirm the licensing account from Settings.
 2. Sign in and open monthly Checkout; complete it with Stripe sandbox data only.
@@ -44,4 +44,4 @@ Hosted acceptance still requires one founder-controlled sandbox account:
 5. Repeat the annual checkout path on a clean sandbox customer or after cleanup.
 6. Exercise past-due, recovery, cancellation, expiration, offline grace, sign-out/sign-in recovery, and the two-device limit without using live mode.
 
-Until this manual pass succeeds, C5 remains locally implemented rather than commercially accepted.
+The complete monthly and annual lifecycle, portal, recovery, cancellation, expiration, offline grace, sign-out/sign-in recovery, and two-device boundary are recorded in `C8-LAUNCH-AUDIT.md`. The final Managed Payments Checkout compatibility check passed with the unsigned Early Access product identity visible. No live-mode resources or real charges were used.

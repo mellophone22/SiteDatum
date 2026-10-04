@@ -1,6 +1,6 @@
 # C6 — Release safety foundation
 
-Status: engineering safety foundation implemented; controlled unsigned Early Access route approved but not yet opened
+Status: completed for controlled unsigned Early Access; trusted signed general availability deferred
 
 ## Delivered boundary
 
@@ -29,7 +29,7 @@ Every published Early Access installer must be byte-for-byte identical to a cand
 
 MSIX packaging will use Microsoft's `winapp` CLI after Partner Center assigns SiteDatum's exact case-sensitive package identity and publisher values. Those values must be copied from the reserved Store product; the repository will not contain a fabricated production identity. Local package tests may use a self-signed development certificate only on disposable operator-controlled machines.
 
-The founder does not currently qualify for the intended Microsoft Store Company-account path and will not use an unsuitable Individual-account classification. No Store identity, Azure signing resource, production certificate, or signing expense has been created. This no longer prevents a controlled unsigned Early Access release, but purchase and download remain closed until the real immutable artifact metadata, checkout disclosure, refund route, and public-origin download/install acceptance are complete.
+The founder does not currently qualify for the intended Microsoft Store Company-account path and will not use an unsuitable Individual-account classification. No Store identity, Azure signing resource, production certificate, or signing expense has been created. This does not prevent the controlled unsigned Early Access release, whose immutable artifact metadata, Checkout disclosure, refund route, and public-origin download/install acceptance were completed on 2026-10-03.
 
 ## Dependency advisory policy
 
@@ -72,13 +72,13 @@ No visual comparison is required because the rendered UI is unchanged. GitLab mu
 
 ## Remaining C6 work
 
-For unsigned Early Access:
+Completed for unsigned Early Access:
 
-- produce the final immutable candidate from a clean tagged commit and record its SHA-256 and `NotSigned` Authenticode state;
-- add the real artifact metadata and destination to the canonical public release page;
-- place the required disclosure in the actual pre-purchase and pre-download journey;
-- test the public-origin download, Windows warning or block behavior, install, upgrade, rollback, and refund/support path; and
-- keep the download closed whenever the artifact, digest, disclosure, or matching CI evidence is missing.
+- the exact 1.4.1 candidate is identified by source commit, size, SHA-256, and `NotSigned` Authenticode state;
+- the canonical public page carries the real artifact metadata and HTTPS destination;
+- the actual pre-purchase and pre-download journey presents the required unsigned Early Access disclosure;
+- the public-origin download, install, upgrade/reinstall preservation, and refund/support journey passed; and
+- the release controls continue to fail closed whenever an artifact, digest, disclosure, or matching CI record is missing.
 
 For later trusted general availability:
 
