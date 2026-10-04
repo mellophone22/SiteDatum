@@ -54,14 +54,8 @@ for (const required of [
 }
 
 const checkout = await readFile(resolve(root, 'supabase/functions/_shared/checkout_session.ts'), 'utf8');
-for (const required of [
-  'custom_text[submit][message]',
-  'unsigned Windows installer',
-  'Do not disable security protections',
-  'sitedatum.site/early-access.html',
-]) {
-  if (!checkout.includes(required)) failures.push(`checkout_session.ts: missing pre-purchase safeguard: ${required}`);
-}
+if (!checkout.includes('managed_payments[enabled]')) failures.push('checkout_session.ts: Managed Payments must remain enabled');
+if (checkout.includes('custom_text[')) failures.push('checkout_session.ts: Managed Payments rejects custom_text parameters');
 
 const support = await readFile(resolve(site, 'support.html'), 'utf8');
 for (const required of [

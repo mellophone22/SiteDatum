@@ -1,6 +1,6 @@
 # C8 — Launch audit
 
-**Status:** Preflight harness implemented; unsigned Early Access route approved but remains blocked pending its final distribution evidence — 2026-10-03
+**Status:** Controlled unsigned Early Access distribution accepted; trusted signed general availability remains deferred — 2026-10-03
 
 ## Purpose
 
@@ -26,7 +26,7 @@ Run the static boundary check with `npm run audit:c8`. Run the complete local fr
 | C8-12 | Accessibility and scaling | Keyboard-critical paths and exact 200% Windows scaling | Manual keyboard-critical paths and all core screens passed at exact 200% scaling 2026-10-02 |
 | C8-13 | Support and incident response | Private billing path, redacted evidence, stop/rollback decisions | Passed 2026-10-03: private inbox delivery verified; redacted public intake and content-free incident workflow implemented |
 | C8-14 | Legal and public surfaces | Founder-approved policies and publisher contacts | Passed 2026-10-03: policies effective; founder decision to proceed without qualified legal review recorded as accepted risk |
-| C8-15 | Controlled Early Access distribution | Pre-purchase and pre-download unsigned disclosure; immutable artifact metadata; public-origin install and refund/support evidence | Exact 1.4.1 artifact passed local disposable-profile acceptance; immutable hosting and public-origin verification pending |
+| C8-15 | Controlled Early Access distribution | Pre-purchase and pre-download unsigned disclosure; immutable artifact metadata; public-origin install and refund/support evidence | Passed 2026-10-03: canonical Hostinger publication, byte-for-byte public-origin verification, disposable-profile installation, support/refund journey, and Managed Payments disclosure passed |
 
 ## Disposable-profile procedure
 
@@ -83,7 +83,11 @@ The exact copied artifact then passed manual acceptance in the dedicated `SiteDa
 
 The neutral SiteDatum RFI PDF exported successfully without the removed company-specific template. While the sandbox Pro entitlement remained verified, a customer-owned one-page PDF was selected as the temporary custom template, validated without copying or modifying the source, and produced a readable custom-layout export. The setting was restored to the SiteDatum layout after the test. Uninstall left the fictional project folder and ordinary files intact; reinstalling the exact 1.4.1 candidate skipped first-run setup, reopened the existing workspace with all checked records, and retained the expected verified Pro entitlement.
 
-The candidate remains unpublished. C8-15 still requires immutable hosting, canonical-page artifact metadata, a fresh download from the public origin, digest comparison against the recorded candidate, and public-path install/support evidence.
+The exact candidate is published at `https://sitedatum.site/downloads/SiteDatum_1.4.1_x64-setup.exe`. The canonical Early Access page presents the version, publication date, source commit, byte size, SHA-256 digest, `NotSigned` state, security warning, verification command, support route, and refund route before download. A cache-bypassed public-origin download returned 4,681,099 bytes and SHA-256 `CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7`; Windows reported `NotSigned`, matching the accepted candidate exactly.
+
+The public copy was then installed from the shared C8 test location in the disposable `SiteDatumC8` profile without disabling security controls. No warning appeared on this test device, SiteDatum opened successfully, and the existing fictional workspace and records remained intact. The public home, Early Access, support, refund, and release-manifest paths all returned HTTP 200.
+
+The initial Checkout disclosure implementation exposed a compatibility defect: Stripe Managed Payments rejects the `custom_text` parameter and the sandbox function returned HTTP 503 before session creation. The unsupported parameter was removed while preserving `managed_payments[enabled]=true`, covered by a focused regression test, and deployed as sandbox function version 6. Both sandbox products now identify themselves as `SiteDatum Pro — Unsigned Windows Early Access` and link to the canonical warning and refund terms. An independent sandbox API request created an open Managed Payments subscription Checkout Session, and the installed application opened Checkout showing the updated unsigned-product name and description. No payment was completed.
 
 ## Sandbox payment procedure
 
@@ -110,6 +114,6 @@ Stop the audit and preserve evidence if any test causes record loss, overwrites 
 
 ## Launch decision
 
-C8 can report engineering readiness before every external gate is resolved, but paid unsigned Early Access remains **NO-GO** until C8-15 is complete and every required manual release-candidate scenario passes. C8-11 is complete. Trusted general availability remains deferred until a signed route is separately completed. Deferred means unverified, not accepted.
+C8 engineering acceptance for the controlled unsigned Early Access route is complete. The exact 1.4.1 public installer and its disclosure/support/refund journey are **GO** for the approved Early Access channel. This decision does not authorize live Stripe mode or a real charge; billing remains sandbox-only until a separate live-commerce decision and configuration are completed. Trusted general availability remains deferred until a signed route is separately completed. Deferred means unverified, not accepted.
 
 Founder routine operations, incident severity, billing recovery, outage, security/privacy, communications, and launch hold points are defined in `FOUNDER-OPERATIONS-RUNBOOK.md`.

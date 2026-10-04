@@ -148,9 +148,9 @@ assert('C8-PROFILE-RUNNER', [
 if (process.platform === 'win32' && existsSync(installer)) {
   try {
     const signature = execFileSync('pwsh.exe', ['-NoProfile', '-Command', `(Get-AuthenticodeSignature -LiteralPath '${installer.replaceAll("'", "''")}').Status`], { encoding: 'utf8', windowsHide: true }).trim();
-    record('C8-SIGNATURE', 'deferred', `installer signature status is ${signature}; Early Access publication still requires final C8-15 artifact evidence`);
+    record('C8-SIGNATURE', 'deferred', `installer signature status is ${signature}; controlled C8-15 Early Access evidence is recorded, while trusted general availability remains deferred`);
   } catch {
-    record('C8-SIGNATURE', 'deferred', 'Authenticode inspection is unavailable on this host; Early Access publication still requires final C8-15 artifact evidence');
+    record('C8-SIGNATURE', 'deferred', 'Authenticode inspection is unavailable on this host; controlled C8-15 Early Access evidence is recorded, while trusted general availability remains deferred');
   }
 } else {
   record('C8-SIGNATURE', 'deferred', 'Windows Authenticode inspection requires the Windows candidate host');

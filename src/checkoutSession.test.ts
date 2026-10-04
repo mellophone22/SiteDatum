@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildCheckoutSessionParams,
-  EARLY_ACCESS_CHECKOUT_DISCLOSURE,
-} from "../supabase/functions/_shared/checkout_session";
+import { buildCheckoutSessionParams } from "../supabase/functions/_shared/checkout_session";
 
-describe("Stripe Checkout session disclosure", () => {
-  it("places the unsigned-installer warning beside the payment confirmation", () => {
+describe("Stripe Managed Payments Checkout session", () => {
+  it("uses only parameters supported by Managed Payments", () => {
     const params = buildCheckoutSessionParams({
       price: "price_test_monthly",
       correlation: "11111111-1111-4111-8111-111111111111",
@@ -14,10 +11,9 @@ describe("Stripe Checkout session disclosure", () => {
     });
 
     expect(params.get("mode")).toBe("subscription");
-    expect(params.get("custom_text[submit][message]")).toBe(EARLY_ACCESS_CHECKOUT_DISCLOSURE);
-    expect(EARLY_ACCESS_CHECKOUT_DISCLOSURE).toMatch(/unsigned Windows installer/i);
-    expect(EARLY_ACCESS_CHECKOUT_DISCLOSURE).toMatch(/Do not disable security protections/i);
-    expect(EARLY_ACCESS_CHECKOUT_DISCLOSURE.length).toBeLessThanOrEqual(500);
+    expect(params.get("managed_payments[enabled]")).toBe("true");
+    // Stripe Managed Payments owns the standardized Checkout surface and rejects custom_text.
+    expect(params.has("custom_text[submit][message]")).toBe(false);
     expect(params.toString()).not.toMatch(/projectName|filePath|document|secret/i);
   });
 });
