@@ -38,15 +38,29 @@ for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 an
 
 const earlyAccess = await readFile(resolve(site, 'early-access.html'), 'utf8');
 for (const required of [
-  'unsigned Windows Early Access build',
-  'before purchasing',
+  'before purchasing or downloading',
   'may block installation completely',
   'Do not disable Microsoft Defender',
-  'SHA-256',
-  'No installer is published yet',
+  'SiteDatum_1.4.1_x64-setup.exe',
+  'CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7',
+  'a9ab136d43de9777dbf970c3b6ddef091baebb90',
+  'Authenticode',
+  'NotSigned',
+  'https://sitedatum.site/downloads/SiteDatum_1.4.1_x64-setup.exe',
+  'Get-FileHash -Algorithm SHA256',
   'supportsitedatum@protonmail.com',
 ]) {
   if (!earlyAccess.includes(required)) failures.push(`early-access.html: missing safety disclosure: ${required}`);
+}
+
+const checkout = await readFile(resolve(root, 'supabase/functions/_shared/checkout_session.ts'), 'utf8');
+for (const required of [
+  'custom_text[submit][message]',
+  'unsigned Windows installer',
+  'Do not disable security protections',
+  'sitedatum.site/early-access.html',
+]) {
+  if (!checkout.includes(required)) failures.push(`checkout_session.ts: missing pre-purchase safeguard: ${required}`);
 }
 
 const support = await readFile(resolve(site, 'support.html'), 'utf8');

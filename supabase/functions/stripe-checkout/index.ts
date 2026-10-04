@@ -1,4 +1,5 @@
 import { authenticatedUserId, licensingAdmin } from "../_shared/auth.ts";
+import { buildCheckoutSessionParams } from "../_shared/checkout_session.ts";
 import { consumeCheckoutRateLimit } from "../_shared/checkout_rate_limit.ts";
 import { jsonResponse, requiredEnvironment } from "../_shared/http.ts";
 import { stripeRequest } from "../_shared/stripe.ts";
@@ -29,15 +30,11 @@ Deno.serve(async (request) => {
   });
   if (error || !correlation) return jsonResponse(503, { code: "CHECKOUT_UNAVAILABLE", requestId });
   const price = requiredEnvironment(plan === "pro_monthly" ? "STRIPE_MONTHLY_PRICE_ID" : "STRIPE_ANNUAL_PRICE_ID");
-  const params = new URLSearchParams({
-    mode: "subscription",
-    "line_items[0][price]": price,
-    "line_items[0][quantity]": "1",
-    client_reference_id: correlation,
-    "subscription_data[metadata][sitedatum_correlation_id]": correlation,
-    "managed_payments[enabled]": "true",
-    success_url: requiredEnvironment("STRIPE_CHECKOUT_SUCCESS_URL"),
-    cancel_url: requiredEnvironment("STRIPE_CHECKOUT_CANCEL_URL"),
+  const params = buildCheckoutSessionParams({
+    price,
+    correlation,
+    successUrl: requiredEnvironment("STRIPE_CHECKOUT_SUCCESS_URL"),
+    cancelUrl: requiredEnvironment("STRIPE_CHECKOUT_CANCEL_URL"),
   });
   try {
     const session = await stripeRequest("/checkout/sessions", { method: "POST", body: params });
