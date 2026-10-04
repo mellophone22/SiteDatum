@@ -3,7 +3,7 @@ export const ENTITLEMENT_ISSUER = "sitedatum-licensing";
 export const ENTITLEMENT_REFRESH_SECONDS = 7 * 24 * 60 * 60;
 
 export type LicensedPlan = "pro_monthly" | "pro_annual";
-export type LicensedSubscriptionStatus = "active" | "past_due" | "canceled";
+export type LicensedSubscriptionStatus = "active" | "past_due" | "canceled" | "expired";
 
 export type EntitlementClaims = {
   schemaVersion: 1;
@@ -165,7 +165,7 @@ function isEntitlementClaims(value: unknown): value is EntitlementClaims {
     && typeof claims.subjectId === "string" && UUID.test(claims.subjectId)
     && typeof claims.deviceId === "string" && UUID.test(claims.deviceId)
     && (claims.plan === "pro_monthly" || claims.plan === "pro_annual")
-    && ["active", "past_due", "canceled"].includes(String(claims.subscriptionStatus))
+    && ["active", "past_due", "canceled", "expired"].includes(String(claims.subscriptionStatus))
     && Number.isSafeInteger(claims.issuedAtUtc)
     && Number.isSafeInteger(claims.refreshAfterUtc)
     && Number.isSafeInteger(claims.paidThroughUtc)

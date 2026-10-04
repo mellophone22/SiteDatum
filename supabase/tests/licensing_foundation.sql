@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(38);
 
 select has_schema('licensing', 'licensing schema exists');
 select has_table('licensing', 'customers', 'customers table exists');
@@ -97,6 +97,36 @@ select is(
     '10000000-0000-4000-8000-000000000001', repeat('c', 64), '2030-01-03T00:00:00Z'
   )),
   'activated', 'a replacement device can activate after deactivation'
+);
+
+select ok(
+  public.licensing_project_subscription(
+    '10000000-0000-4000-8000-000000000001',
+    'pro_monthly', 'expired', '2035-01-01T00:00:00Z',
+    'manual_test', 'subscription-test-1',
+    '90000000-0000-4000-8000-000000000002'
+  ) is not null,
+  'subscription projection records authoritative expiration'
+);
+select is(
+  (select activation_state from public.licensing_activate_device(
+    '10000000-0000-4000-8000-000000000001', repeat('b', 64), '2030-01-04T00:00:00Z'
+  )),
+  'reused', 'expired subscription can reuse its already-active matching device'
+);
+select throws_ok(
+  $$select * from public.licensing_activate_device(
+    '10000000-0000-4000-8000-000000000001', repeat('e', 64), '2030-01-04T00:00:00Z'
+  )$$,
+  'P0001', 'LICENSING_PRO_REQUIRED',
+  'expired subscription cannot activate a new device'
+);
+select is(
+  (select subscription_status from public.licensing_current_entitlement(
+    '10000000-0000-4000-8000-000000000001',
+    (select id from licensing.devices where fingerprint_hash = repeat('b', 64))
+  )),
+  'expired', 'existing device receives the authoritative expired subscription state'
 );
 
 select ok(public.licensing_consume_rate_limit(

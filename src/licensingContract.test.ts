@@ -70,4 +70,22 @@ describe("licensing entitlement contract", () => {
     await expect(verifyEntitlement(tampered, encodeBase64(publicRaw)))
       .rejects.toThrow("INVALID_ENTITLEMENT_SIGNATURE");
   });
+
+  it("signs an authoritative expired state without granting Pro", async () => {
+    const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const privatePkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+    const publicRaw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+    const claims = buildEntitlementClaims({
+      keyId: "test-key-1",
+      subjectId: SUBJECT_ID,
+      deviceId: DEVICE_ID,
+      plan: "pro_monthly",
+      subscriptionStatus: "expired",
+      issuedAtUtc: 2_000_000_000,
+      paidThroughUtc: 2_000_100_000,
+    });
+
+    const token = await signEntitlement(claims, encodeBase64(privatePkcs8));
+    await expect(verifyEntitlement(token, encodeBase64(publicRaw))).resolves.toEqual(claims);
+  });
 });

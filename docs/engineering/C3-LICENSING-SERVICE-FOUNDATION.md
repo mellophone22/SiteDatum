@@ -56,7 +56,7 @@ Production key generation, offline backup, rotation, revocation, and public-key 
 
 ## Device and downgrade behavior
 
-Device activation is serialized by locking the customer row. Reusing the same active fingerprint updates its last-seen time without consuming another slot. A third active device is rejected. Deactivation is ownership-scoped. Active, past-due, and canceled subscriptions remain eligible only before their trusted paid-through timestamp; expired or missing subscriptions cannot receive a Pro entitlement.
+Device activation is serialized by locking the customer row. Reusing the same active fingerprint updates its last-seen time without consuming another slot. A third active device is rejected. Deactivation is ownership-scoped. Active, past-due, and canceled subscriptions remain eligible only before their trusted paid-through timestamp. An authoritative expired state may be signed only for an already-active matching device while its recorded paid-through timestamp is still in the future; the desktop interprets that claim as Free immediately. Expired or missing subscriptions can never activate a new device or receive Pro access.
 
 These service decisions do not delete, hide, move, or modify local workspace data. C1 and C2 remain authoritative for non-destructive desktop behavior.
 
