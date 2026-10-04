@@ -35,4 +35,4 @@ Run `npm run test:site`. The validator checks all six pages, local references, t
 2. Keep the canonical release metadata, artifact digest, and actual hosted file synchronized for every release.
 3. Keep the unsigned Early Access product identity visible in Managed Payments Checkout and the complete warning visible before download.
 4. Re-run public-origin installation and support/refund acceptance for every changed installer.
-5. Keep live billing disabled until a separate production-commerce package is explicitly approved and verified.
+5. Production-commerce promotion is founder-approved as C9. Keep live billing disabled until every C9 account, environment, webhook, entitlement, lifecycle, build, and rollback gate is verified.

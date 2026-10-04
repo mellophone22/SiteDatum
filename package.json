@@ -14,6 +14,8 @@
     "audit:c8": "node scripts/c8-preflight.mjs",
     "audit:c8:full": "node scripts/c8-preflight.mjs --full",
     "release:manifest": "node scripts/generate-release-manifest.mjs",
+    "audit:production-commerce": "node scripts/validate-production-commerce.mjs",
+    "tauri:build:production": "npm run audit:production-commerce && tauri build --features commercial-production --bundles nsis",
     "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql supabase/tests/stripe_adapter.sql",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",

@@ -1,12 +1,12 @@
 # SiteDatum founder operations and incident-response runbook
 
-**Status:** Pre-launch operating baseline — 2026-10-02
+**Status:** Controlled unsigned Early Access operating baseline — updated 2026-10-03
 
 ## Operating boundary
 
 This runbook is for one founder operating SiteDatum's narrow commercial perimeter. It does not authorize access to customer project records or documents. Project names, tasks, RFIs, submittals, notes, contacts, file paths, files, screenshots of private records, and workspace databases must never be copied into Stripe, Supabase, GitLab, Slack, support records, or operational telemetry.
 
-Until production promotion is separately approved, every billing action uses the connected Stripe sandbox and the dedicated SiteDatum Supabase sandbox. Confirm the environment indicator before every mutation. Never substitute live keys, live prices, real payment methods, or real charges while following this runbook.
+Production-commerce promotion is founder-approved, but it remains gated by `C9-PRODUCTION-COMMERCE-PROMOTION.md`. Until those gates pass, every billing action continues to use the connected Stripe sandbox and the dedicated SiteDatum Supabase sandbox. Confirm the environment indicator before every mutation. Never copy or substitute sandbox and production keys, prices, webhooks, signing keys, or project references across environments.
 
 ## Minimum access and custody
 
@@ -35,6 +35,15 @@ Until production promotion is separately approved, every billing action uses the
 4. Confirm `licensing-health` returns `{"status":"ok","schemaVersion":1}`.
 5. Use fictional customer details and Stripe test payment methods only.
 
+### Before each production billing action
+
+1. Confirm Stripe visibly reports live mode and the expected account ID; stop if the account, mode, or product differs.
+2. Confirm the production SiteDatum Supabase project and production webhook destination. Never use the sandbox project for a live charge.
+3. Confirm the exact live product, monthly or annual price, renewal interval, Early Access disclosure, support email, and refund route.
+4. Confirm the related deployment and desktop candidate passed the C9 environment checks without printing secrets.
+5. Record a content-free private change record and rollback step before creating or changing a live resource.
+6. Do not initiate a founder-controlled live purchase until all earlier C9 gates pass. Never use a real customer's identity or payment method for launch testing.
+
 ### Weekly while testing is active
 
 1. Review failed Stripe webhook deliveries and the corresponding request IDs.
@@ -59,7 +68,7 @@ Keep one private, content-free record per test or incident:
 
 ```text
 Record ID:
-Environment: Stripe sandbox / Supabase sandbox / local Windows candidate
+Environment: Stripe sandbox / Stripe production / Supabase sandbox / Supabase production / local Windows candidate
 Started UTC:
 Ended UTC:
 Operator:
@@ -114,7 +123,7 @@ When uncertain, use the higher severity until evidence narrows the impact.
 
 ### Webhook failed or delayed
 
-- Inspect the Stripe sandbox event delivery and HTTP response.
+- Inspect the event delivery and HTTP response in the explicitly recorded Stripe environment.
 - Correct endpoint/configuration failures before using **Resend**.
 - Resending the same event must remain idempotent; confirm one provider-ledger record.
 - If provider and licensing state still differ after successful delivery, run authenticated reconciliation once and compare attempted versus reconciled counts.
@@ -124,19 +133,19 @@ When uncertain, use the higher severity until evidence narrows the impact.
 
 - Confirm the subscription becomes past due while retaining the recorded paid-through boundary.
 - Confirm existing local records remain editable and backup/export remain available.
-- After a successful sandbox payment, refresh entitlement and confirm recovery to the correct Pro plan.
+- After a successful payment in the recorded environment, refresh entitlement and confirm recovery to the correct Pro plan.
 - Do not shorten access merely because an invoice attempt failed when the paid-through period has not ended.
 
 ### Cancellation and expiration
 
-- Cancel through the hosted portal or authoritative Stripe sandbox control.
+- Cancel through the hosted portal or authoritative Stripe control in the recorded environment.
 - Confirm cancel-at-period-end preserves Pro through the paid-through date.
 - At expiration, confirm existing records remain visible and editable; only new/restored active projects and Pro acceleration features use Free limits.
 - If the projection differs from Stripe after healthy webhook delivery, use reconciliation and record the request ID.
 
 ### Refund
 
-- Process refunds only through Stripe Managed Payments in sandbox during testing.
+- Process sandbox refunds only through Stripe Managed Payments while testing. A founder-controlled live validation refund is permitted only under the C9 launch record after the live lifecycle gates are ready.
 - A partial or full refund object alone must not revoke entitlement. The authoritative subscription state controls entitlement projection.
 - Never request card information through SiteDatum support, GitLab, or Slack.
 - Before production launch, the effective refund policy and private billing-support route must be published.
@@ -144,7 +153,7 @@ When uncertain, use the higher severity until evidence narrows the impact.
 ### Device recovery
 
 - A normal reinstall on the same device should reuse its stable device identity and must not consume a third activation.
-- For replacement, deactivate the retired sandbox device before activating the new one.
+- For replacement, deactivate the retired device in the matching environment before activating the new one.
 - Confirm two active devices are accepted and the third is rejected with a recoverable explanation.
 - Never bypass the allowance by editing database rows or shipping a plaintext Pro override.
 
@@ -189,11 +198,12 @@ Use `RELEASE_ROLLBACK_RUNBOOK.md`. Prefer a forward fix after a schema advance. 
 
 ## Launch-day hold points
 
-Do not open public purchase or download until all are true:
+Do not open public paid purchase until all are true:
 
 - C8 preflight and GitLab pipelines pass on the immutable release commit;
 - disposable-profile install, upgrade, reinstall, offline, backup/export, recovery, keyboard, and 200% scaling tests pass;
 - the complete Stripe/Supabase sandbox lifecycle and two-device recovery matrix pass;
+- every C9 production account, environment, webhook, entitlement, lifecycle, and rollback gate passes;
 - legal policies and publisher/support contacts are effective;
-- the release uses a trusted signed distribution route; and
+- the unsigned installer warning, immutable hash, canonical download, refund route, and no-security-bypass guidance are visible before purchase and download; and
 - the founder can access every credential, provider dashboard, private support channel, and rollback procedure required above.

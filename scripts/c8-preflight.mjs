@@ -109,11 +109,13 @@ assert('C8-EARLY-ACCESS-BOUNDARY', [
 const operationsRunbook = read('docs/engineering/FOUNDER-OPERATIONS-RUNBOOK.md');
 assert('C8-OPERATIONS-RUNBOOK', [
   'Stripe sandbox',
+  'Before each production billing action',
+  'C9-PRODUCTION-COMMERCE-PROMOTION.md',
   'SEV-1',
   'Webhook failed or delayed',
   'Security or privacy incident',
   'RELEASE_ROLLBACK_RUNBOOK.md',
-  'Do not open public purchase or download',
+  'Do not open public paid purchase',
 ].every((statement) => operationsRunbook.includes(statement)),
   'founder operations, incident, billing, and launch-hold procedures are present',
   'founder operations runbook is incomplete');
@@ -157,7 +159,7 @@ if (process.platform === 'win32' && existsSync(installer)) {
 }
 
 record('C8-CLEAN-PROFILE', 'deferred', 'interactive install, first run, upgrade, uninstall/reinstall, and 200% review require a disposable Windows profile');
-record('C8-PAYMENT-LIFECYCLE', 'deferred', 'manual hosted lifecycle uses Stripe and Supabase sandboxes only; never live mode');
+record('C8-PAYMENT-LIFECYCLE', 'deferred', 'sandbox lifecycle evidence is complete; production promotion and founder-controlled live validation are tracked separately under C9');
 record('C8-LEGAL', 'pass', 'founder-approved policies are effective and the decision to proceed without qualified legal review is recorded');
 
 if (full) {

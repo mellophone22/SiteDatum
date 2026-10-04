@@ -1,5 +1,5 @@
 import { authenticatedUserId, licensingAdmin } from "../_shared/auth.ts";
-import { buildCheckoutSessionParams } from "../_shared/checkout_session.ts";
+import { buildCheckoutSessionParams, checkoutIntegrationIdentifier } from "../_shared/checkout_session.ts";
 import { consumeCheckoutRateLimit } from "../_shared/checkout_rate_limit.ts";
 import { jsonResponse, requiredEnvironment } from "../_shared/http.ts";
 import { stripeRequest } from "../_shared/stripe.ts";
@@ -33,6 +33,7 @@ Deno.serve(async (request) => {
   const params = buildCheckoutSessionParams({
     price,
     correlation,
+    integrationIdentifier: checkoutIntegrationIdentifier(crypto.getRandomValues(new Uint8Array(4))),
     successUrl: requiredEnvironment("STRIPE_CHECKOUT_SUCCESS_URL"),
     cancelUrl: requiredEnvironment("STRIPE_CHECKOUT_CANCEL_URL"),
   });

@@ -12,10 +12,25 @@ use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
+#[cfg(not(feature = "commercial-production"))]
 const PROJECT_URL: &str = "https://lirkgkiwbffhsmlrfsbp.supabase.co";
+#[cfg(feature = "commercial-production")]
+const PROJECT_URL: &str = env!("SITEDATUM_LICENSING_PROJECT_URL");
+
+#[cfg(not(feature = "commercial-production"))]
 const PUBLISHABLE_KEY: &str = "sb_publishable_SLXAweYOV-GwggvQp3NnNw_aaKLNs_L";
+#[cfg(feature = "commercial-production")]
+const PUBLISHABLE_KEY: &str = env!("SITEDATUM_LICENSING_PUBLISHABLE_KEY");
+
+#[cfg(not(feature = "commercial-production"))]
 const ENTITLEMENT_PUBLIC_KEY_B64: &str = "EG2rGjHrrOM3gUikZvU3s8PCul9IgRFUXwmgVFQ9NSA=";
+#[cfg(feature = "commercial-production")]
+const ENTITLEMENT_PUBLIC_KEY_B64: &str = env!("SITEDATUM_ENTITLEMENT_PUBLIC_KEY_B64");
+
+#[cfg(not(feature = "commercial-production"))]
 const ENTITLEMENT_KEY_ID: &str = "test-2026-09-30-1";
+#[cfg(feature = "commercial-production")]
+const ENTITLEMENT_KEY_ID: &str = env!("SITEDATUM_ENTITLEMENT_KEY_ID");
 const CREDENTIAL_SERVICE: &str = "com.cabre.project-engineer-workspace.sitedatum-licensing";
 const SESSION_ACCOUNT: &str = "supabase-session";
 const ENTITLEMENT_ACCOUNT: &str = "signed-entitlement";
