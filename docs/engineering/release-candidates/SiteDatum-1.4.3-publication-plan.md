@@ -30,14 +30,14 @@ The local staged installer must remain byte-for-byte identical to this identity.
 - Lint, production frontend build, eight-page commercial-site validation, release-manifest tests, and the high-severity npm audit passed with zero vulnerabilities.
 - The complete C8 audit reported 17 passed, 3 documented deferrals, and 0 failed.
 
-## Focused acceptance still required
+## Focused acceptance completed
 
-- Install the exact 1.4.3 candidate in the established disposable Windows profile.
-- Confirm the fictional workspace and all existing records remain available.
-- Confirm About SiteDatum reports 1.4.3.
-- Confirm the existing production test account remains connected as Free and that refreshing before purchase reports that no Pro subscription is linked, without presenting a service failure or opening Checkout.
-- Confirm backup, essential CSV export, and ordinary offline/local work remain available.
+- The exact replacement 1.4.3 candidate was installed in the established disposable Windows profile.
+- About SiteDatum reported 1.4.3 and the fictional workspace and existing records remained available.
+- The existing production test account remained connected under the Free policy.
+- Refreshing before purchase reported that no Pro subscription is linked and that SiteDatum Free remains available; it did not present the prior generic service failure or open Checkout.
+- The broader 1.4.2 upgrade acceptance had already confirmed backup, essential CSV export, ordinary offline/local work, uninstall/reinstall preservation, and record preservation. The 1.4.3 correction changed only licensing-transition handling.
 
 ## Publication hold
 
-Do not upload the installer, update the public website, create a release tag, enable purchase, or describe 1.4.3 as paid-production-ready before focused acceptance and the separately authorized Step 4 live lifecycle pass are complete.
+Do not upload the installer, update the public website, create a release tag, enable purchase, or describe 1.4.3 as paid-production-ready before the separately authorized Step 4 live lifecycle pass is complete.
