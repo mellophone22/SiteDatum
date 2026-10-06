@@ -104,16 +104,16 @@ fn sign_in_licensing(
 #[tauri::command]
 fn refresh_licensing_entitlement(
     state: tauri::State<'_, AppState>,
-) -> AppResult<licensing::LicensingStatus> {
-    let status = licensing::refresh_entitlement()?;
+) -> AppResult<licensing::AccountActionResult> {
+    let result = licensing::refresh_entitlement()?;
     set_commercial_access(
         &state,
         entitlement::EffectiveEntitlement {
-            plan: status.plan,
-            freshness: status.freshness,
+            plan: result.status.plan,
+            freshness: result.status.freshness,
         },
     )?;
-    Ok(status)
+    Ok(result)
 }
 
 #[tauri::command]
