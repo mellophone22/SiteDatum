@@ -1,0 +1,43 @@
+# SiteDatum 1.4.3 publication plan
+
+**State:** Prepared but blocked from publication
+
+## Immutable candidate identity
+
+- Source commit: `2f66af53edfd81cd9128e6742fa2f7765968293c`
+- Installer: `SiteDatum_1.4.3_x64-setup.exe`
+- Size: 4,682,726 bytes
+- SHA-256: `4518B64BE839A64BF07CA91DA90AB470AEF21284ABB74DA8403FEAAD73958264`
+- Authenticode: `NotSigned`
+- Production entitlement key ID: `prod-2026-10-06-2`
+- Intended canonical URL: `https://sitedatum.site/downloads/SiteDatum_1.4.3_x64-setup.exe`
+
+The local staged installer must remain byte-for-byte identical to this identity. If any source, configuration, packaging input, or executable byte changes, discard this publication plan and generate a new candidate, hash, and manifest.
+
+## Key-rotation evidence
+
+- The unrecoverable `prod-2026-10-03-1` key was superseded before public release.
+- The replacement private signing key and reconciliation credential exist only in production Edge Function secrets and a passphrase-encrypted recovery package.
+- Two byte-identical encrypted recovery copies were created in separate local and cloud-backed locations and were decrypted successfully before production rotation.
+- The production secret hashes were verified after rotation without retrieving or recording the secret values.
+- The production licensing health endpoint returned schema version 1 after rotation.
+- The compiled application contains the production Supabase origin and replacement key ID, excludes the sandbox origin and prior key ID, and contains no private-key, Stripe-secret, webhook-secret, or reconciliation-secret identifiers.
+
+## Automated acceptance
+
+- 88 frontend tests passed.
+- 50 Rust tests passed with `commercial-production` enabled.
+- Lint, production frontend build, eight-page commercial-site validation, release-manifest tests, and the high-severity npm audit passed with zero vulnerabilities.
+- The complete C8 audit reported 17 passed, 3 documented deferrals, and 0 failed.
+
+## Focused acceptance still required
+
+- Install the exact 1.4.3 candidate in the established disposable Windows profile.
+- Confirm the fictional workspace and all existing records remain available.
+- Confirm About SiteDatum reports 1.4.3.
+- Sign in to the existing production test account and refresh entitlement once, without opening or submitting Checkout.
+- Confirm backup, essential CSV export, and ordinary offline/local work remain available.
+
+## Publication hold
+
+Do not upload the installer, update the public website, create a release tag, enable purchase, or describe 1.4.3 as paid-production-ready before focused acceptance and the separately authorized Step 4 live lifecycle pass are complete.

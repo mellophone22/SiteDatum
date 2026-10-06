@@ -1,6 +1,6 @@
 # C9 production commerce promotion
 
-**Status:** In progress — production environment, provider configuration, authenticated no-payment Checkout inspection, and the staged 1.4.2 production installer are established; disposable-profile acceptance and the live lifecycle remain gated.
+**Status:** In progress — production environment, provider configuration, authenticated no-payment Checkout inspection, replacement key custody, and the staged 1.4.3 production installer are established; focused post-rotation acceptance and the live lifecycle remain gated.
 
 ## Decision
 
@@ -100,3 +100,14 @@ Disable the public purchase buttons first, then disable Checkout Session creatio
 - The installer and publication-candidate manifest are staged locally under the ignored release-candidate workspace. They have not been uploaded, deployed, tagged as a release, or made available to customers. The public 1.4.1 download remains unchanged.
 - The Codex application sandbox could not execute the Windows installer because Windows rejected process startup with an isolation-specific `Illegal System DLL Relocation` error before installation. Clean install/startup, upgrade, uninstall/reinstall, existing-record preservation, and the focused keyboard/scaling review therefore remain pending in the established disposable Windows profile.
 - No live Checkout submission, payment method, customer, subscription, invoice, PaymentIntent, charge, cancellation, or refund was created during this checkpoint. Public purchase remains disabled.
+
+## Production entitlement-key recovery — October 6, 2026
+
+- The recovery package for entitlement key `prod-2026-10-03-1` could not be located after a read-only search of the expected Windows profiles, normal user folders, temporary storage, Google Drive, the Recycle Bin, and PowerShell destination history. The key was treated as unrecoverable before public release.
+- Replacement key `prod-2026-10-06-2` and a replacement reconciliation credential were generated outside the repository. No plaintext secret was printed, committed, included in a build, or retained in the release evidence.
+- A passphrase-encrypted AES-256-GCM recovery package was written to separate local and cloud-backed locations. Both copies are byte-identical and were decrypted successfully before production rotation. The encrypted package SHA-256 is `A40678D0997D23D0D8B7AD9D0757AC3F00BD60CE0F39212D87E409DE0B52F819`.
+- The production Edge Function key ID, private entitlement signing key, and reconciliation credential were rotated and hash-verified against the encrypted recovery payload. The production licensing health endpoint remained healthy at schema version 1.
+- Source commit `2f66af53edfd81cd9128e6742fa2f7765968293c` produced `SiteDatum_1.4.3_x64-setup.exe`, size 4,682,726 bytes, SHA-256 `4518B64BE839A64BF07CA91DA90AB470AEF21284ABB74DA8403FEAAD73958264`, with expected Authenticode status `NotSigned`.
+- The 1.4.3 executable contains the production Supabase origin and replacement key ID, excludes the sandbox origin and superseded key ID, and contains no private-key, Stripe-secret, webhook-secret, or reconciliation-secret identifiers.
+- Automated acceptance passed: 88 frontend tests, 50 production-feature Rust tests, lint, production build, eight-page site validation, release-manifest tests, zero high-severity npm vulnerabilities, and the full C8 audit with 17 passes, 3 documented deferrals, and 0 failures.
+- The installer is staged locally and in the disposable-profile test bundle only. It has not been uploaded, published, tagged, or linked from the website. No Step 4 Checkout submission, customer, subscription, invoice, PaymentIntent, charge, cancellation, or refund was created.
