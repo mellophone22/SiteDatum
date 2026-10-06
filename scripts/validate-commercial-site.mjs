@@ -24,7 +24,7 @@ for (const page of pages) {
   for (const match of source.matchAll(/(?:href|src)="([^"]+)"/g)) {
     const target = match[1];
     if (/^(?:https?:|#|mailto:)/.test(target)) continue;
-    const localTarget = target.split('#')[0];
+    const localTarget = target.split(/[?#]/)[0];
     if (!localTarget) continue;
     try { await access(resolve(site, localTarget)); }
     catch { failures.push(`${page}: broken local reference ${target}`); }
