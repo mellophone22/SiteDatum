@@ -1,5 +1,7 @@
 # C9 production commerce promotion
 
+**Status:** In progress — production environment, provider configuration, and authenticated no-payment Checkout inspection established; live lifecycle acceptance and the new production installer remain gated.
+
 ## Decision
 
 SiteDatum will offer paid Pro subscriptions through a controlled unsigned Windows Early Access channel. Code signing remains a future improvement, not a prerequisite for charging, provided the unsigned status, Windows compatibility risk, canonical installer hash, support route, and refund path remain disclosed before purchase and download.
@@ -50,3 +52,40 @@ Do not enable public purchase or describe the release as paid-production-ready i
 ## Rollback
 
 Disable the public purchase buttons first, then disable Checkout Session creation while leaving entitlement refresh, portal access, cancellation, refund processing, local editing, backup, and essential export available. Preserve audit records and correlation IDs without collecting project content. Correct forward, repeat the production gates, and publish a new candidate rather than changing an already published installer in place.
+
+## Production checkpoint — October 3, 2026
+
+- Dedicated production Supabase project `dfooiwiukhltiijnzhnb` is active, migrated, and has the licensing Edge Functions deployed.
+- Production entitlement signing key ID: `prod-2026-10-03-1`.
+- Production Ed25519 public verification key (raw base64): `CZNFz1xGAuNZJLa2bKT5FeB0Y9vtlZhvsr3sI7kuubU=`.
+- The private PKCS#8 signing key and reconciliation credential were generated outside the repository and stored as production Edge Function secrets. A Windows-user-encrypted recovery package was created outside the repository; copy it to an independent protected backup before public release.
+- The production Supabase secret inventory contains the signing, reconciliation, live Stripe restricted-key, expected-account, live-price, API-version, and canonical return-URL settings. Secret values and private material are not recorded here.
+- The commerce boundary requires a least-privilege `rk_live_` Stripe key in production and continues to require an `sk_test_` key in the sandbox. An unrestricted `sk_live_` key is rejected.
+- `STRIPE_WEBHOOK_SECRET` was set in production on October 4, 2026 after the production webhook endpoint was registered. Its value was not retrieved or recorded during verification.
+
+## C9-01 production environment boundary — October 5, 2026
+
+- Production Edge Functions require a least-privilege `rk_live_` Stripe key. They reject unrestricted `sk_live_` keys, and the sandbox rejects both restricted and unrestricted live keys.
+- The production build remains fail-closed unless its dedicated Supabase origin, publishable key, 32-byte entitlement verification key, and non-test signing-key ID are supplied explicitly.
+- The complete inherited release gate passed locally: 17 checks passed, 3 controlled Early Access items remained explicitly deferred, and 0 checks failed.
+- No production webhook was registered, no public purchase control was enabled, and no live charge was attempted in this slice.
+
+## C9-02 production provider configuration — October 5, 2026
+
+- The live Stripe webhook is enabled at the production Supabase `stripe-webhook` function. Its event allowlist covers Checkout completion, subscription create/update/delete, invoice paid, invoice payment failed, and invoice payment action required.
+- The production Supabase secret inventory confirms that a Stripe webhook signing secret is present. Verification inspected names only; no secret value was retrieved or recorded.
+- The production licensing health endpoint returned HTTP 200 with schema version 1. An unsigned webhook request was rejected with HTTP 400 and `SIGNATURE_INVALID`, confirming the public endpoint fails closed.
+- The live Early Access product is active with an eligible digital-software tax code, canonical disclosure URL, and $15 monthly and $150 annual recurring prices. Both prices are active and use exclusive tax behavior.
+- The default live Customer Portal permits payment-method updates, invoice history, and cancellation at period end without proration. Customer subscription switching remains disabled.
+- Stripe Managed Payments is enabled by the server-side Checkout integration. Stripe acts as merchant of record and controls the applicable tax parameters in supported countries, so no conflicting manual `automatic_tax` override was added. Tax obligations outside Managed Payments coverage remain an owner responsibility and must be reviewed before selling into those jurisdictions.
+- Supabase security-advisor notices for RLS-enabled tables without public policies were reviewed and accepted because the licensing tables are private, service-managed, and intentionally fail closed. Unused-index notices were retained pending representative production traffic.
+- No Checkout Session, customer, subscription, payment, or charge was created during this configuration audit. Public purchase enablement remains gated on the authenticated no-payment Checkout inspection and the remaining lifecycle tests below.
+
+## C9-03 authenticated live Checkout inspection — October 5, 2026
+
+- A production-feature desktop test run authenticated against the dedicated production Supabase project and opened a live Stripe-hosted Checkout Session from the SiteDatum Pro Monthly control.
+- The hosted page had no sandbox badge and presented `SiteDatum Pro — Unsigned Windows Early Access` at $15 USD per month, billed monthly, with the canonical Early Access disclosure link visible before payment.
+- Stripe reported the session as live, open, and unpaid. The session used subscription mode, the active `sitedatum_pro_monthly` lookup key, quantity one, exclusive tax behavior, Managed Payments, dynamic eligible payment methods, and an integration identifier with a randomized suffix.
+- Stripe was the automatic-tax liability provider and required customer location input before calculating tax. The canonical success and cancellation URLs both returned to the SiteDatum Early Access page with the appropriate status query.
+- No customer, subscription, invoice, PaymentIntent, payment, or charge was created. No payment information was entered and the Subscribe control was not activated.
+- C9-03 passed. Public purchase enablement remains gated on the founder-controlled live lifecycle test and the new production installer acceptance pass.

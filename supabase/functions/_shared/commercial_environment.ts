@@ -24,7 +24,7 @@ export function validateCommerceConfiguration(
   }
 
   const stripeSecretKey = required(values, "STRIPE_SECRET_KEY");
-  const expectedPrefix = environment === "production" ? "sk_live_" : "sk_test_";
+  const expectedPrefix = environment === "production" ? "rk_live_" : "sk_test_";
   if (!stripeSecretKey.startsWith(expectedPrefix)) {
     throw new Error("STRIPE_KEY_ENVIRONMENT_MISMATCH");
   }

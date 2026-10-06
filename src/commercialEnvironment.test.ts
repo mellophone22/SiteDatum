@@ -20,9 +20,27 @@ describe("commercial environment boundary", () => {
     expect(validateCommerceConfiguration({
       ...base,
       SITEDATUM_COMMERCE_ENVIRONMENT: "production",
-      STRIPE_SECRET_KEY: "sk_live_example",
+      STRIPE_SECRET_KEY: "rk_live_example",
     }).environment).toBe("production");
   });
+
+  it("rejects an unrestricted live key for production", () => {
+    expect(() => validateCommerceConfiguration({
+      ...base,
+      SITEDATUM_COMMERCE_ENVIRONMENT: "production",
+      STRIPE_SECRET_KEY: "sk_live_example",
+    })).toThrow("STRIPE_KEY_ENVIRONMENT_MISMATCH");
+  });
+
+  it.each(["rk_live_example", "sk_live_example"])(
+    "rejects live key %s in the sandbox boundary",
+    (stripeSecretKey) => {
+      expect(() => validateCommerceConfiguration({
+        ...base,
+        STRIPE_SECRET_KEY: stripeSecretKey,
+      })).toThrow("STRIPE_KEY_ENVIRONMENT_MISMATCH");
+    },
+  );
 
   it.each([
     [{ ...base, SITEDATUM_COMMERCE_ENVIRONMENT: undefined }, "MISSING_SITEDATUM_COMMERCE_ENVIRONMENT"],
