@@ -1,12 +1,12 @@
 # SiteDatum founder operations and incident-response runbook
 
-**Status:** Controlled unsigned Early Access operating baseline — updated 2026-10-03
+**Status:** Controlled unsigned Early Access operating baseline — updated 2026-10-06
 
 ## Operating boundary
 
 This runbook is for one founder operating SiteDatum's narrow commercial perimeter. It does not authorize access to customer project records or documents. Project names, tasks, RFIs, submittals, notes, contacts, file paths, files, screenshots of private records, and workspace databases must never be copied into Stripe, Supabase, GitHub, Slack, support records, or operational telemetry.
 
-Production-commerce promotion is founder-approved, but it remains gated by `C9-PRODUCTION-COMMERCE-PROMOTION.md`. Until those gates pass, every billing action continues to use the connected Stripe sandbox and the dedicated SiteDatum Supabase sandbox. Confirm the environment indicator before every mutation. Never copy or substitute sandbox and production keys, prices, webhooks, signing keys, or project references across environments.
+Production-commerce promotion is founder-approved, but it remains gated by `C9-PRODUCTION-COMMERCE-PROMOTION.md`. Simulated billing and forced lifecycle scenarios continue to use the connected Stripe sandbox and the dedicated SiteDatum Supabase sandbox. Production payment details are used only for genuine customer transactions after the controlled soft launch is explicitly authorized. Confirm the environment indicator before every mutation. Never copy or substitute sandbox and production keys, prices, webhooks, signing keys, or project references across environments.
 
 ## Minimum access and custody
 
@@ -42,7 +42,7 @@ Production-commerce promotion is founder-approved, but it remains gated by `C9-P
 3. Confirm the exact live product, monthly or annual price, renewal interval, Early Access disclosure, support email, and refund route.
 4. Confirm the related deployment and desktop candidate passed the C9 environment checks without printing secrets.
 5. Record a content-free private change record and rollback step before creating or changing a live resource.
-6. Do not initiate a founder-controlled live purchase until all earlier C9 gates pass. Never use a real customer's identity or payment method for launch testing.
+6. Never initiate a founder self-purchase or use any real payment method merely for testing. After the controlled soft launch is explicitly authorized, production Checkout is only for a genuine customer purchase; simulated scenarios remain in the sandbox.
 
 ### Weekly while testing is active
 
@@ -145,7 +145,7 @@ When uncertain, use the higher severity until evidence narrows the impact.
 
 ### Refund
 
-- Process sandbox refunds only through Stripe Managed Payments while testing. A founder-controlled live validation refund is permitted only under the C9 launch record after the live lifecycle gates are ready.
+- Process test refunds only in the Stripe sandbox. In production, refund only a legitimate customer transaction under the published policy or another genuine obligation; never create or refund a live charge solely to produce test evidence.
 - A partial or full refund object alone must not revoke entitlement. The authoritative subscription state controls entitlement projection.
 - Never request card information through SiteDatum support, GitHub, or Slack.
 - Before production launch, the effective refund policy and private billing-support route must be published.
@@ -198,12 +198,14 @@ Use `RELEASE_ROLLBACK_RUNBOOK.md`. Prefer a forward fix after a schema advance. 
 
 ## Launch-day hold points
 
-Do not open public paid purchase until all are true:
+Do not open even limited soft-launch purchase until all are true:
 
 - C8 preflight and GitHub Actions pass on the immutable release commit;
 - disposable-profile install, upgrade, reinstall, offline, backup/export, recovery, keyboard, and 200% scaling tests pass;
 - the complete Stripe/Supabase sandbox lifecycle and two-device recovery matrix pass;
-- every C9 production account, environment, webhook, entitlement, lifecycle, and rollback gate passes;
+- every pre-purchase C9 production account, environment, webhook, entitlement, installer, monitoring, and rollback gate passes;
 - legal policies and publisher/support contacts are effective;
 - the unsigned installer warning, immutable hash, canonical download, refund route, and no-security-bypass guidance are visible before purchase and download; and
 - the founder can access every credential, provider dashboard, private support channel, and rollback procedure required above.
+
+After limited purchase opens, keep broad promotion paused until the first genuine customer transaction produces the correct receipt, successful webhook projection, Pro entitlement, and customer-portal route. If any result fails, disable purchase and follow the rollback procedure. Cancellation and refund remain production operational actions for legitimate customer needs, not synthetic launch tests.

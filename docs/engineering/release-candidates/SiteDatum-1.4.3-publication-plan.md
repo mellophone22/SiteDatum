@@ -1,6 +1,6 @@
 # SiteDatum 1.4.3 publication plan
 
-**State:** Prepared but blocked from publication
+**State:** Prepared for separately authorized controlled soft-launch publication
 
 ## Immutable candidate identity
 
@@ -38,6 +38,8 @@ The local staged installer must remain byte-for-byte identical to this identity.
 - Refreshing before purchase reported that no Pro subscription is linked and that SiteDatum Free remains available; it did not present the prior generic service failure or open Checkout.
 - The broader 1.4.2 upgrade acceptance had already confirmed backup, essential CSV export, ordinary offline/local work, uninstall/reinstall preservation, and record preservation. The 1.4.3 correction changed only licensing-transition handling.
 
-## Publication hold
+## Controlled soft-launch boundary
 
-Do not upload the installer, update the public website, create a release tag, enable purchase, or describe 1.4.3 as paid-production-ready before the separately authorized Step 4 live lifecycle pass is complete.
+This plan does not itself authorize upload, website deployment, release tagging, or purchase enablement. Those actions require a separate explicit launch authorization and must use the immutable candidate identity above.
+
+No founder self-purchase or contrived live transaction is required. Simulated lifecycle acceptance remains in Stripe sandbox. After the exact installer, website disclosures, public-origin hash, private support intake, monitoring, and rollback controls are verified, purchase may open to a limited soft-launch audience. Keep broad promotion paused until the first genuine customer transaction demonstrates the correct receipt, successful webhook projection, Pro entitlement, and customer-portal route. Production cancellation or refund is performed only for a legitimate customer request or policy obligation.
