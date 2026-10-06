@@ -3,3 +3,12 @@ RewriteEngine On
 # Keep one public origin while preserving the requested path and query string.
 RewriteCond %{HTTP_HOST} ^www\.sitedatum\.site$ [NC]
 RewriteRule ^ https://sitedatum.site%{REQUEST_URI} [R=301,L,NE]
+
+# Revalidate HTML so navigation and legal-copy updates are not stranded in a
+# visitor's browser after a deployment. Fingerprinted/static assets may still
+# use the hosting platform's normal caching policy.
+<IfModule mod_headers.c>
+  <FilesMatch "\.html?$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
