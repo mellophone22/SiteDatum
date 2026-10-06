@@ -4,172 +4,155 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="SiteDatum is a local-first Windows command center for project engineers managing tasks, RFIs, submittals, files, and field work." />
-    <title>SiteDatum — The project record you control</title>
+    <meta property="og:title" content="SiteDatum — Run the project. Keep the record." />
+    <meta property="og:description" content="A local-first Windows workspace that keeps project commitments and ordinary files connected." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sitedatum.site/" />
+    <meta property="og:image" content="https://sitedatum.site/assets/images/portfolio-overview.png" />
+    <title>SiteDatum — Run the project. Keep the record.</title>
     <link rel="icon" href="assets/images/sitedatum-logo.png" />
     <link rel="stylesheet" href="site.css" />
     <script src="site.js" defer></script>
   </head>
-  <body>
+  <body class="home-page">
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header" data-header>
-      <a class="brand" href="index.html" aria-label="SiteDatum home">
-        <img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="176" height="53" />
-      </a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-nav-toggle>
-        <span class="nav-toggle__label">Menu</span>
-        <span class="nav-toggle__lines" aria-hidden="true"></span>
-      </button>
+      <a class="brand" href="index.html" aria-label="SiteDatum home"><img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="176" height="53" /></a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-nav-toggle><span>Menu</span><span class="nav-toggle__lines" aria-hidden="true"></span></button>
       <nav class="primary-nav" id="primary-nav" aria-label="Primary" data-nav>
-        <a href="#product">Product</a>
-        <a href="#workflow">Workflow</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#requirements">Requirements</a>
-        <a href="early-access.html">Early Access</a>
-        <a href="support.html">Support</a>
+        <a href="#product">Product</a><a href="#workday">The workday</a><a href="#local-first">Local-first</a><a href="#pricing">Pricing</a>
       </nav>
-      <a class="header-action" href="https://github.com/mellophone22/SiteDatum" rel="noreferrer">Follow development <span aria-hidden="true">→</span></a>
+      <a class="button button--primary header-action" href="early-access.html">Download 1.4.1 <span aria-hidden="true">↓</span></a>
     </header>
 
     <main id="main">
-      <section class="hero" id="product" aria-labelledby="hero-title">
-        <div class="hero__copy">
-          <h1 id="hero-title">The project record you control</h1>
-          <p>Keep projects, commitments, and ordinary Windows files connected—without giving up ownership of the record.</p>
-        </div>
-        <div class="hero__action">
-          <a class="button button--primary" href="early-access.html">Review and download 1.4.1 <span aria-hidden="true">→</span></a>
-          <p><strong>Unsigned Windows Early Access:</strong> the installer may trigger a Windows warning or be blocked by device policy. Review the disclosure before purchasing or downloading.</p>
-        </div>
-        <figure class="product-frame">
-          <div class="product-frame__bar" aria-hidden="true"><span></span><span></span><span></span><b>SiteDatum · All active projects</b></div>
-          <button class="screenshot-trigger" type="button" data-screenshot-open data-full-image="assets/images/portfolio-overview.png" data-full-alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" aria-label="Open the portfolio overview at full resolution">
-            <img src="assets/images/portfolio-overview.png" alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" width="1440" height="1000" />
-            <span class="screenshot-trigger__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>View full resolution</span>
-          </button>
-          <figcaption>Actual SiteDatum 1.4.0 application screen with illustrative project records. Select the image to inspect it at full resolution.</figcaption>
-        </figure>
-      </section>
-
-      <section class="proofs" aria-label="Product principles">
-        <article>
-          <span class="proofs__mark" aria-hidden="true">01</span>
-          <h2>See pressure early</h2>
-          <p>Attention queues surface overdue, due-soon, blocked, and waiting work across the portfolio.</p>
-        </article>
-        <article>
-          <span class="proofs__mark" aria-hidden="true">02</span>
-          <h2>Work in project context</h2>
-          <p>Tasks, RFIs, submittals, files, controls, notes, and contacts stay tied to the real project.</p>
-        </article>
-        <article>
-          <span class="proofs__mark" aria-hidden="true">03</span>
-          <h2>Keep files yours</h2>
-          <p>Project documents remain ordinary Windows files. SiteDatum stores relationships, not ownership.</p>
-        </article>
-      </section>
-
-      <section class="workflow" id="workflow" aria-labelledby="workflow-title">
-        <div class="section-heading">
-          <h2 id="workflow-title">From pressure to a preserved record</h2>
-          <p>A daily loop built for the pace of project engineering.</p>
-        </div>
-        <div class="workflow__stages">
-          <button class="workflow-tab is-active" type="button" data-workflow-tab="attention" aria-pressed="true">Review attention</button>
-          <button class="workflow-tab" type="button" data-workflow-tab="context" aria-pressed="false">Act in context</button>
-          <button class="workflow-tab" type="button" data-workflow-tab="record" aria-pressed="false">Preserve the record</button>
-        </div>
-        <div class="workflow__panel" data-workflow-panel>
-          <div>
-            <h3 data-workflow-title>Know what needs you now</h3>
-            <p data-workflow-copy>Open one queue for overdue work, due-soon commitments, blocked items, and responses waiting on others.</p>
-            <ul data-workflow-list>
-              <li>Portfolio and project-specific attention</li>
-              <li>Plain-language reasons and dates</li>
-              <li>Direct routes to the underlying record</li>
-            </ul>
+      <section class="hero story-section story-section--navy" id="product" aria-labelledby="hero-title">
+        <div class="story-shell hero__inner">
+          <p class="eyebrow eyebrow--filled" data-reveal>Local-first Windows workspace</p>
+          <h1 id="hero-title" data-reveal>Run the project.<br />Keep the record.</h1>
+          <p class="hero__lede" data-reveal>A command center for project engineers who need every task, RFI, submittal, and ordinary Windows file to stay connected—without surrendering ownership of the work.</p>
+          <div class="hero__actions" data-reveal>
+            <a class="button button--primary" href="early-access.html">Review &amp; download <span aria-hidden="true">→</span></a>
+            <a class="button button--dark" href="#workday">See the workday <span aria-hidden="true">↓</span></a>
           </div>
-          <figure>
+          <figure class="product-window product-window--hero" data-reveal>
+            <div class="product-window__bar" aria-hidden="true"><i></i><i></i><i></i><span>SiteDatum · project record</span></div>
+            <button class="screenshot-trigger" type="button" data-screenshot-open data-full-image="assets/images/portfolio-overview.png" data-full-alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" aria-label="Open the portfolio overview at full resolution">
+              <img src="assets/images/portfolio-overview.png" alt="SiteDatum portfolio overview showing active work, attention items, RFI responses, and submittal reviews" width="1440" height="1000" />
+              <span class="screenshot-trigger__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>View full resolution</span>
+            </button>
+          </figure>
+          <p class="proof-note"><span aria-hidden="true"></span>Actual SiteDatum 1.4.0 application screen · illustrative project records · no account required for Free</p>
+        </div>
+      </section>
+
+      <section class="story-section story-beat" aria-labelledby="pressure-title">
+        <div class="story-shell split-story">
+          <div class="story-copy" data-reveal>
+            <p class="eyebrow eyebrow--orange">01 / Pressure</p>
+            <h2 id="pressure-title">Know what needs you before it becomes noise.</h2>
+            <p>One attention queue brings overdue, due-soon, blocked, and waiting work into view—with the reason and project context intact.</p>
+            <div class="story-rule" aria-hidden="true"></div>
+            <p class="motion-caption">The signal arrives first. The underlying record stays one action away.</p>
+          </div>
+          <figure class="product-window story-window" data-reveal>
+            <div class="product-window__bar" aria-hidden="true"><i></i><i></i><i></i><span>SiteDatum · task register</span></div>
             <button class="screenshot-trigger" type="button" data-screenshot-open data-full-image="assets/images/task-management.png" data-full-alt="SiteDatum task register" aria-label="Open the SiteDatum task register at full resolution">
-              <img data-workflow-image src="assets/images/task-management.png" alt="SiteDatum task register" width="1440" height="1000" />
+              <img src="assets/images/task-management.png" alt="SiteDatum task register" width="1440" height="1000" />
               <span class="screenshot-trigger__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>View full resolution</span>
             </button>
           </figure>
         </div>
       </section>
 
-      <section class="local-first" aria-labelledby="local-title">
-        <div>
-          <h2 id="local-title">Local by design</h2>
-          <p>SiteDatum is a single-user Windows workspace. SQLite keeps the application record on your computer, and project documents remain in the folders you already control.</p>
+      <section class="story-section story-beat story-beat--white" aria-labelledby="context-title">
+        <div class="story-shell split-story split-story--reverse">
+          <figure class="product-window story-window" data-reveal>
+            <div class="product-window__bar" aria-hidden="true"><i></i><i></i><i></i><span>SiteDatum · RFI register</span></div>
+            <button class="screenshot-trigger" type="button" data-screenshot-open data-full-image="assets/images/rfi-register.png" data-full-alt="SiteDatum RFI register" aria-label="Open the SiteDatum RFI register at full resolution">
+              <img src="assets/images/rfi-register.png" alt="SiteDatum RFI register" width="1440" height="1000" />
+              <span class="screenshot-trigger__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>View full resolution</span>
+            </button>
+          </figure>
+          <div class="story-copy" data-reveal>
+            <p class="eyebrow eyebrow--orange">02 / Context</p>
+            <h2 id="context-title">Move the work without losing the thread.</h2>
+            <p>Tasks, RFIs, submittals, files, notes, contacts, and controls stay attached to the real project instead of scattering across tabs and inboxes.</p>
+            <p class="motion-caption">Select a record type to transform the project view while the surrounding project context remains fixed.</p>
+          </div>
         </div>
-        <dl>
-          <div><dt>Free use</dt><dd>No account required</dd></div>
-          <div><dt>Project content</dt><dd>Stays out of billing and licensing systems</dd></div>
-          <div><dt>Connectivity</dt><dd>Ordinary project work remains local-first</dd></div>
-          <div><dt>Recovery</dt><dd>Backup and essential export stay available</dd></div>
-        </dl>
       </section>
 
-      <section class="pricing" id="pricing" aria-labelledby="pricing-title">
-        <div class="section-heading">
-          <h2 id="pricing-title">One complete manual workflow. Pro removes friction.</h2>
-          <p>Review the unsigned-installer warning before purchasing Pro. The same warning appears beside Stripe’s payment confirmation.</p>
+      <section class="story-section story-section--navy ownership" aria-labelledby="ownership-title">
+        <div class="story-shell">
+          <p class="eyebrow eyebrow--orange" data-reveal>03 / Ownership</p>
+          <h2 id="ownership-title" data-reveal>Your database. Your folders. Your record.</h2>
+          <p class="ownership__intro" data-reveal>SiteDatum stays useful when the network does not. Project documents remain normal Windows files and your daily work never depends on a cloud account.</p>
+          <dl class="principle-strip" data-reveal>
+            <div><dt>Free use</dt><dd>No account required</dd></div><div><dt>Project content</dt><dd>Never sent to billing</dd></div><div><dt>Offline work</dt><dd>Ordinary work continues</dd></div><div><dt>Recovery</dt><dd>Backup and export remain</dd></div>
+          </dl>
         </div>
-        <div class="pricing-table" role="region" aria-label="Free and Pro comparison" tabindex="0">
-          <table>
-            <thead><tr><th scope="col">Capability</th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead>
-            <tbody>
-              <tr><th scope="row">Price</th><td>$0</td><td>$15 monthly or $150 annually</td></tr>
-              <tr><th scope="row">Active projects</th><td>Up to 3</td><td>Unlimited</td></tr>
-              <tr><th scope="row">Manual registers</th><td>Complete</td><td>Complete</td></tr>
-              <tr><th scope="row">Templates and bulk operations</th><td>—</td><td>Included</td></tr>
-              <tr><th scope="row">CSV / Excel import</th><td>—</td><td>Included</td></tr>
-              <tr><th scope="row">Machine-readable CSV export</th><td>Always available</td><td>Always available</td></tr>
-              <tr><th scope="row">Formatted professional outputs</th><td>—</td><td>Included</td></tr>
-              <tr><th scope="row">Backup and recovery</th><td>Always available</td><td>Always available</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="pricing__note">Expiration never deletes, hides, moves, or makes existing project records uneditable.</p>
       </section>
 
-      <section class="requirements" id="requirements" aria-labelledby="requirements-title">
-        <div class="section-heading">
-          <h2 id="requirements-title">System requirements</h2>
-          <p>A focused Windows desktop application with no cloud dependency for ordinary project work.</p>
+      <section class="story-section workday" id="workday" aria-labelledby="workday-title">
+        <div class="story-shell">
+          <div class="section-intro" data-reveal>
+            <div><p class="eyebrow">The controlled workday</p><h2 id="workday-title">Pressure becomes a preserved record.</h2></div>
+            <p>A three-beat story built around the way project engineers actually move through a day.</p>
+          </div>
+          <ol class="workday-steps" data-story-steps>
+            <li data-reveal><span>08:10</span><h3>Review</h3><p>See every commitment that needs attention.</p><i aria-hidden="true"></i></li>
+            <li data-reveal><span>11:45</span><h3>Act</h3><p>Open the underlying project record and move the work.</p><i aria-hidden="true"></i></li>
+            <li data-reveal><span>16:20</span><h3>Preserve</h3><p>Update status, link the file, and leave the record clearer.</p><i aria-hidden="true"></i></li>
+          </ol>
+          <p class="motion-caption workday__note">The record line advances with the story. Reduced motion replaces movement with simple opacity changes.</p>
         </div>
-        <dl class="requirements__list">
-          <div><dt>Operating system</dt><dd>Windows 10 or Windows 11, 64-bit</dd></div>
-          <div><dt>Display</dt><dd>Minimum application window 760 × 540; verified at 200% Windows scaling</dd></div>
-          <div><dt>Runtime</dt><dd>Microsoft Edge WebView2 Runtime</dd></div>
-          <div><dt>Storage</dt><dd>Local space for the application database, backups, and your project files</dd></div>
-          <div><dt>Internet</dt><dd>Not required for ordinary Free project work; required for purchase and entitlement recovery</dd></div>
-        </dl>
       </section>
 
-      <section class="status-band" aria-labelledby="early-access-title">
-        <div><h2 id="early-access-title">Know the installation limits before purchasing</h2><p>The Early Access installer will be unsigned. Microsoft Defender SmartScreen may warn, and Smart App Control or an organization policy may block installation completely. SiteDatum will never ask you to disable device security.</p></div>
-        <a class="button button--secondary" href="early-access.html">Read the Early Access guide <span aria-hidden="true">→</span></a>
+      <section class="story-section local-first" id="local-first" aria-labelledby="local-title">
+        <div class="story-shell split-story">
+          <div class="story-copy" data-reveal>
+            <p class="eyebrow">Local-first, not local-only</p>
+            <h2 id="local-title">The software works around your machine—not the other way around.</h2>
+            <p>SQLite keeps the application record on your computer. Your documents remain in the folders you already understand and control. Connectivity is reserved for purchase and entitlement recovery.</p>
+          </div>
+          <dl class="file-map" data-reveal>
+            <div><dt>C:\Projects\Northstar</dt><dd>Normal Windows folder</dd></div><div><dt>SiteDatum.db</dt><dd>Local relationship record</dd></div><div><dt>Backups\2026-10-05</dt><dd>Portable recovery</dd></div><div><dt>Billing service</dt><dd>Entitlement only—no project data</dd></div>
+          </dl>
+        </div>
       </section>
 
-      <section class="status-band" aria-labelledby="status-title">
-        <div><h2 id="status-title">SiteDatum 1.4.1 Early Access is available.</h2><p>Review the unsigned-installer limits, verify the published SHA-256 checksum, and keep all Windows security protections enabled.</p></div>
-        <a class="button button--secondary" href="early-access.html">Open the verified download page <span aria-hidden="true">→</span></a>
+      <section class="story-section pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="story-shell">
+          <p class="eyebrow" data-reveal>Pricing</p>
+          <div class="section-intro" data-reveal><h2 id="pricing-title">Start complete. Pay to remove friction.</h2><p>Free keeps the full manual workflow. Pro unlocks acceleration, scale, and professional output.</p></div>
+          <div class="plans">
+            <article class="plan plan--free" data-reveal><p class="eyebrow">Free</p><h3>$0</h3><p>Up to 3 active projects · complete manual registers · backup and essential export.</p><a class="button button--outline" href="early-access.html">Download free <span aria-hidden="true">→</span></a></article>
+            <article class="plan plan--pro" data-reveal><p class="eyebrow eyebrow--orange">Pro</p><h3>$15 / month</h3><p>Unlimited projects · templates · bulk operations · Excel interchange · professional reports.</p><a class="button button--primary" href="early-access.html">Choose Pro <span aria-hidden="true">→</span></a></article>
+          </div>
+          <p class="pricing__note">$15 monthly or $150 annually. Expiration never deletes, hides, moves, or makes existing project records uneditable.</p>
+        </div>
+      </section>
+
+      <section class="story-section story-section--navy early-access" aria-labelledby="early-access-title">
+        <div class="story-shell early-access__inner">
+          <div class="early-access__mark" aria-hidden="true">EA</div>
+          <div data-reveal><p class="eyebrow eyebrow--orange">Unsigned Windows Early Access</p><h2 id="early-access-title">Know the installation limits before you download.</h2><p>SmartScreen, Smart App Control, antivirus software, or an organization policy may warn or block installation. SiteDatum will never ask you to weaken those protections.</p><a class="button button--dark" href="early-access.html">Read the installation guide <span aria-hidden="true">→</span></a></div>
+        </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div><span class="footer-brand"><img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="152" height="46" /></span><p>The project record you control.</p></div>
-      <nav aria-label="Legal and support"><a href="early-access.html">Early Access</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="refunds.html">Refund policy</a></nav>
-      <p>Created by Francisco Cabrera · <span data-year></span></p>
+      <div class="footer-brand-block"><a class="footer-brand" href="index.html" aria-label="SiteDatum home"><img src="assets/images/sitedatum-logo.png" alt="SiteDatum" width="152" height="46" /></a><strong>The project record you control.</strong><span>Created by Francisco Cabrera</span></div>
+      <nav aria-label="Explore"><strong>Explore</strong><a href="#product">Product</a><a href="#workday">Workflow</a><a href="#pricing">Pricing</a><a href="early-access.html">Early Access</a></nav>
+      <nav aria-label="Support and legal"><strong>Support</strong><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="refunds.html">Refunds</a></nav>
+      <nav aria-label="Development"><strong>Development</strong><a href="https://github.com/mellophone22/SiteDatum" rel="noreferrer">GitHub</a><a href="early-access.html">Release notes</a><a href="early-access.html">System requirements</a></nav>
+      <p class="site-footer__copyright">© <span data-year></span> SiteDatum</p>
     </footer>
+
     <dialog class="screenshot-dialog" data-screenshot-dialog aria-labelledby="screenshot-dialog-title">
-      <div class="screenshot-dialog__bar">
-        <h2 id="screenshot-dialog-title">SiteDatum application screen</h2>
-        <button type="button" data-screenshot-close aria-label="Close full-resolution image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg><span>Close</span></button>
-      </div>
+      <div class="screenshot-dialog__bar"><h2 id="screenshot-dialog-title">SiteDatum application screen</h2><button type="button" data-screenshot-close aria-label="Close full-resolution image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg><span>Close</span></button></div>
       <div class="screenshot-dialog__canvas"><img data-screenshot-dialog-image src="assets/images/portfolio-overview.png" alt="" width="1440" height="1000" /></div>
     </dialog>
   </body>
 </html>
-
