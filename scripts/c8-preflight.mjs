@@ -122,13 +122,13 @@ assert('C8-OPERATIONS-RUNBOOK', [
 
 const support = read('site/support.html');
 const securityPolicy = read('SECURITY.md');
-const bugTemplate = read('.gitlab/issue_templates/Bug.md');
+const bugTemplate = read('.github/ISSUE_TEMPLATE/bug.md');
 assert('C8-PRIVATE-SUPPORT', [
   'mailto:supportsitedatum@protonmail.com',
   'Do not email passwords',
 ].every((statement) => support.includes(statement)) && [
   'supportsitedatum@protonmail.com',
-  'Do not open a public GitLab issue',
+  'Do not open a public GitHub issue',
 ].every((statement) => securityPolicy.includes(statement)) && [
   'Do not include',
   'supportsitedatum@protonmail.com',

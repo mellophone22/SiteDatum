@@ -46,9 +46,11 @@ export function assertExpectedSignature(actual, expected) {
 export function validateDownloadUrl(value) {
   if (!value) return null;
   const url = new URL(value);
-  const allowedHost = url.hostname === 'sitedatum.site' || url.hostname === 'www.sitedatum.site' || url.hostname === 'gitlab.com';
-  if (url.protocol !== 'https:' || !allowedHost || url.username || url.password || url.hash) {
-    throw new Error('Download URL must be an HTTPS SiteDatum or GitLab URL without credentials or a fragment');
+  const canonicalSite = url.hostname === 'sitedatum.site' || url.hostname === 'www.sitedatum.site';
+  const canonicalGitHubRelease = url.hostname === 'github.com'
+    && /^\/mellophone22\/SiteDatum\/releases\/download\//.test(url.pathname);
+  if (url.protocol !== 'https:' || (!canonicalSite && !canonicalGitHubRelease) || url.username || url.password || url.hash) {
+    throw new Error('Download URL must be an HTTPS SiteDatum URL or canonical SiteDatum GitHub release URL without credentials or a fragment');
   }
   return url.toString();
 }

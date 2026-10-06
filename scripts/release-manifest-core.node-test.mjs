@@ -32,7 +32,8 @@ test('validates expected Authenticode state', () => {
 test('restricts publication metadata to approved HTTPS origins', () => {
   assert.equal(validateDownloadUrl(null), null);
   assert.equal(validateDownloadUrl('https://sitedatum.site/downloads/SiteDatum.exe'), 'https://sitedatum.site/downloads/SiteDatum.exe');
-  assert.equal(validateDownloadUrl('https://gitlab.com/Kikito22/sitedatum/-/releases/v1.4.1/downloads/app.exe'), 'https://gitlab.com/Kikito22/sitedatum/-/releases/v1.4.1/downloads/app.exe');
+  assert.equal(validateDownloadUrl('https://github.com/mellophone22/SiteDatum/releases/download/v1.4.1/app.exe'), 'https://github.com/mellophone22/SiteDatum/releases/download/v1.4.1/app.exe');
+  assert.throws(() => validateDownloadUrl('https://github.com/another-owner/SiteDatum/releases/download/v1.4.1/app.exe'), /canonical SiteDatum GitHub release/);
   assert.throws(() => validateDownloadUrl('http://sitedatum.site/app.exe'), /HTTPS/);
   assert.throws(() => validateDownloadUrl('https://example.com/app.exe'), /HTTPS/);
   assert.equal(validatePublicationDate('2026-10-03'), '2026-10-03');

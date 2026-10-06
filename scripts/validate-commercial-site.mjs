@@ -63,7 +63,7 @@ for (const required of [
   'billing questions',
   'suspected security or privacy problems',
   'Do not email passwords',
-  'issuable_template=Bug',
+  'github.com/mellophone22/SiteDatum/issues/new?template=bug.md',
 ]) {
   if (!support.includes(required)) failures.push(`support.html: missing private-intake safeguard: ${required}`);
 }

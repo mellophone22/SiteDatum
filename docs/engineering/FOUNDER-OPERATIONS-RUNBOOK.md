@@ -4,14 +4,14 @@
 
 ## Operating boundary
 
-This runbook is for one founder operating SiteDatum's narrow commercial perimeter. It does not authorize access to customer project records or documents. Project names, tasks, RFIs, submittals, notes, contacts, file paths, files, screenshots of private records, and workspace databases must never be copied into Stripe, Supabase, GitLab, Slack, support records, or operational telemetry.
+This runbook is for one founder operating SiteDatum's narrow commercial perimeter. It does not authorize access to customer project records or documents. Project names, tasks, RFIs, submittals, notes, contacts, file paths, files, screenshots of private records, and workspace databases must never be copied into Stripe, Supabase, GitHub, Slack, support records, or operational telemetry.
 
 Production-commerce promotion is founder-approved, but it remains gated by `C9-PRODUCTION-COMMERCE-PROMOTION.md`. Until those gates pass, every billing action continues to use the connected Stripe sandbox and the dedicated SiteDatum Supabase sandbox. Confirm the environment indicator before every mutation. Never copy or substitute sandbox and production keys, prices, webhooks, signing keys, or project references across environments.
 
 ## Minimum access and custody
 
 - Use an individual operator account protected by a unique password and multi-factor authentication where available.
-- Keep Stripe, Supabase, GitLab, signing, and domain credentials out of the repository and Slack.
+- Keep Stripe, Supabase, GitHub, signing, and domain credentials out of the repository and Slack.
 - Store server-only secrets only in the provider's encrypted secret facility. The desktop and public repository receive public verification material only.
 - Do not paste complete tokens, webhook payloads, database rows, customer email addresses, or payment details into an incident record.
 - Rotate a credential immediately when exposure is plausible; do not wait for proof of misuse.
@@ -22,7 +22,7 @@ Production-commerce promotion is founder-approved, but it remains gated by `C9-P
 
 1. Run `npm run audit:c8:full` from the candidate commit.
 2. Confirm zero failed gates and review every deferred gate.
-3. Confirm GitLab frontend, Rust, Supabase, and secret-detection jobs passed for the same commit.
+3. Confirm GitHub Actions frontend, Rust, and Supabase jobs passed for the same commit, and review repository secret-scanning results.
 4. Record the commit, version, installer SHA-256, Authenticode status, and test environment in private operator notes.
 5. Confirm an unsigned Early Access download remains unavailable unless the canonical page shows the exact candidate version, commit, SHA-256, `NotSigned` status, publication date, and required warning.
 6. Generate the content-free staged manifest with `npm run release:manifest -- --source-commit <candidate-commit>` from a clean repository. Keep the output private until disposable-profile acceptance is complete; manifest generation never uploads or publishes the installer.
@@ -49,12 +49,12 @@ Production-commerce promotion is founder-approved, but it remains gated by `C9-P
 1. Review failed Stripe webhook deliveries and the corresponding request IDs.
 2. Compare known Stripe sandbox subscriptions with the licensing projection; use reconciliation only when drift is suspected or after a delivery incident.
 3. Review Supabase function failures, rate-limit anomalies, and licensing audit outcomes without exporting private rows.
-4. Review dependency and secret-detection results from the latest GitLab pipeline.
+4. Review dependency results from the latest GitHub Actions run and repository secret-scanning alerts.
 5. Confirm no legal draft is presented as effective and no unsigned installer is presented as signed, Microsoft-certified, trusted, or generally available.
 
 ### Before opening or changing an Early Access download
 
-1. Confirm `npm run audit:c8:full` and the matching GitLab pipeline passed for the exact candidate commit.
+1. Confirm `npm run audit:c8:full` and the matching GitHub Actions workflow passed for the exact candidate commit.
 2. Calculate SHA-256 from the immutable installer and confirm Authenticode reports `NotSigned`.
 3. Confirm the canonical HTTPS release page and the actual checkout both disclose the unsigned status before payment or download.
 4. Download the file from its public origin and confirm the downloaded digest exactly matches the published digest.
@@ -147,7 +147,7 @@ When uncertain, use the higher severity until evidence narrows the impact.
 
 - Process sandbox refunds only through Stripe Managed Payments while testing. A founder-controlled live validation refund is permitted only under the C9 launch record after the live lifecycle gates are ready.
 - A partial or full refund object alone must not revoke entitlement. The authoritative subscription state controls entitlement projection.
-- Never request card information through SiteDatum support, GitLab, or Slack.
+- Never request card information through SiteDatum support, GitHub, or Slack.
 - Before production launch, the effective refund policy and private billing-support route must be published.
 
 ### Device recovery
@@ -179,7 +179,7 @@ Use `RELEASE_ROLLBACK_RUNBOOK.md`. Prefer a forward fix after a schema advance. 
 
 ## Communications
 
-- Public GitLab issues are appropriate only for reproducible software problems stripped of customer and billing information.
+- Public GitHub issues are appropriate only for reproducible software problems stripped of customer and billing information.
 - The private customer-facing intake for billing disputes, account or entitlement recovery, and security/privacy reports is `supportsitedatum@protonmail.com`.
 - Keep the original message in the private support inbox. Assign a content-free record ID before referring to it in operator notes or Slack.
 - Slack may carry only the record ID, severity, environment, owner, status, and next-update time. Never forward or paste the customer's message, email address, secrets, provider payloads, private customer data, payment information, or workspace content.
@@ -191,7 +191,7 @@ Use `RELEASE_ROLLBACK_RUNBOOK.md`. Prefer a forward fix after a schema advance. 
 
 1. Classify the message as general support, billing/account, security/privacy, or software defect.
 2. Assign a content-free record ID and severity. Do not put the customer's name or email address in the record ID.
-3. For a public-safe software defect, reproduce it with fictional data before creating a GitLab issue; do not forward the customer's original message.
+3. For a public-safe software defect, reproduce it with fictional data before creating a GitHub issue; do not forward the customer's original message.
 4. Keep billing/account and security/privacy cases private. Escalate suspected secret exposure, cross-customer access, live-mode contact, or project-content collection as SEV-1.
 5. Record only redacted request/event identifiers that are necessary to diagnose the case. Never store authentication material or payment details.
 6. Close the case only after recording the resolution, remaining risk, and any safe customer follow-up.
@@ -200,7 +200,7 @@ Use `RELEASE_ROLLBACK_RUNBOOK.md`. Prefer a forward fix after a schema advance. 
 
 Do not open public paid purchase until all are true:
 
-- C8 preflight and GitLab pipelines pass on the immutable release commit;
+- C8 preflight and GitHub Actions pass on the immutable release commit;
 - disposable-profile install, upgrade, reinstall, offline, backup/export, recovery, keyboard, and 200% scaling tests pass;
 - the complete Stripe/Supabase sandbox lifecycle and two-device recovery matrix pass;
 - every C9 production account, environment, webhook, entitlement, lifecycle, and rollback gate passes;

@@ -7,7 +7,7 @@ Status: completed for controlled unsigned Early Access; trusted signed general a
 The release-safety boundary includes these controls without changing licensing policy, subscription behavior, or the rendered interface:
 
 - the Tauri webview now uses an explicit restrictive Content Security Policy; and
-- GitLab CI now runs the existing frontend and Rust quality gates before the existing secret-detection stage.
+- GitHub Actions now runs the frontend, Rust, and disposable Supabase quality gates; GitHub repository-native secret scanning protects the public source boundary.
 
 Migration recovery now creates and validates an app-local SQLite snapshot before an existing older database is upgraded. Each migration remains transactional, and an older executable refuses a database whose recorded schema is newer than it supports. The release and rollback procedures are recorded in `RELEASE_ROLLBACK_RUNBOOK.md`; the architecture boundary is recorded in `ADR-007-MIGRATION-RECOVERY.md`.
 
@@ -15,15 +15,15 @@ The policy permits only packaged application resources, Tauri IPC, and Tauri's a
 
 ## Continuous integration
 
-The frontend job uses the documented Node.js 24 baseline and performs a clean locked install, ESLint, the Vitest suite, and the TypeScript/Vite production build. The Rust job uses the documented Rust 1.97 baseline, installs `rustfmt` plus only the Linux libraries needed to compile Tauri on a GitLab Docker runner, checks formatting, and runs the locked portable Rust test suite. The existing project-root acceptance test is explicitly Windows-only because it validates a real Windows temporary path; it remains part of the full local Windows suite. Both jobs use lockfile-keyed caches and are interruptible. GitLab secret detection remains enabled as a separate stage.
+The GitHub Actions frontend job uses the documented Node.js 24 baseline and performs a clean locked install, high-severity dependency audit, ESLint, the Vitest suite, commercial-site validation, and the TypeScript/Vite production build. The Rust job uses the documented Rust 1.97 baseline, installs `rustfmt` plus only the Linux libraries needed to compile Tauri on an ephemeral Ubuntu runner, audits the Rust lockfile, checks formatting, and runs the locked portable Rust test suite. The existing project-root acceptance test is explicitly Windows-only because it validates a real Windows temporary path; it remains part of the full local Windows suite. Superseded workflow runs are interruptible.
 
-The Supabase pgTAP suite runs on GitLab.com's ephemeral `saas-linux-small-amd64` hosted runner. Its TLS-protected Docker-in-Docker service is isolated to the newly provisioned job VM and receives no production credentials, linked hosted database, billing secret, signing key, or customer data. The repository-pinned Supabase CLI starts disposable local Postgres, applies repository migrations, runs both licensing and Stripe adapter test files, and removes the local volumes afterward. A persistent self-managed privileged runner is explicitly rejected in `ADR-008-SUPABASE-CI-RUNNER.md`.
+The Supabase pgTAP suite runs on an ephemeral GitHub-hosted Ubuntu runner using the runner's Docker daemon. The job receives no production credentials, linked hosted database, billing secret, signing key, or customer data. The repository-pinned Supabase CLI starts disposable local Postgres, applies repository migrations, runs both licensing and Stripe adapter test files, and removes the local volumes afterward. A persistent self-managed privileged runner remains rejected. See `ADR-012-GITHUB-ACTIONS-CI.md`; `ADR-008-SUPABASE-CI-RUNNER.md` remains the historical GitLab decision for earlier evidence.
 
 ## Windows distribution boundary
 
 `ADR-011-CONTROLLED-UNSIGNED-EARLY-ACCESS.md` authorizes a narrowly scoped direct-download Early Access channel for the verified NSIS package. The channel must disclose before purchase and download that the installer is unsigned, that Windows may warn or block it, and that managed devices may not permit installation. It must never be described as trusted, signed, Microsoft-certified, or generally available. Support must not instruct a customer to disable or weaken Windows or organizational security controls.
 
-Every published Early Access installer must be byte-for-byte identical to a candidate that passed the complete local C8 gate and the matching GitLab pipeline. The canonical HTTPS release page must publish its version, source commit, SHA-256 digest, Authenticode status, and publication date. A rebuild or repackaging is a new candidate. Automatic application updating remains disabled for this channel; upgrades are manually obtained as separately verified installers.
+Every published Early Access installer must be byte-for-byte identical to a candidate that passed the complete local C8 gate and the matching hosted GitHub Actions workflow. The canonical HTTPS release page must publish its version, source commit, SHA-256 digest, Authenticode status, and publication date. A rebuild or repackaging is a new candidate. Automatic application updating remains disabled for this channel; upgrades are manually obtained as separately verified installers.
 
 `ADR-010-MICROSOFT-STORE-MSIX-DISTRIBUTION.md` remains the preferred future trusted general-availability route. Microsoft would sign a certified MSIX and provide Store updates without a recurring external code-signing charge. That later route does not change SiteDatum's local-first data boundary.
 
@@ -37,7 +37,7 @@ The frontend quality job runs `npm audit --audit-level=high` against the committ
 
 The Rust quality job installs the explicitly pinned `cargo-audit 0.22.2` tool with its own locked dependency graph, caches the executable, and checks `src-tauri/Cargo.lock` against the current RustSec advisory database. RustSec vulnerability advisories fail the job. Informational warnings such as unmaintained, unsound, or yanked transitive crates remain visible and require review, but do not automatically fail a release unless they are also classified as vulnerabilities or a direct impact is established.
 
-GitLab's existing secret-detection stage remains separate. These advisory checks do not upload SiteDatum project records or customer data; they submit dependency names and versions to the relevant public advisory services.
+GitHub's repository-native secret scanning and push protection remain separate from the Actions workflow. These advisory checks do not upload SiteDatum project records or customer data; they submit dependency names and versions to the relevant public advisory services.
 
 ## Verification
 
@@ -68,7 +68,7 @@ Dependency advisory baseline on 2026-10-01:
 - RustSec vulnerability scan across 581 locked crates: zero vulnerabilities; and
 - RustSec maintenance warnings: `proc-macro-error` is unmaintained, `glib 0.18.5` has an unsound iterator advisory, and `yoke-derive 0.8.3` is yanked. These are transitive dependencies and remain recorded for upgrade tracking.
 
-No visual comparison is required because the rendered UI is unchanged. GitLab must still run the new pipeline successfully after the changes are pushed before this slice is considered hosted-verified.
+No application visual comparison is required because the rendered desktop UI is unchanged. GitHub Actions must still complete successfully for the pushed commit before this slice is considered hosted-verified.
 
 ## Remaining C6 work
 

@@ -21,13 +21,13 @@ Screenshots are actual SiteDatum 1.4.0 application captures using illustrative p
 
 ## Support and policy status
 
-The support page separates public, fictional-data software reports from private support. Billing, account or entitlement recovery, and security/privacy reports route to `supportsitedatum@protonmail.com`. The public GitLab bug template prominently warns users not to post private project, customer, billing, credential, or secret information. The founder runbook defines content-free internal triage and prohibits copying customer messages or private data into Slack or GitLab. External delivery to the private inbox was verified on 2026-10-03.
+The support page separates public, fictional-data software reports from private support. Billing, account or entitlement recovery, and security/privacy reports route to `supportsitedatum@protonmail.com`. The public GitHub bug template prominently warns users not to post private project, customer, billing, credential, or secret information. The founder runbook defines content-free internal triage and prohibits copying customer messages or private data into Slack or public issues. External delivery to the private inbox was verified on 2026-10-03.
 
 Privacy, terms, and cancellation/refund pages are founder-approved and effective October 3, 2026. They document the verified product boundary, minimum licensing data, providers, retention schedule, renewal/cancellation behavior, device and grace policy, non-destructive expiration, private contact, merchant-of-record workflow, warranty and liability terms, and Florida governing-law position. `docs/commercial/C8-LEGAL-REVIEW-PACKAGE.md` records the founder’s decisions and explicit choice to proceed without qualified legal review; it does not claim attorney review or universal legal compliance.
 
 ## Verification
 
-Run `npm run test:site`. The validator checks all six pages, local references, the Early Access disclosures, required product statements, and policy-draft labels. GitLab frontend quality also runs this check.
+Run `npm run test:site`. The validator checks all six pages, local references, the Early Access disclosures, required product statements, and policy-draft labels. GitHub Actions frontend quality also runs this check.
 
 ## Ongoing operating gates
 

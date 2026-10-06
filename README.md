@@ -90,7 +90,7 @@ Each register supports search, project filtering, constrained status and priorit
 
 ## Install
 
-SiteDatum source is hosted publicly on [GitLab](https://gitlab.com/Kikito22/sitedatum). The controlled unsigned Windows Early Access installer is distributed only from the canonical SiteDatum HTTPS domain.
+SiteDatum source is hosted publicly on [GitHub](https://github.com/mellophone22/SiteDatum). The controlled unsigned Windows Early Access installer is distributed only from the canonical SiteDatum HTTPS domain.
 
 ### Recommended: Windows installer
 
@@ -121,7 +121,7 @@ Prerequisites:
 - Visual Studio 2022 Build Tools with the Desktop development with C++ workload
 
 ```powershell
-git clone https://gitlab.com/Kikito22/sitedatum.git
+git clone https://github.com/mellophone22/SiteDatum.git
 cd SiteDatum
 npm ci
 npm run tauri -- dev
