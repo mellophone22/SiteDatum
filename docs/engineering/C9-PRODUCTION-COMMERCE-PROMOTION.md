@@ -111,3 +111,13 @@ Disable the public purchase buttons first, then disable Checkout Session creatio
 - The 1.4.3 executable contains the production Supabase origin and replacement key ID, excludes the sandbox origin and superseded key ID, and contains no private-key, Stripe-secret, webhook-secret, or reconciliation-secret identifiers.
 - Automated acceptance passed: 88 frontend tests, 50 production-feature Rust tests, lint, production build, eight-page site validation, release-manifest tests, zero high-severity npm vulnerabilities, and the full C8 audit with 17 passes, 3 documented deferrals, and 0 failures.
 - The installer is staged locally and in the disposable-profile test bundle only. It has not been uploaded, published, tagged, or linked from the website. No Step 4 Checkout submission, customer, subscription, invoice, PaymentIntent, charge, cancellation, or refund was created.
+
+## Production entitlement-transition correction — October 6, 2026
+
+- Disposable-profile acceptance exposed two pre-publication transition defects: an entitlement signed by the superseded key blocked sign-in status, and a connected Free account received a generic service failure when no production Pro subscription existed.
+- Source commit `2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c` now fails closed to the Free policy after discarding only an unverifiable cached entitlement credential. Project records, documents, workspace configuration, account credentials, and device identity are not changed.
+- The entitlement refresh path now treats `PRO_SUBSCRIPTION_REQUIRED` as an expected Free-account result and reports that no Pro subscription is linked. Other service failures remain errors.
+- Automated acceptance passed: 88 frontend tests, 51 production-feature Rust tests, lint, production frontend build, and the production-commerce configuration audit.
+- The replacement unsigned installer is 4,684,165 bytes with SHA-256 `CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B`; the compiled executable contains the production origin and replacement key ID, excludes the sandbox origin and superseded key ID, and contains no server-secret identifiers.
+- The prior 1.4.3 candidate hash `4518B64BE839A64BF07CA91DA90AB470AEF21284ABB74DA8403FEAAD73958264` is superseded and must not be published.
+- Focused reinstall acceptance of this exact replacement candidate remains required. Step 4 live payment lifecycle work remains explicitly out of scope.

@@ -4,10 +4,10 @@
 
 ## Immutable candidate identity
 
-- Source commit: `2f66af53edfd81cd9128e6742fa2f7765968293c`
+- Source commit: `2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c`
 - Installer: `SiteDatum_1.4.3_x64-setup.exe`
-- Size: 4,682,726 bytes
-- SHA-256: `4518B64BE839A64BF07CA91DA90AB470AEF21284ABB74DA8403FEAAD73958264`
+- Size: 4,684,165 bytes
+- SHA-256: `CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B`
 - Authenticode: `NotSigned`
 - Production entitlement key ID: `prod-2026-10-06-2`
 - Intended canonical URL: `https://sitedatum.site/downloads/SiteDatum_1.4.3_x64-setup.exe`
@@ -26,7 +26,7 @@ The local staged installer must remain byte-for-byte identical to this identity.
 ## Automated acceptance
 
 - 88 frontend tests passed.
-- 50 Rust tests passed with `commercial-production` enabled.
+- 51 Rust tests passed with `commercial-production` enabled.
 - Lint, production frontend build, eight-page commercial-site validation, release-manifest tests, and the high-severity npm audit passed with zero vulnerabilities.
 - The complete C8 audit reported 17 passed, 3 documented deferrals, and 0 failed.
 
@@ -35,7 +35,7 @@ The local staged installer must remain byte-for-byte identical to this identity.
 - Install the exact 1.4.3 candidate in the established disposable Windows profile.
 - Confirm the fictional workspace and all existing records remain available.
 - Confirm About SiteDatum reports 1.4.3.
-- Sign in to the existing production test account and refresh entitlement once, without opening or submitting Checkout.
+- Confirm the existing production test account remains connected as Free and that refreshing before purchase reports that no Pro subscription is linked, without presenting a service failure or opening Checkout.
 - Confirm backup, essential CSV export, and ordinary offline/local work remain available.
 
 ## Publication hold

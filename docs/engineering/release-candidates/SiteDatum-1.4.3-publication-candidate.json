@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "channel": "unsigned-early-access",
   "state": "publication-candidate",
-  "generatedAt": "2026-10-06T18:26:28.7615393Z",
+  "generatedAt": "2026-10-06T18:55:15.8874519Z",
   "version": "1.4.3",
-  "sourceCommit": "2f66af53edfd81cd9128e6742fa2f7765968293c",
-  "evidenceCommit": "2f66af53edfd81cd9128e6742fa2f7765968293c",
+  "sourceCommit": "2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c",
+  "evidenceCommit": "2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c",
   "artifact": {
     "filename": "SiteDatum_1.4.3_x64-setup.exe",
-    "sizeBytes": 4682726,
-    "sha256": "4518B64BE839A64BF07CA91DA90AB470AEF21284ABB74DA8403FEAAD73958264",
+    "sizeBytes": 4684165,
+    "sha256": "CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B",
     "authenticodeStatus": "NotSigned"
   },
   "licensing": {
