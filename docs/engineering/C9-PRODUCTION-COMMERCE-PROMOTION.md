@@ -1,6 +1,6 @@
 # C9 production commerce promotion
 
-**Status:** In progress — production environment, provider configuration, and authenticated no-payment Checkout inspection established; live lifecycle acceptance and the new production installer remain gated.
+**Status:** In progress — production environment, provider configuration, authenticated no-payment Checkout inspection, and the staged 1.4.2 production installer are established; disposable-profile acceptance and the live lifecycle remain gated.
 
 ## Decision
 
@@ -89,3 +89,14 @@ Disable the public purchase buttons first, then disable Checkout Session creatio
 - Stripe was the automatic-tax liability provider and required customer location input before calculating tax. The canonical success and cancellation URLs both returned to the SiteDatum Early Access page with the appropriate status query.
 - No customer, subscription, invoice, PaymentIntent, payment, or charge was created. No payment information was entered and the Subscribe control was not activated.
 - C9-03 passed. Public purchase enablement remains gated on the founder-controlled live lifecycle test and the new production installer acceptance pass.
+
+## Production installer candidate checkpoint — October 6, 2026
+
+- Source commit `8a5e25f1c8bac3de861ae16a88a0ee8389036cc3` synchronizes the desktop, Tauri, Rust, lockfile, and disposable-profile runner at version 1.4.2.
+- A clean isolated worktree built `SiteDatum_1.4.2_x64-setup.exe` with the `commercial-production` Cargo feature and the dedicated production Supabase origin, production publishable key, production entitlement public verification key, and key ID `prod-2026-10-03-1`.
+- The compiled executable contains the production Supabase origin and does not contain the sandbox origin. No private signing key, Stripe credential, webhook secret, reconciliation credential, or service-role key was supplied to the desktop build.
+- The unsigned installer is 4,681,448 bytes with SHA-256 `86CB0CFDC1106F022745875C6DC8DA6BB52C891D0B4C445C9FC6F1AE289EEFA3`; Authenticode reports `NotSigned` as expected for the approved Early Access route.
+- Automated acceptance passed: 88 frontend tests, 50 Rust tests compiled with `commercial-production`, lint, production frontend build, eight-page commercial-site validation, release-manifest tests, the high-severity npm audit with zero vulnerabilities, and the full C8 audit with 17 passes, 3 documented deferrals, and 0 failures.
+- The installer and publication-candidate manifest are staged locally under the ignored release-candidate workspace. They have not been uploaded, deployed, tagged as a release, or made available to customers. The public 1.4.1 download remains unchanged.
+- The Codex application sandbox could not execute the Windows installer because Windows rejected process startup with an isolation-specific `Illegal System DLL Relocation` error before installation. Clean install/startup, upgrade, uninstall/reinstall, existing-record preservation, and the focused keyboard/scaling review therefore remain pending in the established disposable Windows profile.
+- No live Checkout submission, payment method, customer, subscription, invoice, PaymentIntent, charge, cancellation, or refund was created during this checkpoint. Public purchase remains disabled.

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "channel": "unsigned-early-access",
+  "state": "publication-candidate",
+  "generatedAt": "2026-10-06T16:19:34.173Z",
+  "version": "1.4.2",
+  "sourceCommit": "8a5e25f1c8bac3de861ae16a88a0ee8389036cc3",
+  "evidenceCommit": "8a5e25f1c8bac3de861ae16a88a0ee8389036cc3",
+  "artifact": {
+    "filename": "SiteDatum_1.4.2_x64-setup.exe",
+    "sizeBytes": 4681448,
+    "sha256": "86CB0CFDC1106F022745875C6DC8DA6BB52C891D0B4C445C9FC6F1AE289EEFA3",
+    "authenticodeStatus": "NotSigned"
+  },
+  "publication": {
+    "date": "2026-10-06",
+    "downloadUrl": "https://sitedatum.site/downloads/SiteDatum_1.4.2_x64-setup.exe"
+  }
+}
