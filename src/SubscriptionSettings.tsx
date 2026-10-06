@@ -94,9 +94,9 @@ export function SubscriptionSettings() {
   }
 
   function refreshEntitlement() {
-    void run("refresh", () => invoke<LicensingStatus>("refresh_licensing_entitlement"), (result) => {
-      setStatus(result);
-      setMessage("Subscription status verified and saved securely on this computer.");
+    void run("refresh", () => invoke<AccountActionResult>("refresh_licensing_entitlement"), (result) => {
+      setStatus(result.status);
+      setMessage(result.message);
     });
   }
 

@@ -104,6 +104,17 @@ struct HostedUrlResponse {
     url: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ServiceErrorResponse {
+    code: Option<String>,
+}
+
+fn service_error_code(body: &str) -> Option<String> {
+    serde_json::from_str::<ServiceErrorResponse>(body)
+        .ok()
+        .and_then(|response| response.code)
+}
+
 fn now_utc() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -322,11 +333,22 @@ fn call_function<T: for<'de> Deserialize<'de>>(
         .send()
         .map_err(|error| auth_request_error(error_code, error))?;
     if !response.status().is_success() {
+        let technical_detail = response.text().unwrap_or_default();
+        if error_code == "ENTITLEMENT_REFRESH_FAILED"
+            && service_error_code(&technical_detail).as_deref() == Some("PRO_SUBSCRIPTION_REQUIRED")
+        {
+            return Err(AppError::from_technical(
+                "ENTITLEMENT_PRO_NOT_FOUND",
+                "No SiteDatum Pro subscription was found for this account.",
+                "SiteDatum Free remains available. Choose a Pro plan only when you are ready to subscribe.",
+                technical_detail,
+            ));
+        }
         return Err(AppError::from_technical(
             error_code,
             "The licensing service could not complete this request.",
             "Try again. If the problem continues, use the billing portal or contact SiteDatum support.",
-            response.text().unwrap_or_default(),
+            technical_detail,
         ));
     }
     response.json().map_err(|error| {
@@ -339,15 +361,27 @@ fn call_function<T: for<'de> Deserialize<'de>>(
     })
 }
 
-pub fn refresh_entitlement() -> AppResult<LicensingStatus> {
-    let response: EntitlementResponse = call_function(
+pub fn refresh_entitlement() -> AppResult<AccountActionResult> {
+    let response: EntitlementResponse = match call_function(
         "licensing-entitlement",
         serde_json::json!({ "deviceFingerprintHash": device_fingerprint_hash()? }),
         "ENTITLEMENT_REFRESH_FAILED",
-    )?;
+    ) {
+        Ok(response) => response,
+        Err(error) if error.code == "ENTITLEMENT_PRO_NOT_FOUND" => {
+            return Ok(AccountActionResult {
+                status: status()?,
+                message: "No Pro subscription is linked to this account. SiteDatum Free remains available.".into(),
+            });
+        }
+        Err(error) => return Err(error),
+    };
     verify_token(&response.token)?;
     write_credential(ENTITLEMENT_ACCOUNT, &response.token)?;
-    status()
+    Ok(AccountActionResult {
+        status: status()?,
+        message: "Subscription status verified and saved securely on this computer.".into(),
+    })
 }
 
 pub fn checkout_url(plan: Plan) -> AppResult<String> {
@@ -459,7 +493,18 @@ pub fn status() -> AppResult<LicensingStatus> {
     let Some(token) = read_credential(ENTITLEMENT_ACCOUNT)? else {
         return Ok(free_status(email));
     };
-    let claims = verify_token(&token)?;
+    let claims = match verify_token(&token) {
+        Ok(claims) => claims,
+        Err(error) if error.code == "ENTITLEMENT_INVALID" => {
+            eprintln!(
+                "Discarding an unverifiable cached entitlement and continuing with the Free policy: {}",
+                error.correlation_id
+            );
+            delete_credential(ENTITLEMENT_ACCOUNT)?;
+            return Ok(free_status(email));
+        }
+        Err(error) => return Err(error),
+    };
     let now = now_utc();
     let entitlement = evaluate_entitlement(
         EntitlementEvidence {
@@ -527,5 +572,15 @@ mod tests {
         assert!(!anonymous.connected);
         assert_eq!(anonymous.active_project_limit, Some(3));
         assert!(!anonymous.is_pro);
+    }
+
+    #[test]
+    fn recognizes_a_free_account_without_a_pro_subscription() {
+        assert_eq!(
+            service_error_code(r#"{"code":"PRO_SUBSCRIPTION_REQUIRED","requestId":"test"}"#)
+                .as_deref(),
+            Some("PRO_SUBSCRIPTION_REQUIRED")
+        );
+        assert_eq!(service_error_code("not json"), None);
     }
 }
