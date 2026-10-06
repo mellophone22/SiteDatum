@@ -5,7 +5,16 @@ import process from 'node:process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const site = resolve(root, 'site');
-const pages = ['index.html', 'early-access.html', 'support.html', 'privacy.html', 'terms.html', 'refunds.html'];
+const pages = [
+  'index.html',
+  'early-access.html',
+  'support.html',
+  'privacy.html',
+  'terms.html',
+  'refunds.html',
+  'release-notes.html',
+  'system-requirements.html',
+];
 const failures = [];
 
 const redirects = await readFile(resolve(site, '.htaccess'), 'utf8');
@@ -18,7 +27,7 @@ for (const required of [
 
 for (const page of pages) {
   const source = await readFile(resolve(site, page), 'utf8');
-  for (const required of ['<meta name="viewport"', '<main', 'site.css']) {
+  for (const required of ['<meta name="viewport"', '<main', 'site.css?v=20261006-2', 'data-nav-toggle', 'class="footer-brand-block"', 'release-notes.html', 'system-requirements.html']) {
     if (!source.includes(required)) failures.push(`${page}: missing ${required}`);
   }
   for (const match of source.matchAll(/(?:href|src)="([^"]+)"/g)) {
@@ -32,8 +41,11 @@ for (const page of pages) {
 }
 
 const index = await readFile(resolve(site, 'index.html'), 'utf8');
-for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.0 application screen']) {
+for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.1 application screen', 'Start of day', 'During the day', 'End of day']) {
   if (!index.includes(required)) failures.push(`index.html: missing approved statement: ${required}`);
+}
+for (const removed of ['Actual SiteDatum 1.4.0 application screen', '08:10', '11:45', '16:20', 'Reduced motion replaces movement']) {
+  if (index.includes(removed)) failures.push(`index.html: obsolete or internal-facing copy remains: ${removed}`);
 }
 
 const earlyAccess = await readFile(resolve(site, 'early-access.html'), 'utf8');
@@ -109,6 +121,16 @@ for (const [page, requiredStatements] of Object.entries(legalRequirements)) {
   for (const required of requiredStatements) {
     if (!source.includes(required)) failures.push(`${page}: missing policy subject: ${required}`);
   }
+}
+
+const releaseNotes = await readFile(resolve(site, 'release-notes.html'), 'utf8');
+for (const required of ['SiteDatum 1.4.1', 'October 3, 2026', 'CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7', 'NotSigned']) {
+  if (!releaseNotes.includes(required)) failures.push(`release-notes.html: missing verified release detail: ${required}`);
+}
+
+const requirements = await readFile(resolve(site, 'system-requirements.html'), 'utf8');
+for (const required of ['Windows 10 or 11', '64-bit', 'Microsoft Edge WebView2', '760 × 540', '200% Windows display scaling', 'unsigned Windows Early Access']) {
+  if (!requirements.includes(required)) failures.push(`system-requirements.html: missing requirement: ${required}`);
 }
 
 if (failures.length) {
