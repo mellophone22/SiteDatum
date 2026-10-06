@@ -41,7 +41,7 @@ for (const page of pages) {
 }
 
 const index = await readFile(resolve(site, 'index.html'), 'utf8');
-for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.1 application screen', 'Start of day', 'During the day', 'End of day']) {
+for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.3 application screen', 'Start of day', 'During the day', 'End of day']) {
   if (!index.includes(required)) failures.push(`index.html: missing approved statement: ${required}`);
 }
 for (const removed of ['Actual SiteDatum 1.4.0 application screen', '08:10', '11:45', '16:20', 'Reduced motion replaces movement']) {
@@ -53,12 +53,12 @@ for (const required of [
   'before purchasing or downloading',
   'may block installation completely',
   'Do not disable Microsoft Defender',
-  'SiteDatum_1.4.1_x64-setup.exe',
-  'CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7',
-  'a9ab136d43de9777dbf970c3b6ddef091baebb90',
+  'SiteDatum_1.4.3_x64-setup.exe',
+  'CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B',
+  '2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c',
   'Authenticode',
   'NotSigned',
-  'https://sitedatum.site/downloads/SiteDatum_1.4.1_x64-setup.exe',
+  'https://sitedatum.site/downloads/SiteDatum_1.4.3_x64-setup.exe',
   'Get-FileHash -Algorithm SHA256',
   'supportsitedatum@protonmail.com',
 ]) {
@@ -124,7 +124,7 @@ for (const [page, requiredStatements] of Object.entries(legalRequirements)) {
 }
 
 const releaseNotes = await readFile(resolve(site, 'release-notes.html'), 'utf8');
-for (const required of ['SiteDatum 1.4.1', 'October 3, 2026', 'CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7', 'NotSigned']) {
+for (const required of ['SiteDatum 1.4.3', 'October 6, 2026', 'CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B', 'NotSigned']) {
   if (!releaseNotes.includes(required)) failures.push(`release-notes.html: missing verified release detail: ${required}`);
 }
 
