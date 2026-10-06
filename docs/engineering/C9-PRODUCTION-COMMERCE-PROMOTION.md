@@ -1,6 +1,6 @@
 # C9 production commerce promotion
 
-**Status:** In progress — production environment, provider configuration, authenticated no-payment Checkout inspection, replacement key custody, and focused acceptance of the staged 1.4.3 production installer are complete. Controlled soft-launch publication and validation of the first genuine customer transaction remain gated.
+**Status:** Controlled soft launch open — production configuration, authenticated no-payment Checkout inspection, replacement key custody, focused 1.4.3 acceptance, publication, and public-origin verification are complete. Broad promotion remains gated on validation of the first genuine customer transaction.
 
 ## Decision
 
@@ -136,3 +136,13 @@ Disable the public purchase buttons first, then disable Checkout Session creatio
 - The first genuine customer purchase is the production observation point for receipt, webhook, entitlement, and portal behavior. Broad promotion stays paused until those results pass.
 - Cancellation and refund paths remain covered by the completed sandbox lifecycle. In production they are exercised only for a legitimate customer request or policy obligation, never to manufacture test evidence.
 - If the first genuine transaction fails or produces licensing drift, disable purchase immediately, preserve content-free correlation evidence, keep local Free use available, and follow the rollback runbook before reopening.
+
+## Controlled soft-launch publication — October 6, 2026
+
+- The founder supplied the two explicit confirmations required for destructive replacement of the Hostinger static-site contents.
+- The cohesive eight-page commercial site was deployed to `https://sitedatum.site/` with SiteDatum 1.4.3 presented as the current unsigned Early Access release.
+- The exact accepted installer is publicly available at `https://sitedatum.site/downloads/SiteDatum_1.4.3_x64-setup.exe`; a fresh origin download matched the expected 4,684,165-byte size and SHA-256 `CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B`.
+- The immutable 1.4.1 download remains available at its versioned URL and still matches SHA-256 `CAB68C74EDBE1F8C79780C709701ECA52FE1C711240D3CDE2D186E6062CA28A7`.
+- The home, Early Access, release notes, system requirements, support, privacy, terms, and refunds pages each returned HTTP 200 from the public origin, included the 1.4.3 release identity, and did not describe 1.4.1 as current.
+- No founder self-purchase, Checkout submission, customer, subscription, invoice, PaymentIntent, charge, cancellation, or refund was created for this publication.
+- Limited genuine-customer purchase is now the active observation phase. Broad promotion remains paused until the first genuine customer transaction passes receipt, webhook, entitlement, and portal verification.
