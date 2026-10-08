@@ -26,7 +26,7 @@ An active project is a project whose metadata is not archived. Archiving does no
 | Project templates | No | Full |
 | Bulk operations | No | Yes |
 | CSV/Excel import | No | Yes |
-| Complete machine-readable CSV export | Always available | Always available |
+| Complete machine-readable CSV export (all core entities, relationships, references, templates, and activity) | Always available | Always available |
 | Native Excel export | No | Yes |
 | Branded/formatted reports and generated professional deliverables | No | Yes |
 | Local backup, restore, and recovery | Always available | Always available |

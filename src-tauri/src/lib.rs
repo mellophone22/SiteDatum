@@ -8,6 +8,7 @@ mod file_record;
 mod licensing;
 mod note_contact;
 mod persistence;
+mod portable_export;
 mod project;
 mod project_root;
 mod recovery;
@@ -28,6 +29,7 @@ use error::{AppError, AppResult};
 use file_record::{FileInput, FileMetadataInput, FileRecord};
 use note_contact::{ActivityEvent, Contact, ContactInput, Note, NoteInput};
 use persistence::Database;
+use portable_export::PortableExportResult;
 use project::{Project, ProjectFolderPreview, ProjectInput};
 use project_root::{validate_project_root, ProjectRootSetting, ProjectRootValidation};
 use rfi::{AttachmentReference, Rfi, RfiInput};
@@ -631,6 +633,18 @@ fn export_work_items(
         .lock()
         .map_err(|_| AppError::internal("Database state is unavailable."))?
         .export_work_items(&path, &ids)
+}
+
+#[tauri::command]
+fn export_complete_csv(
+    directory: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<PortableExportResult> {
+    let database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    portable_export::export(&database, std::path::Path::new(&directory))
 }
 #[tauri::command]
 fn list_attention(
@@ -1462,6 +1476,7 @@ pub fn run() {
             preview_work_item_import,
             import_work_items,
             export_work_items,
+            export_complete_csv,
             list_attention,
             create_task,
             update_task,

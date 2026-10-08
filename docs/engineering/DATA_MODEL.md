@@ -22,4 +22,10 @@ An RFI can reference one task in the same project through `rfi_task_relationship
 
 `project_templates` stores a template name plus validated JSON arrays of task and milestone titles. Applying a template inserts all generated tasks and milestones and their activity events in one transaction. Templates never create arbitrary filesystem paths; the existing standard project-folder workflow remains authoritative.
 
+## Portable export boundary
+
+The complete CSV export includes `projects`, `tasks`, `rfis`, RFI-task relationships, RFI attachment references, `submittals`, submittal-task relationships, submittal attachment references, `registered_files`, `notes`, `contacts`, `work_items`, `project_templates`, and `activity_events`. Stable IDs, timestamps, archived rows, parent relationships, path references, and constrained machine values are preserved. Text values that spreadsheet applications could interpret as formulas are neutralized on output.
+
+The export deliberately excludes `app_settings`, `schema_migrations`, and legacy `sync_*` implementation tables as user-interface or infrastructure state. The manifest records the schema version needed to interpret the files. Actual project-document bytes are not part of this metadata export and remain ordinary Windows files.
+
 Work-item imports validate every row before beginning the insertion transaction. Backup restore accepts a canonical `.sqlite3` file selected from the app-local inventory, configured external inventory, or native file picker; verifies integrity and SiteDatum schema identity; creates a safety backup; restores via SQLite's backup API; reapplies repository migrations; and re-enables foreign keys. Startup recovery builds and verifies a candidate before preserving the unavailable database and activating the replacement.

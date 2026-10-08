@@ -10,6 +10,7 @@ type Conflict = { id: string; createdAtUtc: string };
 type Backup = { path: string; fileName: string; sizeBytes: number; modifiedAtUtc: string };
 type Preview = { projects: number; tasks: number; rfis: number; submittals: number; workItems: number; notes: number; contacts: number };
 type BackupSettings = { schedule: "off" | "daily" | "weekly"; destinationPath: string | null; lastSuccessUtc: number | null };
+type PortableExport = { path: string; exportedAtUtc: number; files: { entity: string; fileName: string; rowCount: number }[] };
 
 const backupDate = (value: string) => new Date(Number(value) * 1000).toLocaleString();
 
@@ -74,6 +75,17 @@ export function AuditRecovery({ onOpenFiles }: { onOpenFiles: () => void }) {
     catch (caught) { setError(describeAppError(caught)); }
     finally { setWorking(false); }
   }
+  async function exportCompleteCsv() {
+    const selected = await open({ directory: true, multiple: false, title: "Choose a folder for the SiteDatum export" });
+    if (typeof selected !== "string") return;
+    setWorking(true); setError("");
+    try {
+      const result = await invoke<PortableExport>("export_complete_csv", { directory: selected });
+      const rows = result.files.reduce((total, file) => total + file.rowCount, 0);
+      setMessage(`Complete CSV export created with ${rows} records across ${result.files.length} files: ${result.path}`);
+    } catch (caught) { setError(describeAppError(caught)); }
+    finally { setWorking(false); }
+  }
 
   return <section className="projects-page" aria-labelledby="audit-title">
     {confirmationDialog}
@@ -83,6 +95,10 @@ export function AuditRecovery({ onOpenFiles }: { onOpenFiles: () => void }) {
       <section><h2>Missing files <span>{missing.length}</span></h2>{missing.length ? <><ul className="overview-list">{missing.slice(0, 8).map((value) => <li key={value.id}><strong>{value.fileName}</strong><span>{value.projectNumber} — {value.projectName}</span></li>)}</ul><button className="secondary" onClick={onOpenFiles}>Open file recovery</button></> : <p>No registered files are missing.</p>}</section>
       <section><h2>Sync conflicts <span>{conflicts.length}</span></h2>{conflicts.length ? <p>Resolve these conflicts from Settings before the next sync.</p> : <p>No unresolved cloud conflicts.</p>}</section>
     </div>
+    <section className="recovery-section" aria-labelledby="portable-export-title">
+      <div className="detail-heading"><div><h2 id="portable-export-title">Complete data export</h2><p>Export every core record to separate, machine-readable CSV files. This is always available on Free and does not require an account.</p></div><button type="button" className="secondary" onClick={() => void exportCompleteCsv()} disabled={working}>Export all CSV data…</button></div>
+      <p className="help">The export includes active and archived metadata, relationships, attachment references, templates, and activity history. Referenced document files remain in their existing Windows folders and are not copied.</p>
+    </section>
     <section className="recovery-section" aria-labelledby="backup-plan-title">
       <div className="detail-heading"><div><h2 id="backup-plan-title">External backup plan</h2><p>Keep a second copy outside SiteDatum's app storage. Scheduled backups run when SiteDatum is open.</p></div></div>
       <div className="backup-plan-grid">

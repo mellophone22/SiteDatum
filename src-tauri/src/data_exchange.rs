@@ -25,7 +25,7 @@ const HEADERS: [&str; 12] = [
     "checklist_total",
 ];
 
-fn safe_csv_text(value: &str) -> Cow<'_, str> {
+pub(crate) fn safe_csv_text(value: &str) -> Cow<'_, str> {
     match value.as_bytes().first() {
         Some(b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r') => Cow::Owned(format!("'{value}")),
         _ => Cow::Borrowed(value),
