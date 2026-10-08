@@ -255,6 +255,27 @@ fn refresh_licensing_entitlement(
 }
 
 #[tauri::command]
+fn list_licensing_devices() -> AppResult<licensing::LicensingDeviceList> {
+    licensing::list_devices()
+}
+
+#[tauri::command]
+fn deactivate_licensing_device(
+    device_id: uuid::Uuid,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<licensing::AccountActionResult> {
+    let result = licensing::deactivate_device(device_id)?;
+    set_commercial_access(
+        &state,
+        entitlement::EffectiveEntitlement {
+            plan: result.status.plan,
+            freshness: result.status.freshness,
+        },
+    )?;
+    Ok(result)
+}
+
+#[tauri::command]
 fn get_checkout_url(plan: entitlement::Plan) -> AppResult<String> {
     licensing::checkout_url(plan)
 }
@@ -1537,6 +1558,8 @@ pub fn run() {
             create_licensing_account,
             sign_in_licensing,
             refresh_licensing_entitlement,
+            list_licensing_devices,
+            deactivate_licensing_device,
             get_checkout_url,
             get_billing_portal_url,
             sign_out_licensing

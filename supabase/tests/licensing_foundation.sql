@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(43);
 
 select has_schema('licensing', 'licensing schema exists');
 select has_table('licensing', 'customers', 'customers table exists');
@@ -25,6 +25,8 @@ select ok(not has_function_privilege('anon', 'public.licensing_project_subscript
 select ok(not has_function_privilege('authenticated', 'public.licensing_project_subscription(uuid,text,text,timestamptz,text,text,uuid)', 'EXECUTE'), 'authenticated cannot project subscriptions directly');
 select ok(not has_function_privilege('anon', 'public.licensing_consume_rate_limit(text,text,integer,integer,timestamptz)', 'EXECUTE'), 'anon cannot consume rate-limit buckets');
 select ok(not has_function_privilege('authenticated', 'public.licensing_consume_rate_limit(text,text,integer,integer,timestamptz)', 'EXECUTE'), 'authenticated cannot consume rate-limit buckets');
+select ok(not has_function_privilege('anon', 'public.licensing_list_devices(uuid,text)', 'EXECUTE'), 'anon cannot list devices');
+select ok(not has_function_privilege('authenticated', 'public.licensing_list_devices(uuid,text)', 'EXECUTE'), 'authenticated cannot list devices directly');
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -76,6 +78,24 @@ select throws_ok(
   )$$,
   'P0001', 'LICENSING_DEVICE_LIMIT_REACHED',
   'third active device is rejected'
+);
+select is(
+  (select count(*)::integer from public.licensing_list_devices(
+    '10000000-0000-4000-8000-000000000001', repeat('a', 64)
+  )),
+  2, 'device listing returns only the subject active devices'
+);
+select is(
+  (select count(*)::integer from public.licensing_list_devices(
+    '10000000-0000-4000-8000-000000000001', repeat('a', 64)
+  ) where is_current),
+  1, 'device listing identifies the current pseudonymous device'
+);
+select is(
+  (select count(*)::integer from public.licensing_list_devices(
+    '20000000-0000-4000-8000-000000000002', repeat('a', 64)
+  )),
+  0, 'device listing cannot cross customer ownership'
 );
 select is(
   (select plan from public.licensing_current_entitlement(

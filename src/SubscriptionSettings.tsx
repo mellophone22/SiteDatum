@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { describeAppError } from "./error";
-import { StatusNotice } from "./Feedback";
+import { StatusNotice, useConfirmation } from "./Feedback";
+import { continuityState } from "./subscriptionContinuity";
 
 type Plan = "free" | "pro_monthly" | "pro_annual";
 type SubscriptionStatus = "active" | "past_due" | "canceled" | "expired";
@@ -16,12 +17,16 @@ type LicensingStatus = {
   freshness: Freshness;
   paidThroughUtc: number | null;
   refreshAfterUtc: number | null;
+  verifiedAtUtc: number | null;
+  graceEndsAtUtc: number | null;
   deviceId: string | null;
   activeProjectLimit: number | null;
   isPro: boolean;
 };
 
 type AccountActionResult = { status: LicensingStatus; message: string };
+type LicensingDevice = { deviceId: string; activatedAtUtc: string; lastSeenAtUtc: string; isCurrent: boolean };
+type LicensingDeviceList = { devices: LicensingDevice[]; activeDeviceLimit: number };
 
 const freeStatus: LicensingStatus = {
   connected: false,
@@ -31,6 +36,8 @@ const freeStatus: LicensingStatus = {
   freshness: "free",
   paidThroughUtc: null,
   refreshAfterUtc: null,
+  verifiedAtUtc: null,
+  graceEndsAtUtc: null,
   deviceId: null,
   activeProjectLimit: 3,
   isPro: false,
@@ -40,6 +47,10 @@ function formatDate(value: number | null) {
   return value ? new Date(value * 1000).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
 }
 
+function formatServiceDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 function planLabel(plan: Plan) {
   if (plan === "pro_monthly") return "Pro Monthly";
   if (plan === "pro_annual") return "Pro Annual";
@@ -47,7 +58,12 @@ function planLabel(plan: Plan) {
 }
 
 function statusSummary(status: LicensingStatus) {
-  if (status.freshness === "grace") return "Pro is available from the last verified entitlement. Connect before the 21-day verification window ends.";
+  if (status.freshness === "grace") {
+    const continuity = continuityState(status.verifiedAtUtc, status.graceEndsAtUtc);
+    return continuity.daysRemaining === null
+      ? "Pro is available from the last verified entitlement."
+      : `Pro is available from the last verified entitlement for ${continuity.daysRemaining} more day${continuity.daysRemaining === 1 ? "" : "s"}.`;
+  }
   if (status.freshness === "expired") return "SiteDatum is using the Free policy. Existing projects and records remain editable.";
   if (status.subscriptionStatus === "past_due") return `Payment needs attention. Pro remains available through ${formatDate(status.paidThroughUtc)}.`;
   if (status.subscriptionStatus === "canceled") return `Canceled. Pro remains available through ${formatDate(status.paidThroughUtc)}.`;
@@ -62,10 +78,19 @@ export function SubscriptionSettings() {
   const [working, setWorking] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [devices, setDevices] = useState<LicensingDeviceList | null>(null);
+  const { confirmAction, confirmationDialog } = useConfirmation();
 
   useEffect(() => {
     void invoke<LicensingStatus>("get_licensing_status")
-      .then(setStatus)
+      .then(async (loaded) => {
+        setStatus(loaded);
+        if (loaded.connected && loaded.refreshAfterUtc && loaded.refreshAfterUtc <= Math.floor(Date.now() / 1000)) {
+          try { setStatus((await invoke<AccountActionResult>("refresh_licensing_entitlement")).status); }
+          catch { /* Cached access remains authoritative; staged recovery guidance appears below. */ }
+        }
+      })
       .catch((caught) => setError(describeAppError(caught)));
   }, []);
 
@@ -121,13 +146,44 @@ export function SubscriptionSettings() {
   function signOut() {
     void run("sign-out", () => invoke<LicensingStatus>("sign_out_licensing"), (result) => {
       setStatus(result);
+      setDevicesOpen(false);
+      setDevices(null);
       setMessage("Account removed from this computer. Local workspace data was not changed.");
     });
   }
 
-  const tone = status.freshness === "expired" || status.subscriptionStatus === "past_due" ? "warning" : "success";
+  function toggleDevices() {
+    if (devicesOpen) { setDevicesOpen(false); return; }
+    setDevicesOpen(true);
+    void run("devices", () => invoke<LicensingDeviceList>("list_licensing_devices"), setDevices);
+  }
+
+  async function deactivateDevice(device: LicensingDevice) {
+    const confirmed = await confirmAction({
+      title: device.isCurrent ? "Deactivate this computer?" : "Deactivate this Windows computer?",
+      description: device.isCurrent
+        ? "This computer will return to Free immediately. Your local projects, records, files, backups, and exports will remain available."
+        : "This activation will be retired. The other computer's local data will not be changed, and any cached Pro access ends at its existing verification or paid-through boundary.",
+      confirmLabel: "Deactivate computer",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    void run(`deactivate-${device.deviceId}`, () => invoke<AccountActionResult>("deactivate_licensing_device", { deviceId: device.deviceId }), async (result) => {
+      setStatus(result.status);
+      setMessage(result.message);
+      try { setDevices(await invoke<LicensingDeviceList>("list_licensing_devices")); }
+      catch { setDevices(null); setDevicesOpen(false); }
+    });
+  }
+
+  const continuity = continuityState(status.verifiedAtUtc, status.graceEndsAtUtc);
+  const tone = status.freshness === "expired" || status.subscriptionStatus === "past_due" || continuity.stage === "urgent" ? "warning" : "success";
+  const showStatusNotice = status.freshness !== "grace"
+    ? status.isPro || status.freshness === "expired" || status.subscriptionStatus === "past_due"
+    : continuity.stage !== "none";
 
   return <section className="settings-section subscription-settings" aria-labelledby="subscription-settings-title">
+    {confirmationDialog}
     <div className="settings-section-heading">
       <h2 id="subscription-settings-title">Account &amp; Subscription</h2>
       <p>Free stays accountless. Sign in only to buy, verify, or manage SiteDatum Pro.</p>
@@ -147,7 +203,7 @@ export function SubscriptionSettings() {
       </dl>
     </div>
 
-    {(status.isPro || status.freshness === "grace" || status.freshness === "expired" || status.subscriptionStatus === "past_due") &&
+    {showStatusNotice &&
       <StatusNotice tone={tone}>{statusSummary(status)}</StatusNotice>}
 
     {!status.connected ? <form className="licensing-auth" onSubmit={(event) => { event.preventDefault(); signIn(); }}>
@@ -163,8 +219,24 @@ export function SubscriptionSettings() {
     </form> : <div className="subscription-actions actions">
       <button type="button" onClick={refreshEntitlement} disabled={!!working}>{working === "refresh" ? "Verifying…" : "Refresh entitlement"}</button>
       {(status.isPro || status.subscriptionStatus) && <button type="button" className="secondary" onClick={openPortal} disabled={!!working}>{working === "portal" ? "Opening…" : "Manage billing"}</button>}
+      <button type="button" className="secondary" aria-expanded={devicesOpen} aria-controls="licensing-devices" onClick={toggleDevices} disabled={!!working}>{working === "devices" ? "Loading…" : devicesOpen ? "Hide computers" : "Manage computers"}</button>
       <button type="button" className="quiet" onClick={signOut} disabled={!!working}>{working === "sign-out" ? "Signing out…" : "Sign out on this computer"}</button>
     </div>}
+
+    {devicesOpen && <section id="licensing-devices" className="licensing-devices" aria-labelledby="licensing-devices-title">
+      <div className="licensing-devices-heading">
+        <div><h3 id="licensing-devices-title">Active computers</h3><p>SiteDatum Pro supports two active Windows computers. Device names and workspace information are never sent.</p></div>
+        <strong>{devices ? `${devices.devices.length} of ${devices.activeDeviceLimit}` : "—"}</strong>
+      </div>
+      {devices && (devices.devices.length ? <div className="licensing-devices-table"><table>
+        <thead><tr><th>Computer</th><th>Activated</th><th>Last verified</th><th aria-label="Computer action" /></tr></thead>
+        <tbody>{devices.devices.map((device) => <tr key={device.deviceId}>
+          <th scope="row">{device.isCurrent ? "This computer" : "Windows computer"}</th>
+          <td>{formatServiceDate(device.activatedAtUtc)}</td><td>{formatServiceDate(device.lastSeenAtUtc)}</td>
+          <td><button type="button" className="quiet danger-text" disabled={!!working} onClick={() => void deactivateDevice(device)}>{working === `deactivate-${device.deviceId}` ? "Deactivating…" : "Deactivate"}</button></td>
+        </tr>)}</tbody>
+      </table></div> : <p className="empty-state">No active Pro computers are registered to this account.</p>)}
+    </section>}
 
     <div className="plan-comparison">
       <table>

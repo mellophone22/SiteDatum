@@ -1,6 +1,6 @@
 use crate::entitlement::{
     evaluate_entitlement, EffectiveEntitlement, EntitlementEvidence, EntitlementFreshness, Plan,
-    SubscriptionStatus,
+    SubscriptionStatus, OFFLINE_GRACE_SECONDS, PRO_DEVICE_LIMIT,
 };
 use crate::error::{AppError, AppResult};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -87,9 +87,33 @@ pub struct LicensingStatus {
     pub freshness: EntitlementFreshness,
     pub paid_through_utc: Option<i64>,
     pub refresh_after_utc: Option<i64>,
+    pub verified_at_utc: Option<i64>,
+    pub grace_ends_at_utc: Option<i64>,
     pub device_id: Option<Uuid>,
     pub active_project_limit: Option<usize>,
     pub is_pro: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LicensingDevice {
+    pub device_id: Uuid,
+    pub activated_at_utc: String,
+    pub last_seen_at_utc: String,
+    pub is_current: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LicensingDeviceList {
+    pub devices: Vec<LicensingDevice>,
+    pub active_device_limit: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeviceDeactivationResponse {
+    deactivated_device_id: Uuid,
 }
 
 #[derive(Debug, Serialize)]
@@ -344,6 +368,16 @@ fn call_function<T: for<'de> Deserialize<'de>>(
                 technical_detail,
             ));
         }
+        if error_code == "ENTITLEMENT_REFRESH_FAILED"
+            && service_error_code(&technical_detail).as_deref() == Some("DEVICE_LIMIT_REACHED")
+        {
+            return Err(AppError::from_technical(
+                "LICENSING_DEVICE_LIMIT_REACHED",
+                "SiteDatum Pro is already active on two computers.",
+                "Open Manage computers, deactivate a retired computer, then refresh the entitlement.",
+                technical_detail,
+            ));
+        }
         return Err(AppError::from_technical(
             error_code,
             "The licensing service could not complete this request.",
@@ -408,6 +442,42 @@ pub fn portal_url() -> AppResult<String> {
         "BILLING_PORTAL_UNAVAILABLE",
     )?;
     validate_hosted_url(response.url, "billing.stripe.com")
+}
+
+pub fn list_devices() -> AppResult<LicensingDeviceList> {
+    let mut response: LicensingDeviceList = call_function(
+        "licensing-devices",
+        serde_json::json!({
+            "action": "list",
+            "deviceFingerprintHash": device_fingerprint_hash()?,
+        }),
+        "LICENSING_DEVICE_LIST_FAILED",
+    )?;
+    response.active_device_limit = PRO_DEVICE_LIMIT;
+    Ok(response)
+}
+
+pub fn deactivate_device(device_id: Uuid) -> AppResult<AccountActionResult> {
+    let response: DeviceDeactivationResponse = call_function(
+        "licensing-devices",
+        serde_json::json!({ "action": "deactivate", "deviceId": device_id }),
+        "LICENSING_DEVICE_DEACTIVATION_FAILED",
+    )?;
+    let current_device = read_credential(ENTITLEMENT_ACCOUNT)?
+        .and_then(|token| verify_token(&token).ok())
+        .map(|claims| claims.device_id == response.deactivated_device_id)
+        .unwrap_or(false);
+    if current_device {
+        delete_credential(ENTITLEMENT_ACCOUNT)?;
+    }
+    Ok(AccountActionResult {
+        status: status()?,
+        message: if current_device {
+            "This computer was deactivated. SiteDatum Free remains available and local workspace data was not changed."
+        } else {
+            "The selected computer was deactivated. Local data on either computer was not changed."
+        }.into(),
+    })
 }
 
 fn validate_hosted_url(value: String, expected_host: &str) -> AppResult<String> {
@@ -480,6 +550,8 @@ fn free_status(email: Option<String>) -> LicensingStatus {
         freshness: EntitlementFreshness::Free,
         paid_through_utc: None,
         refresh_after_utc: None,
+        verified_at_utc: None,
+        grace_ends_at_utc: None,
         device_id: None,
         active_project_limit: Some(3),
         is_pro: false,
@@ -524,10 +596,19 @@ pub fn status() -> AppResult<LicensingStatus> {
         freshness: entitlement.freshness,
         paid_through_utc: Some(claims.paid_through_utc),
         refresh_after_utc: Some(claims.refresh_after_utc),
+        verified_at_utc: Some(claims.issued_at_utc),
+        grace_ends_at_utc: Some(grace_end_utc(claims.issued_at_utc, claims.paid_through_utc)),
         device_id: Some(claims.device_id),
         active_project_limit: entitlement.active_project_limit(),
         is_pro: entitlement.is_pro(),
     })
+}
+
+fn grace_end_utc(issued_at_utc: i64, paid_through_utc: i64) -> i64 {
+    issued_at_utc
+        .checked_add(OFFLINE_GRACE_SECONDS)
+        .unwrap_or(i64::MAX)
+        .min(paid_through_utc)
 }
 
 pub fn effective_entitlement() -> EffectiveEntitlement {
@@ -582,5 +663,22 @@ mod tests {
             Some("PRO_SUBSCRIPTION_REQUIRED")
         );
         assert_eq!(service_error_code("not json"), None);
+    }
+
+    #[test]
+    fn offline_grace_end_is_bounded_by_paid_through() {
+        assert_eq!(grace_end_utc(1_000, 2_000), 2_000);
+        assert_eq!(
+            grace_end_utc(1_000, i64::MAX),
+            1_000 + OFFLINE_GRACE_SECONDS
+        );
+    }
+
+    #[test]
+    fn recognizes_the_device_limit_service_code() {
+        assert_eq!(
+            service_error_code(r#"{"code":"DEVICE_LIMIT_REACHED"}"#).as_deref(),
+            Some("DEVICE_LIMIT_REACHED")
+        );
     }
 }

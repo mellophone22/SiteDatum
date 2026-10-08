@@ -14,8 +14,12 @@ The same surface provides:
 - signed entitlement refresh and bounded offline-grace messaging;
 - recovery messaging for past-due, canceled, expired, invalid, or unavailable entitlement evidence;
 - sign-out on the current computer without touching the workspace.
+- self-service listing and confirmed deactivation of the customer's two pseudonymous computer activations;
+- staged offline-continuity guidance and a direct recovery route when both device slots are occupied.
 
 The comparison is a dense table rather than a marketing-card grid. Existing Settings typography, separators, focus behavior, responsive stacking, and Light/Dark surfaces are retained.
+
+Device self-service is designed as a compact operational table rather than a second dashboard. It never displays or transmits Windows machine names. The current computer is matched from its local random identity hash; all other rows use the neutral label **Windows computer**. Deactivation never changes workspace data. See `ADR-015-DEVICE-SELF-SERVICE-AND-SUBSCRIPTION-CONTINUITY.md`.
 
 ## Trusted desktop boundary
 

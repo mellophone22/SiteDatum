@@ -400,6 +400,9 @@ enabled = true
 [functions.licensing-entitlement]
 verify_jwt = true
 
+[functions.licensing-devices]
+verify_jwt = true
+
 [functions.licensing-health]
 verify_jwt = false
 
