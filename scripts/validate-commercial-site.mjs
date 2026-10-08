@@ -110,7 +110,7 @@ for (const required of ['Return home', 'Download SiteDatum', 'Visit support', '<
 }
 
 const index = await readFile(resolve(site, 'index.html'), 'utf8');
-for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.3 application screen', 'Start of day', 'During the day', 'End of day']) {
+for (const required of ['Unsigned Windows Early Access', '$15 monthly or $150 annually', 'No account required', 'Actual SiteDatum 1.4.4 application screen', 'Start of day', 'During the day', 'End of day']) {
   if (!index.includes(required)) failures.push(`index.html: missing approved statement: ${required}`);
 }
 for (const required of ['Download and install SiteDatum first', 'Settings &gt; Account &amp; Subscription', 'Download, then upgrade']) {
@@ -125,12 +125,12 @@ for (const required of [
   'before purchasing or downloading',
   'may block installation completely',
   'Do not disable Microsoft Defender',
-  'SiteDatum_1.4.3_x64-setup.exe',
-  'CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B',
-  '2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c',
+  'SiteDatum_1.4.4_x64-setup.exe',
+  '264D91B38AF4C3251FB04CF23193744FF4B7BFC1DDB58892CC4F04480CD633CF',
+  'c6dd1f78846555c5acfb7621e6ac4acf780319f4',
   'Authenticode',
   'NotSigned',
-  'https://sitedatum.site/downloads/SiteDatum_1.4.3_x64-setup.exe',
+  'https://sitedatum.site/downloads/SiteDatum_1.4.4_x64-setup.exe',
   'Get-FileHash -Algorithm SHA256',
   'supportsitedatum@protonmail.com',
 ]) {
@@ -202,7 +202,7 @@ for (const [page, requiredStatements] of Object.entries(legalRequirements)) {
 }
 
 const releaseNotes = await readFile(resolve(site, 'release-notes.html'), 'utf8');
-for (const required of ['SiteDatum 1.4.3', 'October 6, 2026', 'CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B', 'NotSigned']) {
+for (const required of ['SiteDatum 1.4.4', 'October 8, 2026', '264D91B38AF4C3251FB04CF23193744FF4B7BFC1DDB58892CC4F04480CD633CF', 'NotSigned']) {
   if (!releaseNotes.includes(required)) failures.push(`release-notes.html: missing verified release detail: ${required}`);
 }
 

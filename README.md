@@ -6,19 +6,19 @@ SiteDatum is built with Tauri 2, React 19, TypeScript, Rust, and bundled SQLite.
 
 ## Current release
 
-**SiteDatum 1.4.3** is the current controlled Windows Early Access release, published October 6, 2026.
+**SiteDatum 1.4.4** is the current controlled Windows Early Access release, published October 8, 2026.
 
 - Channel: unsigned Windows Early Access
-- Installer: `SiteDatum_1.4.3_x64-setup.exe`
-- Size: 4,684,165 bytes
-- SHA-256: `CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B`
-- Source commit: [`2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c`](https://github.com/mellophone22/SiteDatum/commit/2344f184cd8c4ff6d3fa7e24cbd0a29b5668119c)
+- Installer: `SiteDatum_1.4.4_x64-setup.exe`
+- Size: 4,731,187 bytes
+- SHA-256: `264D91B38AF4C3251FB04CF23193744FF4B7BFC1DDB58892CC4F04480CD633CF`
+- Source commit: [`c6dd1f78846555c5acfb7621e6ac4acf780319f4`](https://github.com/mellophone22/SiteDatum/commit/c6dd1f78846555c5acfb7621e6ac4acf780319f4)
 - Download and installation guide: [sitedatum.site/early-access.html](https://sitedatum.site/early-access.html)
 - Release notes: [sitedatum.site/release-notes.html](https://sitedatum.site/release-notes.html)
 
 The installer is not Authenticode-signed. Windows SmartScreen, Smart App Control, antivirus software, or organizational policy may warn or block it. Do not weaken device security controls to install SiteDatum. Verify the SHA-256 digest before running the installer. Automatic application updates are not enabled for this channel.
 
-This is a monitored soft launch, not a signed general-availability release. Broad promotion remains gated on successful observation of the first genuine production customer transaction. The application, installer, production licensing boundary, and public website have completed the acceptance documented in [`docs/engineering/release-candidates/SiteDatum-1.4.3-publication-plan.md`](docs/engineering/release-candidates/SiteDatum-1.4.3-publication-plan.md).
+This is a monitored soft launch, not a signed general-availability release. Broad promotion remains gated on successful observation of the first genuine production customer transaction. The application, installer, production licensing boundary, and public website have completed the acceptance documented in [`docs/engineering/release-candidates/SiteDatum-1.4.4-publication-plan.md`](docs/engineering/release-candidates/SiteDatum-1.4.4-publication-plan.md).
 
 ## Product model
 
@@ -133,17 +133,17 @@ Architecture decisions and implementation evidence are under [`docs/engineering`
 
 ## Install the Early Access release
 
-1. Read the disclosures and download SiteDatum 1.4.3 from the [Early Access page](https://sitedatum.site/early-access.html).
+1. Read the disclosures and download SiteDatum 1.4.4 from the [Early Access page](https://sitedatum.site/early-access.html).
 2. Verify the installer in PowerShell:
 
    ```powershell
-   Get-FileHash .\SiteDatum_1.4.3_x64-setup.exe -Algorithm SHA256
+   Get-FileHash .\SiteDatum_1.4.4_x64-setup.exe -Algorithm SHA256
    ```
 
 3. Confirm the result is:
 
    ```text
-   CB9853455DC77D397E86E08CD0BE2EF80370148202BF813F78271BBE6FB3E54B
+   264D91B38AF4C3251FB04CF23193744FF4B7BFC1DDB58892CC4F04480CD633CF
    ```
 
 4. Run the installer only if your device policy permits unsigned applications.
@@ -214,7 +214,7 @@ For the current repository checkout, the reproducible frontend gates pass with:
 - Rust formatting passed
 - 64 locked Rust tests passed on Windows
 
-The immutable 1.4.3 release candidate separately records 51 Rust tests with the production feature, release-manifest validation, a complete C8 audit with 17 passes and no failures, focused disposable-Windows-profile install/reinstall acceptance, and public-origin artifact verification. See the [1.4.3 publication plan](docs/engineering/release-candidates/SiteDatum-1.4.3-publication-plan.md) for the exact evidence boundary.
+The immutable 1.4.4 release candidate separately records 64 Rust tests with the production feature, release-manifest validation, a complete C8 audit with 20 passes and no failures, focused disposable-Windows-profile upgrade acceptance, and public-origin artifact verification. See the [1.4.4 publication plan](docs/engineering/release-candidates/SiteDatum-1.4.4-publication-plan.md) for the exact evidence boundary.
 
 ## Data locations
 
