@@ -141,8 +141,8 @@ jobs:
 
           Push-Location $verificationRoot
           try {
-            node scripts/generate-release-manifest.mjs --source-commit $env:GITHUB_SHA --installer "tmp/$installerName" --expect-signature NotSigned --output tmp/windows-ci-manifest.json
-            node scripts/verify-release-manifest.mjs --manifest tmp/windows-ci-manifest.json --installer "tmp/$installerName" --source-commit $env:GITHUB_SHA --evidence-commit $env:GITHUB_SHA --expect-signature NotSigned
+            npm run release:manifest -- --source-commit $env:GITHUB_SHA --installer "tmp/$installerName" --expect-signature NotSigned --output tmp/windows-ci-manifest.json
+            npm run release:verify -- --manifest tmp/windows-ci-manifest.json --installer "tmp/$installerName" --source-commit $env:GITHUB_SHA --evidence-commit $env:GITHUB_SHA --expect-signature NotSigned
           } finally {
             Pop-Location
           }
