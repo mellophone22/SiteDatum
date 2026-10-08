@@ -100,6 +100,15 @@ jobs:
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - name: Build frontend
         run: npm run build
+      - name: Confirm clean source before packaging
+        shell: pwsh
+        run: |
+          git diff --exit-code
+          git diff --cached --exit-code
+          $untracked = @(git ls-files --others --exclude-standard)
+          if ($untracked.Count -ne 0) {
+            throw "Unexpected untracked source before packaging: $($untracked -join ', ')"
+          }
       - name: Build CI-only unsigned NSIS package
         run: npm run tauri -- build --bundles nsis
       - name: Smoke-test release executable
@@ -121,9 +130,25 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
-          $installer = "src-tauri/target/release/bundle/nsis/SiteDatum_${version}_x64-setup.exe"
-          npm run release:manifest -- --source-commit $env:GITHUB_SHA --installer $installer --expect-signature NotSigned --output tmp/windows-ci-manifest.json
-          npm run release:verify -- --manifest tmp/windows-ci-manifest.json --installer $installer --source-commit $env:GITHUB_SHA --evidence-commit $env:GITHUB_SHA --expect-signature NotSigned
+          $installerName = "SiteDatum_${version}_x64-setup.exe"
+          $installer = (Resolve-Path -LiteralPath "src-tauri/target/release/bundle/nsis/$installerName").Path
+          $verificationRoot = Join-Path $env:RUNNER_TEMP "sitedatum-provenance-$env:GITHUB_RUN_ID"
+
+          git worktree add --detach $verificationRoot $env:GITHUB_SHA
+          $verificationTemp = Join-Path $verificationRoot 'tmp'
+          New-Item -ItemType Directory -Force -Path $verificationTemp | Out-Null
+          Copy-Item -LiteralPath $installer -Destination (Join-Path $verificationTemp $installerName)
+
+          Push-Location $verificationRoot
+          try {
+            node scripts/generate-release-manifest.mjs --source-commit $env:GITHUB_SHA --installer "tmp/$installerName" --expect-signature NotSigned --output tmp/windows-ci-manifest.json
+            node scripts/verify-release-manifest.mjs --manifest tmp/windows-ci-manifest.json --installer "tmp/$installerName" --source-commit $env:GITHUB_SHA --evidence-commit $env:GITHUB_SHA --expect-signature NotSigned
+          } finally {
+            Pop-Location
+          }
+
+          New-Item -ItemType Directory -Force -Path 'tmp' | Out-Null
+          Copy-Item -LiteralPath (Join-Path $verificationTemp 'windows-ci-manifest.json') -Destination 'tmp/windows-ci-manifest.json'
       - name: Confirm CI artifact remains unpublished
         shell: pwsh
         run: |
