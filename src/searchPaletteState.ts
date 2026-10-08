@@ -7,6 +7,7 @@ export const paletteActions:PaletteItem[]=[
   {id:"action-attention",label:"Open Attention",detail:"Due, waiting, and follow-up work",group:"Actions",type:"action",screen:"attention",kind:"action"},
   {id:"action-projects",label:"Open Projects",detail:"Project workspaces",group:"Actions",type:"action",screen:"projects",kind:"action"},
   {id:"action-controls",label:"Open Project Controls",detail:"Operational registers",group:"Actions",type:"action",screen:"operations",kind:"action"},
+  {id:"action-help",label:"Open Help",detail:"Workflow, files, backups, and plans",group:"Actions",type:"action",screen:"help",kind:"action"},
   {id:"action-about",label:"About SiteDatum",detail:"Software version and creator",group:"Actions",type:"action",screen:"about",kind:"action"},
 ];
 

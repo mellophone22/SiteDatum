@@ -6,8 +6,17 @@ export function StatusNotice({ tone, children }: { tone: Tone; children: ReactNo
   return <p className={`status ${tone}`} role={tone === "error" ? "alert" : "status"}>{children}</p>;
 }
 
-export function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="empty-state">{children}</p>;
+export function EmptyState({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) {
+  return <div className="empty-state">
+    {title && <strong className="empty-state-title">{title}</strong>}
+    <p>{children}</p>
+    {action && <div className="empty-state-action">{action}</div>}
+  </div>;
+}
+
+export function FieldError({ id, children }: { id: string; children?: ReactNode }) {
+  if (!children) return null;
+  return <span id={id} className="field-error">{children}</span>;
 }
 
 export function LoadingState({ children = "Loading…" }: { children?: ReactNode }) {

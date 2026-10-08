@@ -9,6 +9,11 @@ describe("workspace state", () => {
     expect(workspaceReducer(state, { type: "navigate", screen: "about" })).toMatchObject({ currentScreen: "about", currentProjectId: "project-2" });
     expect(readWorkspaceState(storage({ "workspace.screen": "about" })).currentScreen).toBe("about");
   });
+  it("opens and restores Help without changing the working project", () => {
+    const state = { ...defaultWorkspaceState, currentProjectId: "project-2" };
+    expect(workspaceReducer(state, { type: "navigate", screen: "help" })).toMatchObject({ currentScreen: "help", currentProjectId: "project-2" });
+    expect(readWorkspaceState(storage({ "workspace.screen": "help" })).currentScreen).toBe("help");
+  });
   it("restores valid persisted context and rejects an invalid screen", () => {
     expect(readWorkspaceState(storage({ "workspace.screen": "rfis", "workspace.projectContext": "project-7" }))).toMatchObject({ currentScreen: "rfis", currentProjectId: "project-7" });
     expect(readWorkspaceState(storage({ "workspace.screen": "not-a-screen" })).currentScreen).toBe("attention");

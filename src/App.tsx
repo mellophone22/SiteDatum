@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 import "./design.css";
 import { About } from "./About";
+import { Help } from "./Help";
 import { Brand } from "./Brand";
 import { AppearanceSettings, ThemeToggle } from "./Theme";
 import { displayWindowsPath } from "./windowsPath";
@@ -46,6 +47,7 @@ const firstRunPreview = import.meta.env.DEV && new URLSearchParams(window.locati
 
 const navIcons: Record<Screen, ReactNode> = {
   about: <><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></>,
+  help: <><path d="M5 4.5h10a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3z"/><path d="M8 7.5h7M8 11h7M8 14.5h4"/></>,
   overview: <><path d="M4 5h7v6H4zM13 5h7v10h-7zM4 13h7v6H4zM13 17h7v2h-7z"/></>,
   attention: <><path d="M12 3.5 3.7 18h16.6L12 3.5Z"/><path d="M12 9v4.5M12 16.5h.01"/></>,
   projects: <><path d="M3.5 6.5h6l1.7 2h9.3v10H3.5z"/><path d="M3.5 8.5h17"/></>,
@@ -257,7 +259,7 @@ function App() {
             {projectNavigation.map(destination=>navButton(destination,projectModuleLabels[destination]))}
           </div>
         </nav>
-        <div className="sidebar-footer"><p className="nav-group-label">System</p>{navButton("settings", "Settings")}{navButton("recovery", "Recovery", recoveryIssues > 0)}{navButton("about", "About SiteDatum")}<span className="local-indicator"><i aria-hidden="true"/>Local workspace</span></div>
+        <div className="sidebar-footer"><p className="nav-group-label">System</p>{navButton("settings", "Settings")}{navButton("recovery", "Recovery", recoveryIssues > 0)}{navButton("help", "Help")}{navButton("about", "About SiteDatum")}<span className="local-indicator"><i aria-hidden="true"/>Local workspace</span></div>
       </aside>
       <div className="workspace-shell">
         <header className="app-header">
@@ -267,7 +269,7 @@ function App() {
         <div id="workspace-content" className="workspace-content" tabIndex={-1}>
       <SearchPalette open={paletteOpen} onClose={closePalette} onOpen={(item)=>{if(item.kind==="action")navigate(item.screen);else if(item.kind==="project"){setCurrentProject(item.id);navigate("overview")}else openRecord(item.screen,{type:item.type,id:item.id},item.projectId)}} />
       <QuickCapture open={captureOpen} projects={projectOptions} projectContext={projectContext} onClose={()=>setCaptureOpen(false)} onSaved={(value)=>{navigate(value as Screen);refreshWorkspace()}} />
-      {screen === "about" ? <About /> : screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
+      {screen === "about" ? <About /> : screen === "help" ? <Help onNavigate={navigate} /> : screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
         <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, account, reminders, and data safeguards.</p></div></div>
         <SubscriptionSettings />
         <RfiPdfSettings />

@@ -51,3 +51,7 @@ Frontend release gates cover TypeScript typecheck/build, ESLint, Vitest, keyboar
 ## Complete portability coverage
 
 Rust integration coverage creates archived user data and a Pro-created template, exports through the same accountless database boundary used by Free, and verifies that all 14 core entity CSVs plus `manifest.json` are finalized without a leftover partial directory. The test confirms row counts, archived-row inclusion, numeric preservation, and spreadsheet-formula neutralization. Frontend build, lint, and a Recovery-screen visual review cover the user-facing export action and its explanation that document bytes are not copied.
+
+## Help and field-guidance coverage
+
+Frontend unit coverage verifies deterministic required-field messages, first-error ordering, persisted Help navigation, and command-palette discovery. TypeScript build and ESLint verify the permanent offline guide and its functional routes. Manual Windows review covers the Help layout at desktop and narrow widths, keyboard access to the System navigation, the distinction between empty and filtered project registers, the Files next action, and focus/announcement behavior after an invalid first-run or project submission.
