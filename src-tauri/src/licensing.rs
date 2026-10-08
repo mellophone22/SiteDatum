@@ -139,6 +139,10 @@ fn service_error_code(body: &str) -> Option<String> {
         .and_then(|response| response.code)
 }
 
+fn is_revoked_refresh_token(body: &str) -> bool {
+    body.contains("refresh_token_not_found") || body.contains("invalid_refresh_token")
+}
+
 fn now_utc() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -325,6 +329,24 @@ fn refreshed_access_token() -> AppResult<String> {
         .json(&serde_json::json!({ "refresh_token": session.refresh_token }))
         .send()
         .map_err(|error| auth_request_error("LICENSING_SESSION_REFRESH_FAILED", error))?;
+    if !response.status().is_success() {
+        let technical_detail = response.text().unwrap_or_default();
+        if is_revoked_refresh_token(&technical_detail) {
+            delete_credential(SESSION_ACCOUNT)?;
+            return Err(AppError::from_technical(
+                "LICENSING_SESSION_EXPIRED",
+                "Your SiteDatum account session has expired.",
+                "Sign in again. Cached Pro access and local workspace data are unchanged.",
+                technical_detail,
+            ));
+        }
+        return Err(AppError::from_technical(
+            "LICENSING_SESSION_REFRESH_FAILED",
+            "SiteDatum could not refresh the saved account session.",
+            "Try again. Cached Pro access and local workspace data are unchanged.",
+            technical_detail,
+        ));
+    }
     let refreshed = parse_auth_response(response, session.email)?;
     let token = refreshed.access_token.clone();
     save_session(&refreshed)?;
@@ -680,5 +702,18 @@ mod tests {
             service_error_code(r#"{"code":"DEVICE_LIMIT_REACHED"}"#).as_deref(),
             Some("DEVICE_LIMIT_REACHED")
         );
+    }
+
+    #[test]
+    fn recognizes_revoked_refresh_tokens_without_matching_unrelated_errors() {
+        assert!(is_revoked_refresh_token(
+            r#"{"error_code":"refresh_token_not_found"}"#
+        ));
+        assert!(is_revoked_refresh_token(
+            r#"{"error_code":"invalid_refresh_token"}"#
+        ));
+        assert!(!is_revoked_refresh_token(
+            r#"{"error_code":"email_not_confirmed"}"#
+        ));
     }
 }

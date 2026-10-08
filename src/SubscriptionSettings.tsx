@@ -99,7 +99,16 @@ export function SubscriptionSettings() {
     setMessage("");
     setError("");
     try { onSuccess(await action()); }
-    catch (caught) { setError(describeAppError(caught)); }
+    catch (caught) {
+      setError(describeAppError(caught));
+      if (typeof caught === "object" && caught !== null && "code" in caught && caught.code === "LICENSING_SESSION_EXPIRED") {
+        try {
+          setStatus(await invoke<LicensingStatus>("get_licensing_status"));
+          setDevicesOpen(false);
+          setDevices(null);
+        } catch { /* Preserve the original recovery message. */ }
+      }
+    }
     finally { setWorking(""); }
   }
 
@@ -238,6 +247,8 @@ export function SubscriptionSettings() {
       </table></div> : <p className="empty-state">No active Pro computers are registered to this account.</p>)}
     </section>}
 
+    <div className="status-area" aria-live="polite">{message && <StatusNotice tone="success">{message}</StatusNotice>}{error && <StatusNotice tone="error">{error}</StatusNotice>}</div>
+
     <div className="plan-comparison">
       <table>
         <thead><tr><th>Plan</th><th>Active projects</th><th>Included workflow</th><th>Price</th><th aria-label="Plan action" /></tr></thead>
@@ -251,6 +262,5 @@ export function SubscriptionSettings() {
     </div>
 
     <p className="subscription-assurance">Expiration never deletes, hides, or locks existing project records. Local backup and essential export remain available.</p>
-    <div className="status-area" aria-live="polite">{message && <StatusNotice tone="success">{message}</StatusNotice>}{error && <StatusNotice tone="error">{error}</StatusNotice>}</div>
   </section>;
 }
