@@ -34,13 +34,15 @@ try {
     const queues = ["overdue", "today", "follow_up", "waiting", "upcoming"].map((key, i) => ({ key, label: ["Overdue", "Today", "Follow-up", "Waiting", "Upcoming"][i], tasks: tasks.filter(t => t.status !== "completed").slice(i * 3, i * 3 + 3) }));
     const commands = {
       get_project_root: { path: "C:\\VisualFixtures" },
+      get_startup_status: { ready: true, code: null, message: null, recovery: null, correlationId: null, databasePath: "C:\\VisualFixtures\\workspace.sqlite3", backupDirectory: "C:\\VisualFixtures\\backups" },
       "plugin:dialog|open": "\\\\?\\C:\\VisualFixtures",
       validate_project_root_command: { canonicalPath: "C:\\VisualFixtures", pathKind: "local", warning: null },
       save_project_root: { path: "C:\\VisualFixtures" },
       get_licensing_status: { connected: false, email: null, plan: "free", subscriptionStatus: null, freshness: "free", paidThroughUtc: null, refreshAfterUtc: null, deviceId: null, activeProjectLimit: 3, isPro: false },
       get_rfi_pdf_settings: { templateMode: "site_datum", companyName: "", companyDetails: "", accentColor: "#087F89", customTemplatePath: null },
+      get_backup_settings: { schedule: "off", destinationPath: null, lastSuccessUtc: null }, run_scheduled_backup: null,
       list_projects: projects, list_tasks: tasks, list_attention: queues, list_rfis: rfis, list_rfi_attention: rfis,
-      list_submittals: submittals, list_submittal_attention: submittals, list_files: [], list_contacts: [], list_cloud_conflicts: [], list_project_templates: [], list_local_backups: [],
+      list_submittals: submittals, list_submittal_attention: submittals, list_files: [], list_contacts: [], list_cloud_conflicts: [], list_project_templates: [], list_local_backups: [], list_configured_backups: [],
       list_work_items: [{ id: "milestone-1", projectId: "project-0", projectNumber: "26-104", projectName: names[0], itemType: "milestone", title: "Controls rough-in complete", status: "open", dueDate: "2026-10-01", priority: "medium" }],
       list_notes: [{ id: "note-1", projectId: "project-0", projectNumber: "26-104", projectName: names[0], body: "Coordinate final controller locations with the electrical contractor before ceiling close-in.", createdAtUtc: "2026-09-25T15:00:00Z" }],
       list_activity: [{ eventType: "created", entityType: "rfi", summary: "RFI-018 recorded for Riverside Medical Center", occurredAtUtc: "2026-09-25T14:30:00Z" }],
@@ -48,6 +50,11 @@ try {
     };
     window.isTauri = true;
     window.__TAURI_INTERNALS__ = { invoke: async (command) => {
+      if (command === "get_startup_status" && new URLSearchParams(window.location.search).has("startup-recovery-preview")) return {
+        ready: false, code: "DATABASE_OPEN_FAILED", message: "The local workspace database could not be opened.",
+        recovery: "Choose a verified SiteDatum backup below. The unavailable database will be preserved before recovery.",
+        correlationId: "visual-review-reference", databasePath: "C:\\VisualFixtures\\workspace.sqlite3", backupDirectory: "C:\\VisualFixtures\\backups",
+      };
       if (command === "get_cloud_sync_availability") return localStorage.getItem("visual.legacySync") === "true"
         ? { available: true, connected: true, email: "legacy@example.invalid" }
         : { available: false, connected: false, email: null };
@@ -180,6 +187,10 @@ try {
   await page.getByRole("heading", { name: "Choose your project root" }).waitFor();
   await capture("first-run-narrow");
   assert(await page.getByRole("img", { name: "SiteDatum", exact: true }).isVisible());
+  await noOverflow();
+  await page.goto("http://localhost:1420/?startup-recovery-preview");
+  await page.getByRole("heading", { name: "SiteDatum could not open the local workspace." }).waitFor();
+  await capture("startup-recovery");
   await noOverflow();
   assert.deepEqual(errors, []);
   console.log("PASS: 25 projects / 240 tasks; all reviewed routes; About content/version/logo; search; project preservation; detail Escape/focus; disabled create; Quick Capture; desktop/narrow overflow; reduced motion; no console errors.");

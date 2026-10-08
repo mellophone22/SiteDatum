@@ -59,7 +59,9 @@ Drop/select -> explicitly Copy, Move, or Register -> prevent overwrite -> store 
 Show Missing; offer Locate File / Remove Reference. Never silently delete metadata.
 
 ## Settings and recovery
-Settings -> configure the Workspace project root, optional Sync, and Notifications in distinct sections -> review Data & Recovery health -> create a local backup or open the full audit and recovery workspace. Recovery remains visually quiet when healthy; missing registered files or sync conflicts add a numbered sidebar indicator and a direct review action.
+Settings -> configure the Workspace project root, optional legacy Sync, and Notifications in distinct sections -> review Data & Recovery health -> create a verified app-local backup or open the full audit and recovery workspace. In Recovery, choose a user-controlled external folder, optionally enable a daily or weekly schedule while SiteDatum is open, create an immediate external backup, inspect exact backup locations, or preview and restore a selected `.sqlite3` file. Recovery remains visually quiet when healthy; missing registered files or sync conflicts add a numbered sidebar indicator and a direct review action.
+
+If the local database cannot open during startup -> review the error code, correlation reference, workspace location, and backup location -> choose a SiteDatum `.sqlite3` backup -> review record counts -> explicitly confirm recovery -> close and reopen SiteDatum. SiteDatum verifies and migrates a candidate first, preserves the unavailable database in the backup folder, and does not touch normal project documents.
 
 ## Appearance
 

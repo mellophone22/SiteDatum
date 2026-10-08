@@ -42,6 +42,29 @@ struct AppState {
     commercial_access: Mutex<CommercialAccess>,
     log_path: std::path::PathBuf,
     database_path: std::path::PathBuf,
+    startup_failure: Option<StartupFailure>,
+}
+
+#[derive(Clone)]
+struct StartupFailure {
+    code: String,
+    message: String,
+    recovery: String,
+    correlation_id: String,
+    database_path: std::path::PathBuf,
+    backup_directory: std::path::PathBuf,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StartupStatus {
+    ready: bool,
+    code: Option<String>,
+    message: Option<String>,
+    recovery: Option<String>,
+    correlation_id: Option<String>,
+    database_path: String,
+    backup_directory: String,
 }
 
 #[derive(serde::Serialize)]
@@ -54,6 +77,57 @@ struct CloudSyncAvailability {
 
 fn legacy_cloud_sync_is_available(has_local_evidence: bool, has_stored_session: bool) -> bool {
     has_local_evidence || has_stored_session
+}
+
+#[tauri::command]
+fn get_startup_status(state: tauri::State<'_, AppState>) -> StartupStatus {
+    match state.startup_failure.as_ref() {
+        Some(failure) => StartupStatus {
+            ready: false,
+            code: Some(failure.code.clone()),
+            message: Some(failure.message.clone()),
+            recovery: Some(failure.recovery.clone()),
+            correlation_id: Some(failure.correlation_id.clone()),
+            database_path: failure.database_path.to_string_lossy().into_owned(),
+            backup_directory: failure.backup_directory.to_string_lossy().into_owned(),
+        },
+        None => StartupStatus {
+            ready: true,
+            code: None,
+            message: None,
+            recovery: None,
+            correlation_id: None,
+            database_path: state.database_path.to_string_lossy().into_owned(),
+            backup_directory: state
+                .database_path
+                .parent()
+                .map(|parent| parent.join("backups"))
+                .unwrap_or_else(|| std::path::PathBuf::from("backups"))
+                .to_string_lossy()
+                .into_owned(),
+        },
+    }
+}
+
+#[tauri::command]
+fn recover_startup_database(
+    path: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<recovery::StartupRecoveryResult> {
+    let failure = state.startup_failure.as_ref().ok_or_else(|| {
+        AppError::from_technical(
+            "STARTUP_RECOVERY_NOT_REQUIRED",
+            "The workspace database is already available.",
+            "Continue using SiteDatum normally.",
+            "No startup failure is active.",
+        )
+    })?;
+    let source = recovery::validate_file(&path)?;
+    recovery::replace_unavailable_database(
+        &source,
+        &failure.database_path,
+        &failure.backup_directory,
+    )
 }
 
 fn legacy_cloud_sync_available(state: &AppState) -> AppResult<bool> {
@@ -956,27 +1030,11 @@ fn create_local_backup(state: tauri::State<'_, AppState>) -> AppResult<String> {
             e.to_string(),
         )
     })?;
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| AppError::internal(&e.to_string()))?
-        .as_secs();
-    let destination = backups.join(format!("workspace-{stamp}.sqlite3"));
-    {
-        let database = state
-            .database
-            .lock()
-            .map_err(|_| AppError::internal("Database state is unavailable."))?;
-        database.checkpoint()?;
-    }
-    fs::copy(&state.database_path, &destination).map_err(|e| {
-        AppError::from_technical(
-            "BACKUP_COPY_FAILED",
-            "The local backup could not be created.",
-            "Check local disk space and permissions, then try again.",
-            e.to_string(),
-        )
-    })?;
-    Ok(destination.to_string_lossy().to_string())
+    let database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    Ok(recovery::create(&database, &backups, "workspace")?.path)
 }
 #[tauri::command]
 fn list_local_backups(state: tauri::State<'_, AppState>) -> AppResult<Vec<recovery::BackupInfo>> {
@@ -1011,6 +1069,158 @@ fn restore_local_backup(path: String, state: tauri::State<'_, AppState>) -> AppR
         .lock()
         .map_err(|_| AppError::internal("Database state is unavailable."))?;
     recovery::restore(&mut database, &target)
+}
+
+#[tauri::command]
+fn get_backup_settings(state: tauri::State<'_, AppState>) -> AppResult<recovery::BackupSettings> {
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .get_backup_settings()
+}
+
+fn validate_backup_directory(path: &str) -> AppResult<std::path::PathBuf> {
+    let canonical = std::path::Path::new(path).canonicalize().map_err(|error| {
+        AppError::from_technical(
+            "BACKUP_DIRECTORY_FAILED",
+            "The selected backup folder is unavailable.",
+            "Choose an existing local folder or connected drive and try again.",
+            error.to_string(),
+        )
+    })?;
+    if !canonical.is_dir() {
+        return Err(AppError::from_technical(
+            "BACKUP_DIRECTORY_FAILED",
+            "The selected backup location is not a folder.",
+            "Choose an existing folder and try again.",
+            canonical.display().to_string(),
+        ));
+    }
+    Ok(canonical)
+}
+
+fn validate_external_backup_directory(
+    path: &str,
+    state: &AppState,
+) -> AppResult<std::path::PathBuf> {
+    let canonical = validate_backup_directory(path)?;
+    let app_storage = state
+        .database_path
+        .parent()
+        .ok_or_else(|| AppError::internal("Application storage is unavailable."))?
+        .canonicalize()
+        .map_err(|error| AppError::internal(error.to_string()))?;
+    if canonical.starts_with(&app_storage) {
+        return Err(AppError::from_technical(
+            "BACKUP_DESTINATION_NOT_EXTERNAL",
+            "Choose a backup folder outside SiteDatum's application storage.",
+            "Use another local folder, connected drive, or user-controlled synchronized folder.",
+            canonical.display().to_string(),
+        ));
+    }
+    Ok(canonical)
+}
+
+#[tauri::command]
+fn save_backup_settings(
+    mut settings: recovery::BackupSettings,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<recovery::BackupSettings> {
+    if let Some(path) = settings.destination_path.as_deref() {
+        settings.destination_path = Some(
+            validate_external_backup_directory(path, &state)?
+                .to_string_lossy()
+                .into_owned(),
+        );
+    }
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .save_backup_settings(settings)
+}
+
+#[tauri::command]
+fn create_external_backup(
+    directory: String,
+    state: tauri::State<'_, AppState>,
+) -> AppResult<recovery::BackupInfo> {
+    let directory = validate_external_backup_directory(&directory, &state)?;
+    let database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    recovery::create(&database, &directory, "workspace")
+}
+
+#[tauri::command]
+fn list_configured_backups(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<Vec<recovery::BackupInfo>> {
+    let parent = state
+        .database_path
+        .parent()
+        .ok_or_else(|| AppError::internal("Application storage is unavailable."))?;
+    let mut backups = recovery::list(&parent.join("backups"))?;
+    let settings = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .get_backup_settings()?;
+    if let Some(directory) = settings.destination_path {
+        let directory = std::path::PathBuf::from(directory);
+        if directory.is_dir() {
+            backups.extend(recovery::list(&directory)?);
+        }
+    }
+    backups
+        .sort_by_key(|value| std::cmp::Reverse(value.modified_at_utc.parse::<u64>().unwrap_or(0)));
+    backups.dedup_by(|a, b| a.path == b.path);
+    Ok(backups)
+}
+
+#[tauri::command]
+fn preview_backup_file(path: String) -> AppResult<recovery::BackupPreview> {
+    let path = recovery::validate_file(&path)?;
+    recovery::preview(&path)
+}
+
+#[tauri::command]
+fn restore_backup_file(path: String, state: tauri::State<'_, AppState>) -> AppResult<()> {
+    let target = recovery::validate_file(&path)?;
+    create_sync_safety_backup(&state)?;
+    let mut database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    recovery::restore(&mut database, &target)
+}
+
+#[tauri::command]
+fn run_scheduled_backup(
+    state: tauri::State<'_, AppState>,
+) -> AppResult<Option<recovery::BackupInfo>> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|error| AppError::internal(error.to_string()))?
+        .as_secs();
+    let mut database = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    let mut settings = database.get_backup_settings()?;
+    if !recovery::schedule_due(&settings, now) {
+        return Ok(None);
+    }
+    let directory = validate_external_backup_directory(
+        settings.destination_path.as_deref().unwrap_or_default(),
+        &state,
+    )?;
+    let backup = recovery::create(&database, &directory, "workspace-scheduled")?;
+    settings.last_success_utc = Some(now);
+    database.save_backup_settings(settings)?;
+    Ok(Some(backup))
 }
 #[tauri::command]
 fn export_operational_report(
@@ -1111,24 +1321,11 @@ fn create_sync_safety_backup(state: &AppState) -> AppResult<()> {
             error.to_string(),
         )
     })?;
-    state
+    let database = state
         .database
         .lock()
-        .map_err(|_| AppError::internal("Database state is unavailable."))?
-        .checkpoint()?;
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|error| AppError::internal(error.to_string()))?
-        .as_secs();
-    let destination = backups.join(format!("pre-sync-{stamp}.sqlite3"));
-    fs::copy(&state.database_path, destination).map_err(|error| {
-        AppError::from_technical(
-            "SYNC_BACKUP_FAILED",
-            "A safety backup could not be created before syncing.",
-            "Check local disk space and permissions, then try again.",
-            error.to_string(),
-        )
-    })?;
+        .map_err(|_| AppError::internal("Database state is unavailable."))?;
+    recovery::create(&database, &backups, "safety")?;
     Ok(())
 }
 
@@ -1207,15 +1404,27 @@ pub fn run() {
                     error.to_string(),
                 )
             })?;
-            let database_path = local_data.join("workspace.sqlite3");
-            let database = Database::open(&database_path)?;
             let log_path = local_data.join("workspace.log");
-            append_log(
-                &log_path,
-                "INFO",
-                "APPLICATION_STARTED",
-                "Application storage and migrations are ready.",
-            );
+            let database_path = local_data.join("workspace.sqlite3");
+            let backup_directory = local_data.join("backups");
+            let (database, startup_failure) = match Database::open(&database_path) {
+                Ok(database) => {
+                    append_log(&log_path, "INFO", "APPLICATION_STARTED", "Application storage and migrations are ready.");
+                    (database, None)
+                }
+                Err(error) => {
+                    log_error(&log_path, &error);
+                    let failure = StartupFailure {
+                        code: error.code.to_owned(),
+                        message: error.message.clone(),
+                        recovery: "Choose a verified SiteDatum backup below. The unavailable database will be preserved before recovery.".to_owned(),
+                        correlation_id: error.correlation_id.clone(),
+                        database_path: database_path.clone(),
+                        backup_directory,
+                    };
+                    (Database::open_in_memory()?, Some(failure))
+                }
+            };
             app.manage(AppState {
                 database: Mutex::new(database),
                 commercial_access: Mutex::new(CommercialAccess::Enforced(
@@ -1223,10 +1432,13 @@ pub fn run() {
                 )),
                 log_path,
                 database_path,
+                startup_failure,
             });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            get_startup_status,
+            recover_startup_database,
             get_project_root,
             validate_project_root_command,
             save_project_root,
@@ -1292,6 +1504,13 @@ pub fn run() {
             list_local_backups,
             preview_local_backup,
             restore_local_backup,
+            get_backup_settings,
+            save_backup_settings,
+            create_external_backup,
+            list_configured_backups,
+            preview_backup_file,
+            restore_backup_file,
+            run_scheduled_backup,
             export_operational_report,
             sign_in_cloud_with_password,
             get_cloud_sync_availability,

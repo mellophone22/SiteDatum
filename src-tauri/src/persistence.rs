@@ -11,6 +11,7 @@ use crate::file_record::{self, FileInput, FileMetadataInput, FileRecord};
 use crate::note_contact::{self, ActivityEvent, Contact, ContactInput, Note, NoteInput};
 use crate::project::{Project, ProjectInput};
 use crate::project_root::ProjectRootSetting;
+use crate::recovery::{self, BackupSettings};
 use crate::rfi::{self, AttachmentReference, Rfi, RfiInput};
 use crate::rfi_pdf_settings::{self, RfiPdfSettings};
 use crate::submittal::{
@@ -55,6 +56,14 @@ impl Database {
         if existed {
             prepare_for_migrations(&connection, path)?;
         }
+        apply_migrations(&mut connection)?;
+        Ok(Self { connection })
+    }
+    pub fn open_in_memory() -> AppResult<Self> {
+        let mut connection = Connection::open_in_memory().map_err(database_error)?;
+        connection
+            .execute_batch("PRAGMA foreign_keys = ON;")
+            .map_err(database_error)?;
         apply_migrations(&mut connection)?;
         Ok(Self { connection })
     }
@@ -136,6 +145,28 @@ impl Database {
             [rfi_pdf_settings::SETTINGS_KEY],
         ).map_err(database_error)?;
         transaction.commit().map_err(database_error)?;
+        Ok(settings)
+    }
+    pub fn get_backup_settings(&self) -> AppResult<BackupSettings> {
+        let value = self
+            .connection
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = ?1",
+                [recovery::settings_key()],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(database_error)?;
+        recovery::decode_settings(value)
+    }
+    pub fn save_backup_settings(&mut self, settings: BackupSettings) -> AppResult<BackupSettings> {
+        let (settings, value) = recovery::encode_settings(settings)?;
+        self.connection
+            .execute(
+                "INSERT INTO app_settings (key, value, updated_at_utc) VALUES (?1, ?2, strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at_utc = excluded.updated_at_utc",
+                [recovery::settings_key(), value.as_str()],
+            )
+            .map_err(database_error)?;
         Ok(settings)
     }
     pub fn list_projects(&self, include_archived: bool) -> AppResult<Vec<Project>> {

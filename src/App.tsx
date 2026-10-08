@@ -30,6 +30,7 @@ import { needsFirstRun } from "./firstRunState";
 import appIcon from "./assets/branding/site-datum-app-icon-v2.png";
 import { SubscriptionSettings } from "./SubscriptionSettings";
 import { RfiPdfSettings } from "./RfiPdfSettings";
+import { StartupRecovery, type StartupStatus } from "./StartupRecovery";
 
 type ProjectRootSetting = { path: string | null };
 type ProjectRootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
@@ -86,18 +87,28 @@ function App() {
   const [remindersOn, setRemindersOn] = useState(remindersEnabled);
   const [missingFileCount, setMissingFileCount] = useState(0);
   const [firstRunStatus, setFirstRunStatus] = useState<"checking" | "needed" | "complete">(firstRunPreview ? "needed" : "checking");
+  const [startupStatus, setStartupStatus] = useState<StartupStatus | null>(null);
   const { confirmAction, confirmationDialog } = useConfirmation();
   const selectedProject = projectOptions.find((project) => project.id === currentProjectId) ?? null;
   const projectNavigation=projectModuleOrder(selectedProject?.phase);
 
+  useEffect(() => { void invoke<StartupStatus>("get_startup_status").then(setStartupStatus).catch((caught) => setError(describeAppError(caught))); }, []);
   useEffect(() => {
+    if (!startupStatus?.ready) return;
     void loadSetting();
     void invoke<CloudSyncAvailability>("get_cloud_sync_availability").then((status) => { setCloudStatus(status); if (status.connected) void loadCloudConflicts(); }).catch((caught) => setCloudError(describeAppError(caught)));
     if (!firstRunPreview) void Promise.all([invoke<ProjectRootSetting>("get_project_root"), invoke<ProjectSummary[]>("list_projects", { includeArchived: true })]).then(([root, projects]) => setFirstRunStatus(needsFirstRun(root.path, projects.length) ? "needed" : "complete")).catch(() => setFirstRunStatus("complete"));
-  }, []);
-  useEffect(() => { void loadProjectOptions(); }, [projectListRevision]);
-  useEffect(() => { void loadMissingFileCount(); }, [navigationRevision]);
-  useEffect(()=>{if(!remindersOn)return;void runReminderCheck();const timer=window.setInterval(()=>void runReminderCheck(),300000);return()=>window.clearInterval(timer)},[remindersOn]);
+  }, [startupStatus?.ready]);
+  useEffect(() => { if (startupStatus?.ready) void loadProjectOptions(); }, [projectListRevision, startupStatus?.ready]);
+  useEffect(() => { if (startupStatus?.ready) void loadMissingFileCount(); }, [navigationRevision, startupStatus?.ready]);
+  useEffect(() => {
+    if (!startupStatus?.ready) return;
+    const run = () => void invoke("run_scheduled_backup").catch((caught) => setError(describeAppError(caught)));
+    run();
+    const timer = window.setInterval(run, 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [startupStatus?.ready]);
+  useEffect(()=>{if(!startupStatus?.ready||!remindersOn)return;void runReminderCheck();const timer=window.setInterval(()=>void runReminderCheck(),300000);return()=>window.clearInterval(timer)},[remindersOn,startupStatus?.ready]);
   useEffect(()=>{const restored=()=>refreshWorkspace();window.addEventListener("workspace:restored",restored);return()=>window.removeEventListener("workspace:restored",restored)},[refreshWorkspace]);
   useEffect(() => { const handler=(event:KeyboardEvent)=>{if(event.ctrlKey&&event.key.toLowerCase()==="k"){event.preventDefault();setPaletteOpen(true)}if(event.ctrlKey&&event.shiftKey&&event.key.toLowerCase()==="n"){event.preventDefault();setCaptureOpen(true)}else if(event.ctrlKey&&event.key.toLowerCase()==="n"){event.preventDefault();window.dispatchEvent(new CustomEvent("workspace:new"))}if(event.key==="Escape")setPaletteOpen(false)};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler)},[]);
   useEffect(() => {
@@ -224,6 +235,8 @@ function App() {
   const recoveryIssues = recoveryIssueCount(recoveryHealth);
   const navButton = (destination: Screen, label: string, attention = false) => <button key={destination} type="button" className={`nav-button${screen === destination ? " active" : ""}${destination === "recovery" && !attention ? " recovery-quiet" : ""}${attention ? " recovery-needed" : ""}`} title={label} aria-current={screen === destination ? "page" : undefined} onClick={() => navigate(destination)}><NavIcon screen={destination}/><span>{label}</span>{attention && <strong className="nav-count" aria-label={`${recoveryIssues} recovery issues`}>{recoveryIssues}</strong>}</button>;
 
+  if (!startupStatus) return <main className="first-run-shell"><LoadingState>Checking local workspace…</LoadingState></main>;
+  if (!startupStatus.ready) return <StartupRecovery status={startupStatus}/>;
   if (firstRunStatus === "checking") return <main className="first-run-shell"><LoadingState>Checking local workspace…</LoadingState></main>;
   if (firstRunStatus === "needed") return <FirstRun onSkip={() => { setFirstRunStatus("complete"); navigate("settings"); }} onComplete={(project) => { setFirstRunStatus("complete"); setCurrentProject(project.id); refreshProjects(); void loadSetting(); navigate("overview"); }} />;
 
