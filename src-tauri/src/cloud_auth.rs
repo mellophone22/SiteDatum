@@ -88,6 +88,19 @@ fn save_session(session: &StoredSession) -> AppResult<()> {
     })
 }
 
+pub fn has_stored_session() -> AppResult<bool> {
+    match session_entry()?.get_password() {
+        Ok(_) => Ok(true),
+        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(error) => Err(AppError::from_technical(
+            "CLOUD_CREDENTIAL_STORE_UNAVAILABLE",
+            "Secure Windows credential storage is unavailable.",
+            "Check Windows Credential Manager, then restart SiteDatum.",
+            error.to_string(),
+        )),
+    }
+}
+
 fn auth_error(code: &'static str, error: reqwest::Error) -> AppError {
     AppError::from_technical(
         code,

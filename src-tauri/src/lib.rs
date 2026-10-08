@@ -44,6 +44,68 @@ struct AppState {
     database_path: std::path::PathBuf,
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CloudSyncAvailability {
+    available: bool,
+    connected: bool,
+    email: Option<String>,
+}
+
+fn legacy_cloud_sync_is_available(has_local_evidence: bool, has_stored_session: bool) -> bool {
+    has_local_evidence || has_stored_session
+}
+
+fn legacy_cloud_sync_available(state: &AppState) -> AppResult<bool> {
+    let has_local_evidence = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .has_legacy_cloud_sync_access()?;
+    if legacy_cloud_sync_is_available(has_local_evidence, false) {
+        return Ok(true);
+    }
+    let has_stored_session = cloud_auth::has_stored_session()?;
+    if !legacy_cloud_sync_is_available(false, has_stored_session) {
+        return Ok(false);
+    }
+    state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .preserve_legacy_cloud_sync_access()?;
+    Ok(true)
+}
+
+#[cfg(test)]
+mod legacy_cloud_sync_access_tests {
+    use super::legacy_cloud_sync_is_available;
+
+    #[test]
+    fn fresh_installations_are_not_eligible_for_legacy_sync() {
+        assert!(!legacy_cloud_sync_is_available(false, false));
+    }
+
+    #[test]
+    fn prior_history_or_a_saved_session_preserves_legacy_sync() {
+        assert!(legacy_cloud_sync_is_available(true, false));
+        assert!(legacy_cloud_sync_is_available(false, true));
+        assert!(legacy_cloud_sync_is_available(true, true));
+    }
+}
+
+fn require_legacy_cloud_sync(state: &AppState) -> AppResult<()> {
+    if legacy_cloud_sync_available(state)? {
+        return Ok(());
+    }
+    Err(AppError::from_technical(
+        "SYNC_DEFERRED",
+        "Workspace synchronization is not available on this computer.",
+        "Continue using the local workspace. No account or cloud connection is required.",
+        "Legacy sync access requires an existing device credential or prior local sync state.",
+    ))
+}
+
 fn current_commercial_access(state: &AppState) -> AppResult<CommercialAccess> {
     state
         .commercial_access
@@ -974,6 +1036,7 @@ fn sign_in_cloud_with_password(
     password: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<cloud_auth::CloudAuthStatus> {
+    require_legacy_cloud_sync(&state)?;
     let result = cloud_auth::sign_in_with_password(email, password);
     if let Err(error) = &result {
         log_error(&state.log_path, error);
@@ -982,18 +1045,36 @@ fn sign_in_cloud_with_password(
 }
 
 #[tauri::command]
-fn get_cloud_auth_status(
+fn get_cloud_sync_availability(
     state: tauri::State<'_, AppState>,
-) -> AppResult<cloud_auth::CloudAuthStatus> {
-    let result = cloud_auth::status();
-    if let Err(error) = &result {
-        log_error(&state.log_path, error);
+) -> AppResult<CloudSyncAvailability> {
+    if !legacy_cloud_sync_available(&state)? {
+        return Ok(CloudSyncAvailability {
+            available: false,
+            connected: false,
+            email: None,
+        });
     }
-    result
+    match cloud_auth::status() {
+        Ok(status) => Ok(CloudSyncAvailability {
+            available: true,
+            connected: status.connected,
+            email: status.email,
+        }),
+        Err(error) => {
+            log_error(&state.log_path, &error);
+            Ok(CloudSyncAvailability {
+                available: true,
+                connected: false,
+                email: None,
+            })
+        }
+    }
 }
 
 #[tauri::command]
 fn disconnect_cloud(state: tauri::State<'_, AppState>) -> AppResult<()> {
+    require_legacy_cloud_sync(&state)?;
     let result = cloud_auth::disconnect();
     if let Err(error) = &result {
         log_error(&state.log_path, error);
@@ -1003,6 +1084,7 @@ fn disconnect_cloud(state: tauri::State<'_, AppState>) -> AppResult<()> {
 
 #[tauri::command]
 fn sync_cloud_workspace(state: tauri::State<'_, AppState>) -> AppResult<cloud_sync::SyncResult> {
+    require_legacy_cloud_sync(&state)?;
     create_sync_safety_backup(&state)?;
     let mut database = state
         .database
@@ -1054,6 +1136,7 @@ fn create_sync_safety_backup(state: &AppState) -> AppResult<()> {
 fn list_cloud_conflicts(
     state: tauri::State<'_, AppState>,
 ) -> AppResult<Vec<cloud_sync::SyncConflict>> {
+    require_legacy_cloud_sync(&state)?;
     state
         .database
         .lock()
@@ -1067,6 +1150,7 @@ fn resolve_cloud_conflict(
     choice: String,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<cloud_sync::SyncResult> {
+    require_legacy_cloud_sync(&state)?;
     create_sync_safety_backup(&state)?;
     let mut database = state
         .database
@@ -1210,7 +1294,7 @@ pub fn run() {
             restore_local_backup,
             export_operational_report,
             sign_in_cloud_with_password,
-            get_cloud_auth_status,
+            get_cloud_sync_availability,
             disconnect_cloud,
             sync_cloud_workspace,
             list_cloud_conflicts,

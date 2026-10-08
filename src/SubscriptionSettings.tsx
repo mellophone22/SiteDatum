@@ -155,7 +155,7 @@ export function SubscriptionSettings() {
         <label htmlFor="licensing-email">Email address<input id="licensing-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
         <label htmlFor="licensing-password">Password<input id="licensing-password" type="password" autoComplete="current-password" required minLength={12} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
       </div>
-      <p className="help">Licensing credentials are separate from optional workspace Sync and are stored in Windows Credential Manager.</p>
+      <p className="help">Licensing credentials are stored in Windows Credential Manager and are used only for account and subscription access.</p>
       <div className="actions">
         <button type="submit" disabled={!!working || !email.trim() || password.length < 12}>{working === "sign-in" ? "Signing in…" : "Sign in"}</button>
         <button type="button" className="secondary" onClick={createAccount} disabled={!!working || !email.trim() || password.length < 12}>{working === "create-account" ? "Creating account…" : "Create account"}</button>

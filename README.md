@@ -32,7 +32,7 @@ SiteDatum is single-user and local-first:
 - Subscription expiration is non-destructive: existing projects and records remain visible and editable, and backup and essential CSV export remain available.
 - Licensing and billing systems never receive project names, tasks, RFIs, submittals, notes, contacts, file paths, documents, or database contents.
 
-Optional Supabase metadata synchronization exists as a separately consented legacy capability, but it is not the licensing authority and is deferred from the initial commercial launch. Project-file replication, when used, remains the responsibility of a dedicated OneDrive project root; the SQLite database must stay in application-local storage.
+Supabase metadata synchronization is deferred from the initial commercial launch and is hidden on fresh installations. A separately consented legacy path remains visible only on computers with a saved Sync credential or prior local sync state; it is not the licensing authority. For those grandfathered computers, project-file replication remains the responsibility of a dedicated OneDrive project root and the SQLite database must stay in application-local storage.
 
 ## Implemented functionality
 

@@ -33,7 +33,7 @@ import { RfiPdfSettings } from "./RfiPdfSettings";
 
 type ProjectRootSetting = { path: string | null };
 type ProjectRootValidation = { canonicalPath: string; pathKind: "local" | "unc"; warning: string | null };
-type CloudAuthStatus = { connected: boolean; email: string | null };
+type CloudSyncAvailability = { available: boolean; connected: boolean; email: string | null };
 type CloudSyncResult = { outcome: string; message: string; cloudVersion: number; conflictCount: number };
 type CloudConflict = { id: string; createdAtUtc: string };
 type FileHealth = { missing: boolean };
@@ -76,7 +76,7 @@ function App() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const [projectOptions, setProjectOptions] = useState<ProjectSummary[]>([]);
-  const [cloudStatus, setCloudStatus] = useState<CloudAuthStatus>({ connected: false, email: null });
+  const [cloudStatus, setCloudStatus] = useState<CloudSyncAvailability>({ available: false, connected: false, email: null });
   const [cloudEmail, setCloudEmail] = useState("");
   const [cloudPassword, setCloudPassword] = useState("");
   const [cloudMessage, setCloudMessage] = useState("");
@@ -92,7 +92,7 @@ function App() {
 
   useEffect(() => {
     void loadSetting();
-    void invoke<CloudAuthStatus>("get_cloud_auth_status").then((status) => { setCloudStatus(status); if (status.connected) void loadCloudConflicts(); }).catch((caught) => setCloudError(describeAppError(caught)));
+    void invoke<CloudSyncAvailability>("get_cloud_sync_availability").then((status) => { setCloudStatus(status); if (status.connected) void loadCloudConflicts(); }).catch((caught) => setCloudError(describeAppError(caught)));
     if (!firstRunPreview) void Promise.all([invoke<ProjectRootSetting>("get_project_root"), invoke<ProjectSummary[]>("list_projects", { includeArchived: true })]).then(([root, projects]) => setFirstRunStatus(needsFirstRun(root.path, projects.length) ? "needed" : "complete")).catch(() => setFirstRunStatus("complete"));
   }, []);
   useEffect(() => { void loadProjectOptions(); }, [projectListRevision]);
@@ -190,14 +190,14 @@ function App() {
   async function backup() { setWorking(true); setError(""); try { const saved=await invoke<string>("create_local_backup"); setMessage(`Local backup created: ${saved}`); } catch (caught) { setError(describeAppError(caught)); } finally { setWorking(false); } }
   async function signInCloud() {
     setCloudWorking(true); setCloudError(""); setCloudMessage("");
-    try { const status = await invoke<CloudAuthStatus>("sign_in_cloud_with_password", { email: cloudEmail, password: cloudPassword }); setCloudStatus(status); setCloudPassword(""); setCloudMessage("Cloud account connected securely on this computer."); await loadCloudConflicts(); }
+    try { const status = await invoke<Omit<CloudSyncAvailability, "available">>("sign_in_cloud_with_password", { email: cloudEmail, password: cloudPassword }); setCloudStatus({ available: true, ...status }); setCloudPassword(""); setCloudMessage("Legacy cloud account connected securely on this computer."); await loadCloudConflicts(); }
     catch (caught) { setCloudError(describeAppError(caught)); }
     finally { setCloudWorking(false); }
   }
   async function disconnectCloud() {
     if (!await confirmAction({ title: "Disconnect this computer?", description: "Cloud synchronization will stop on this computer. Local projects, metadata, and project files will remain available.", confirmLabel: "Disconnect computer", destructive: true })) return;
     setCloudWorking(true); setCloudError("");
-    try { await invoke("disconnect_cloud"); setCloudStatus({ connected: false, email: null }); setCloudConflicts([]); setCloudPassword(""); setCloudMessage("This computer is disconnected. Local workspace data remains available."); }
+    try { await invoke("disconnect_cloud"); setCloudStatus({ available: true, connected: false, email: null }); setCloudConflicts([]); setCloudPassword(""); setCloudMessage("This computer is disconnected. Local workspace data remains available."); }
     catch (caught) { setCloudError(describeAppError(caught)); }
     finally { setCloudWorking(false); }
   }
@@ -255,7 +255,7 @@ function App() {
       <SearchPalette open={paletteOpen} onClose={closePalette} onOpen={(item)=>{if(item.kind==="action")navigate(item.screen);else if(item.kind==="project"){setCurrentProject(item.id);navigate("overview")}else openRecord(item.screen,{type:item.type,id:item.id},item.projectId)}} />
       <QuickCapture open={captureOpen} projects={projectOptions} projectContext={projectContext} onClose={()=>setCaptureOpen(false)} onSaved={(value)=>{navigate(value as Screen);refreshWorkspace()}} />
       {screen === "about" ? <About /> : screen === "overview" ? <Overview key={navigationRevision} onNavigate={(value)=>navigate(value as Screen)} onSelectProject={setCurrentProject} /> : screen === "projects" ? <Projects key={navigationRevision} onOpenSettings={()=>navigate("settings")} onProjectsChanged={refreshProjects} onOpenWorkspace={(project)=>{setCurrentProject(project.id);navigate("overview")}} /> : screen === "tasks" ? <Tasks key={navigationRevision} /> : screen === "rfis" ? <Rfis key={navigationRevision} /> : screen === "submittals" ? <Submittals key={navigationRevision} /> : screen === "operations" ? <Operations key={navigationRevision} /> : screen === "files" ? <Files key={navigationRevision} /> : screen === "notes" ? <NotesContacts key={navigationRevision} /> : screen === "attention" ? <Tasks key={navigationRevision} attention onOpenRfis={() => navigate("rfis")} onOpenSubmittals={() => navigate("submittals")} /> : screen === "recovery" ? <AuditRecovery key={navigationRevision} onOpenFiles={()=>navigate("files")}/> : <section className="settings" aria-labelledby="settings-title">
-        <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, account, synchronization, reminders, and data safeguards.</p></div></div>
+        <div className="section-heading"><div><p className="eyebrow">System</p><h1 id="settings-title">Settings</h1><p className="intro">Configure this computer's local workspace, account, reminders, and data safeguards.</p></div></div>
         <SubscriptionSettings />
         <RfiPdfSettings />
         <section className="settings-section" aria-labelledby="appearance-settings-title"><div className="settings-section-heading"><h2 id="appearance-settings-title">Appearance</h2><p>Choose a fixed theme or follow the Light/Dark setting on this Windows computer.</p></div><AppearanceSettings/></section>
@@ -276,16 +276,16 @@ function App() {
           {savedPath && <p className="saved-path"><span>Saved path</span>{savedPath}</p>}
         </div>
         </section>
-        <section className="settings-section" aria-labelledby="cloud-title">
-          <div className="settings-section-heading"><h2 id="cloud-title">Sync</h2><p>Synchronize workspace metadata between computers. Project files remain in the configured project root.</p></div>
+        {cloudStatus.available && <section className="settings-section" aria-labelledby="cloud-title">
+          <div className="settings-section-heading"><h2 id="cloud-title">Legacy Sync</h2><p>This existing-device capability synchronizes workspace metadata between computers. It is not offered on new installations. Project files remain in the configured project root.</p></div>
           {cloudStatus.connected ? <><div className="cloud-connected"><p><strong>Connected</strong><span>{cloudStatus.email}</span></p><div className="actions"><button type="button" onClick={() => void syncCloud()} disabled={cloudWorking}>{cloudWorking ? "Synchronizing…" : "Sync now"}</button><button type="button" className="secondary" onClick={() => void disconnectCloud()} disabled={cloudWorking}>Disconnect this computer</button></div></div>{cloudConflicts.length > 0 && <section className="conflict-panel" aria-labelledby="conflicts-title"><h3 id="conflicts-title">Sync conflict</h3><p>Both computers changed workspace metadata since the last successful sync. Choose the version to keep.</p>{cloudConflicts.map((conflict) => <div className="conflict-row" key={conflict.id}><span>Detected {new Date(conflict.createdAtUtc).toLocaleString()}</span><div className="actions"><button type="button" onClick={() => void resolveCloudConflict(conflict.id, "local")} disabled={cloudWorking}>Keep this computer</button><button type="button" className="secondary" onClick={() => void resolveCloudConflict(conflict.id, "cloud")} disabled={cloudWorking}>Use cloud version</button></div></div>)}</section>}</> : <form className="cloud-auth" onSubmit={(event) => { event.preventDefault(); void signInCloud(); }}>
             <label htmlFor="cloud-email">Email address<input id="cloud-email" type="email" autoComplete="email" required value={cloudEmail} onChange={(event) => { setCloudEmail(event.target.value); setCloudError(""); }} placeholder="you@company.com" /></label>
             <label htmlFor="cloud-password">Password<input id="cloud-password" type="password" autoComplete="current-password" required minLength={8} value={cloudPassword} onChange={(event) => { setCloudPassword(event.target.value); setCloudError(""); }} /></label>
-            <p className="help">Use the confirmed user created in Supabase Authentication → Users. Windows Credential Manager securely stores the session on this computer.</p>
+            <p className="help">Use the previously provisioned legacy Sync account. Windows Credential Manager securely stores the session on this computer.</p>
             <div className="actions"><button type="submit" disabled={cloudWorking || !cloudEmail.trim() || cloudPassword.length < 8}>{cloudWorking ? "Signing in…" : "Sign in"}</button></div>
           </form>}
           <div className="status-area" aria-live="polite">{cloudMessage && <StatusNotice tone="success">{cloudMessage}</StatusNotice>}{cloudError && <StatusNotice tone="error">{cloudError}</StatusNotice>}</div>
-        </section>
+        </section>}
         <section className="settings-section" aria-labelledby="reminders-title"><div className="settings-section-heading"><h2 id="reminders-title">Notifications</h2><p>Show a Windows notification for overdue and due-today tasks, follow-ups, and project-control records while SiteDatum is running.</p></div><label className="setting-toggle"><input type="checkbox" checked={remindersOn} onChange={(event)=>void changeReminders(event.target.checked)}/> Enable Windows reminders</label>{remindersOn&&<button type="button" className="secondary" onClick={()=>void runReminderCheck(true).then(total=>setMessage(total?`Reminder sent for ${total} current items.`:"No items currently need a reminder.")).catch(caught=>setError(describeAppError(caught)))}>Check reminders now</button>}</section>
         <section className={`settings-section recovery-settings${recoveryIssues ? " needs-attention" : ""}`} aria-labelledby="data-recovery-title"><div className="settings-section-heading"><h2 id="data-recovery-title">Data &amp; Recovery</h2><p>{recoverySummary(recoveryHealth)}</p></div><div className="actions"><button type="button" className="secondary" onClick={() => void backup()} disabled={working}>{working ? "Working…" : "Create local backup"}</button><button type="button" className="secondary" onClick={() => navigate("recovery")}>{recoveryIssues ? "Review recovery issues" : "Open audit and recovery"}</button></div></section>
       </section>}

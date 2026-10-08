@@ -7,7 +7,7 @@ Launch -> Attention shows overdue/today/follow-up/waiting/upcoming -> act withou
 Quick action -> enter project number, name, phase, and optional customer -> confirm exact path/folder preview -> create DB record + folder tree -> report partial failures precisely -> Open Workspace -> project Home. Complete secondary project metadata through Edit when needed.
 
 ## First run
-On a completely empty installation -> choose and validate an existing project root -> enter the first project's number, name, phase, and optional customer -> review the exact folder path -> create the project -> enter its Home workspace. Choose Set up later to use normal local Settings instead. Cloud sync is optional and never blocks local setup.
+On a completely empty installation -> choose and validate an existing project root -> enter the first project's number, name, phase, and optional customer -> review the exact folder path -> create the project -> enter its Home workspace. Choose Set up later to use normal local Settings instead. Local setup never requires an account or internet connection.
 
 ## Open or manage a project
 Projects -> scan project number/name, status, phase, customer, and target date -> select the project identity to open an active workspace. Use More for View details, Edit project, Open folder, Pin/Unpin, and Archive/Restore. Archived project identities open a read-only overview first so restoration remains deliberate.

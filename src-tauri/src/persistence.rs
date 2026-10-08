@@ -23,6 +23,7 @@ pub struct Database {
 }
 
 const LATEST_MIGRATION_VERSION: i64 = 10;
+const LEGACY_CLOUD_SYNC_ACCESS_KEY: &str = "legacy_cloud_sync_access";
 
 fn migrations() -> [(i64, &'static str); 10] {
     [
@@ -77,6 +78,39 @@ impl Database {
         Ok(ProjectRootSetting {
             path: Some(path.to_owned()),
         })
+    }
+    pub fn has_legacy_cloud_sync_access(&self) -> AppResult<bool> {
+        let preserved = self
+            .connection
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = ?1",
+                [LEGACY_CLOUD_SYNC_ACCESS_KEY],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(database_error)?
+            .is_some_and(|value| value == "1");
+        if preserved {
+            return Ok(true);
+        }
+        let has_history = self
+            .connection
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM sync_local_records UNION ALL SELECT 1 FROM sync_conflicts)",
+                [],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(database_error)?;
+        Ok(has_history)
+    }
+    pub fn preserve_legacy_cloud_sync_access(&mut self) -> AppResult<()> {
+        self.connection
+            .execute(
+                "INSERT INTO app_settings (key, value, updated_at_utc) VALUES (?1, '1', strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at_utc = excluded.updated_at_utc",
+                [LEGACY_CLOUD_SYNC_ACCESS_KEY],
+            )
+            .map_err(database_error)?;
+        Ok(())
     }
     pub fn get_rfi_pdf_settings(&self) -> AppResult<RfiPdfSettings> {
         let value = self
@@ -1311,6 +1345,38 @@ mod tests {
 
     fn insert_test_project(database: &Database) {
         database.connection.execute("INSERT INTO projects (id,number,name,project_path,created_at_utc,updated_at_utc) VALUES ('p1','P-100','Test Project','C:\\Projects\\P-100','2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')", []).unwrap();
+    }
+
+    #[test]
+    fn legacy_cloud_sync_access_requires_prior_local_evidence() {
+        let root =
+            std::env::temp_dir().join(format!("sitedatum-sync-access-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("workspace.sqlite3");
+        let mut database = Database::open(&path).unwrap();
+
+        assert!(!database.has_legacy_cloud_sync_access().unwrap());
+
+        database
+            .connection
+            .execute(
+                "INSERT INTO sync_local_records(entity_type,entity_id,content_hash,cloud_version) VALUES('workspace','primary','hash',1)",
+                [],
+            )
+            .unwrap();
+        assert!(database.has_legacy_cloud_sync_access().unwrap());
+
+        database
+            .connection
+            .execute("DELETE FROM sync_local_records", [])
+            .unwrap();
+        assert!(!database.has_legacy_cloud_sync_access().unwrap());
+
+        database.preserve_legacy_cloud_sync_access().unwrap();
+        assert!(database.has_legacy_cloud_sync_access().unwrap());
+
+        drop(database);
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     fn create_version_nine_database(path: &std::path::Path) {

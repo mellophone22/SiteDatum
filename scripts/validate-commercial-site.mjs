@@ -152,9 +152,15 @@ for (const required of [
   if (!support.includes(required)) failures.push(`support.html: missing private-intake safeguard: ${required}`);
 }
 
-for (const page of ['privacy.html', 'terms.html', 'refunds.html']) {
+const effectiveStatuses = new Map([
+  ['privacy.html', 'Founder-approved — effective October 8, 2026'],
+  ['terms.html', 'Founder-approved — effective October 3, 2026'],
+  ['refunds.html', 'Founder-approved — effective October 3, 2026'],
+]);
+
+for (const [page, effectiveStatus] of effectiveStatuses) {
   const source = await readFile(resolve(site, page), 'utf8');
-  if (!source.includes('Founder-approved — effective October 3, 2026')) failures.push(`${page}: effective founder-approval status is missing`);
+  if (!source.includes(effectiveStatus)) failures.push(`${page}: effective founder-approval status is missing`);
   if (source.includes('not yet effective') || source.includes('Policy Draft') || source.includes('Terms Draft')) failures.push(`${page}: stale draft language remains`);
 }
 

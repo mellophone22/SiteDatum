@@ -18,7 +18,7 @@ WP7 Search/command/navigation polish: global search, command palette, recents, r
 
 WP8 Hardening: backup/export, edge cases, realistic-volume performance, accessibility, final UI audit, Windows packaging. (Completed 2026-09-22)
 
-WP9 Optional cloud sync: dedicated OneDrive project root for normal files; authenticated Supabase metadata sync over a Rust-owned boundary; explicit version conflicts; device-local path mapping; offline-safe local operation. (Completed 2026-09-22.)
+WP9 Optional cloud sync: dedicated OneDrive project root for normal files; authenticated Supabase metadata sync over a Rust-owned boundary; explicit version conflicts; device-local path mapping; offline-safe local operation. (Completed 2026-09-22; contained to grandfathered computers for the initial commercial launch on 2026-10-08.)
 
 WP10 RFI PDF export: persist template-specific RFI fields; render saved RFI/project data onto the approved Excel-derived PDF template; explicit destination; no overwrite; register generated output as an attachment reference. (Completed 2026-09-22.)
 

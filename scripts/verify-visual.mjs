@@ -33,10 +33,12 @@ try {
     const submittals = [{ id: "sub-1", projectId: "project-1", projectNumber: "26-105", projectName: names[1], number: "SUB-006", name: "DDC controls package", recipient: "Consultant", status: "under_review", revision: "0", submittedDate: "2026-09-20", relatedTaskId: null }];
     const queues = ["overdue", "today", "follow_up", "waiting", "upcoming"].map((key, i) => ({ key, label: ["Overdue", "Today", "Follow-up", "Waiting", "Upcoming"][i], tasks: tasks.filter(t => t.status !== "completed").slice(i * 3, i * 3 + 3) }));
     const commands = {
-      get_project_root: { path: "C:\\VisualFixtures" }, get_cloud_auth_status: { connected: false, email: null },
+      get_project_root: { path: "C:\\VisualFixtures" },
       "plugin:dialog|open": "\\\\?\\C:\\VisualFixtures",
       validate_project_root_command: { canonicalPath: "C:\\VisualFixtures", pathKind: "local", warning: null },
       save_project_root: { path: "C:\\VisualFixtures" },
+      get_licensing_status: { connected: false, email: null, plan: "free", subscriptionStatus: null, freshness: "free", paidThroughUtc: null, refreshAfterUtc: null, deviceId: null, activeProjectLimit: 3, isPro: false },
+      get_rfi_pdf_settings: { templateMode: "site_datum", companyName: "", companyDetails: "", accentColor: "#087F89", customTemplatePath: null },
       list_projects: projects, list_tasks: tasks, list_attention: queues, list_rfis: rfis, list_rfi_attention: rfis,
       list_submittals: submittals, list_submittal_attention: submittals, list_files: [], list_contacts: [], list_cloud_conflicts: [], list_project_templates: [], list_local_backups: [],
       list_work_items: [{ id: "milestone-1", projectId: "project-0", projectNumber: "26-104", projectName: names[0], itemType: "milestone", title: "Controls rough-in complete", status: "open", dueDate: "2026-10-01", priority: "medium" }],
@@ -46,6 +48,9 @@ try {
     };
     window.isTauri = true;
     window.__TAURI_INTERNALS__ = { invoke: async (command) => {
+      if (command === "get_cloud_sync_availability") return localStorage.getItem("visual.legacySync") === "true"
+        ? { available: true, connected: true, email: "legacy@example.invalid" }
+        : { available: false, connected: false, email: null };
       if (Object.hasOwn(commands, command)) return structuredClone(commands[command]);
       throw new Error(`Unmocked visual-test command: ${command}`);
     } };
@@ -83,6 +88,7 @@ try {
   }
   await go("Settings");
   assert.equal(await page.getByRole("radio", { name: /Dark/ }).getAttribute("aria-checked"), "true");
+  assert.equal(await page.getByRole("heading", { name: "Legacy Sync", exact: true }).count(), 0, "fresh installations hide legacy Sync");
   await capture("settings-dark");
   await page.getByRole("radio", { name: /Windows default/ }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem("appearance.mode")), "system");
@@ -97,6 +103,15 @@ try {
   await page.getByText("Local folder is available.", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Save project root", exact: true }).click();
   await page.getByText("Project root saved and ready for project workspaces.", { exact: true }).waitFor();
+  await page.evaluate(() => localStorage.setItem("visual.legacySync", "true"));
+  await page.reload();
+  await page.getByRole("heading", { name: "All active projects" }).waitFor();
+  await go("Settings");
+  const legacySyncHeading = page.getByRole("heading", { name: "Legacy Sync", exact: true });
+  await legacySyncHeading.waitFor();
+  await legacySyncHeading.scrollIntoViewIfNeeded();
+  await capture("settings-legacy-sync");
+  await page.evaluate(() => localStorage.removeItem("visual.legacySync"));
   await page.reload();
   await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
   assert.equal(await page.evaluate(() => localStorage.getItem("appearance.mode")), "system");
