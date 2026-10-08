@@ -53,7 +53,7 @@ New RFI -> receive a project-scoped canonical number suggestion when a project i
 New Submittal -> receive a project-scoped canonical number suggestion when a project is known -> keep or edit it -> Draft/Preparing -> enter recipient -> Submit submittal -> choose and Record disposition -> Create revision when Revise & Resubmit requires one, otherwise Close submittal after final disposition. Lifecycle transitions save current edits atomically; manual status editing remains available for exceptions.
 
 ## File
-Drop/select -> explicitly Copy, Move, or Register -> prevent overwrite -> store path/metadata -> Open / Show in Explorer.
+Drop/select -> explicitly Copy, Move, or Register -> prevent overwrite -> store path/metadata -> Show in Explorer. SiteDatum reveals the registered file in Windows Explorer rather than directly opening the document.
 
 ## Missing file
 Show Missing; offer Locate File / Remove Reference. Never silently delete metadata.

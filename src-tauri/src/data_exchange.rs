@@ -6,6 +6,7 @@ use crate::{
 use calamine::{open_workbook_auto, Reader};
 use rust_xlsxwriter::Workbook;
 use serde::Serialize;
+use std::borrow::Cow;
 use std::path::Path;
 use uuid::Uuid;
 
@@ -23,6 +24,13 @@ const HEADERS: [&str; 12] = [
     "amount",
     "checklist_total",
 ];
+
+fn safe_csv_text(value: &str) -> Cow<'_, str> {
+    match value.as_bytes().first() {
+        Some(b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r') => Cow::Owned(format!("'{value}")),
+        _ => Cow::Borrowed(value),
+    }
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -299,27 +307,32 @@ impl Database {
                     )
                 })?;
             for v in &selected {
+                let amount = v
+                    .amount_cents
+                    .map(|c| format!("{:.2}", c as f64 / 100.0))
+                    .unwrap_or_default();
+                let checklist_completed = v.checklist_completed.to_string();
+                let checklist_total = v.checklist_total.to_string();
+                let values = [
+                    safe_csv_text(&v.project_number),
+                    safe_csv_text(&v.project_name),
+                    safe_csv_text(&v.item_type),
+                    safe_csv_text(v.number.as_deref().unwrap_or("")),
+                    safe_csv_text(&v.title),
+                    safe_csv_text(v.description.as_deref().unwrap_or("")),
+                    safe_csv_text(&v.status),
+                    safe_csv_text(&v.priority),
+                    safe_csv_text(v.due_date.as_deref().unwrap_or("")),
+                    safe_csv_text(v.occurred_date.as_deref().unwrap_or("")),
+                    safe_csv_text(v.responsible_party.as_deref().unwrap_or("")),
+                    safe_csv_text(v.company.as_deref().unwrap_or("")),
+                    safe_csv_text(v.location.as_deref().unwrap_or("")),
+                    Cow::Owned(amount),
+                    Cow::Owned(checklist_completed),
+                    Cow::Owned(checklist_total),
+                ];
                 writer
-                    .write_record([
-                        v.project_number.as_str(),
-                        v.project_name.as_str(),
-                        v.item_type.as_str(),
-                        v.number.as_deref().unwrap_or(""),
-                        v.title.as_str(),
-                        v.description.as_deref().unwrap_or(""),
-                        v.status.as_str(),
-                        v.priority.as_str(),
-                        v.due_date.as_deref().unwrap_or(""),
-                        v.occurred_date.as_deref().unwrap_or(""),
-                        v.responsible_party.as_deref().unwrap_or(""),
-                        v.company.as_deref().unwrap_or(""),
-                        v.location.as_deref().unwrap_or(""),
-                        &v.amount_cents
-                            .map(|c| format!("{:.2}", c as f64 / 100.0))
-                            .unwrap_or_default(),
-                        &v.checklist_completed.to_string(),
-                        &v.checklist_total.to_string(),
-                    ])
+                    .write_record(values.iter().map(|value| value.as_bytes()))
                     .map_err(|e| {
                         err(
                             "EXPORT_WRITE_FAILED",
@@ -415,6 +428,23 @@ fn xlsx(e: rust_xlsxwriter::XlsxError) -> AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn csv_text_cells_neutralize_spreadsheet_formula_prefixes() {
+        for dangerous in [
+            "=SUM(A1:A2)",
+            "+cmd",
+            "-2+3",
+            "@lookup",
+            "\tformula",
+            "\rformula",
+        ] {
+            assert_eq!(safe_csv_text(dangerous), format!("'{dangerous}"));
+        }
+        assert_eq!(safe_csv_text("ordinary text"), "ordinary text");
+        assert_eq!(safe_csv_text(""), "");
+    }
+
     #[test]
     fn csv_and_excel_exports_are_created_without_overwrite() {
         let root = std::env::temp_dir().join(format!("anydesk-exchange-{}", Uuid::new_v4()));
@@ -465,6 +495,56 @@ mod tests {
                 .code,
             "EXPORT_COLLISION"
         );
+        drop(db);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn csv_export_neutralizes_text_formulas_but_preserves_numeric_columns() {
+        let root = std::env::temp_dir().join(format!("sitedatum-csv-safety-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let mut db = Database::open(&root.join("workspace.sqlite3")).unwrap();
+        db.connection.execute("INSERT INTO projects(id,number,name,status,phase,project_path,created_at_utc,updated_at_utc) VALUES('p1','P-1','=Formula Project','active','engineering','C:\\Test',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))",[]).unwrap();
+        let item = db
+            .create_work_item(&WorkItemInput {
+                project_id: "p1".into(),
+                item_type: "procurement".into(),
+                number: Some("@PO-1".into()),
+                title: "+Order controller".into(),
+                description: Some("-unsafe".into()),
+                status: "open".into(),
+                priority: "high".into(),
+                due_date: Some("2026-10-01".into()),
+                occurred_date: None,
+                responsible_party: Some("\tOwner".into()),
+                company: Some("=Vendor".into()),
+                location: Some("\rYard".into()),
+                amount_cents: Some(125050),
+                checklist_total: 4,
+                checklist_completed: 2,
+            })
+            .unwrap();
+        db.connection
+            .execute(
+                "UPDATE work_items SET responsible_party=?1, location=?2 WHERE id=?3",
+                rusqlite::params!["\tOwner", "\rYard", item.id],
+            )
+            .unwrap();
+        let csv_path = root.join("records.csv");
+        db.export_work_items(&csv_path.to_string_lossy(), &[item.id])
+            .unwrap();
+        let mut reader = csv::Reader::from_path(&csv_path).unwrap();
+        let record = reader.records().next().unwrap().unwrap();
+        assert_eq!(&record[1], "'=Formula Project");
+        assert_eq!(&record[3], "'@PO-1");
+        assert_eq!(&record[4], "'+Order controller");
+        assert_eq!(&record[5], "'-unsafe");
+        assert_eq!(&record[10], "'\tOwner");
+        assert_eq!(&record[11], "'=Vendor");
+        assert_eq!(&record[12], "'\rYard");
+        assert_eq!(&record[13], "1250.50");
+        assert_eq!(&record[14], "2");
+        assert_eq!(&record[15], "4");
         drop(db);
         std::fs::remove_dir_all(root).unwrap();
     }

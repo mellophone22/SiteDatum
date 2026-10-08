@@ -14,7 +14,12 @@
   --blue-dark: #06626c;
   --blue-soft: #e3f2f1;
   --blue-border: #9fcacb;
-  --focus: #159dab;
+  --action-fill: #087f89;
+  --action-fill-hover: #06626c;
+  --on-action: #ffffff;
+  --focus-ring: #0c6670;
+  --focus: var(--focus-ring);
+  --placeholder: #687783;
   --orange: #ed8a40;
   --shadow-sm: 0 2px 5px rgb(16 36 64 / 4%);
   --shadow-lg: 0 18px 48px rgb(16 36 64 / 20%);
@@ -253,7 +258,12 @@ tbody tr:hover td { background: #eef7f6; }
   --blue-dark: #62d4d9;
   --blue-soft: #173a40;
   --blue-border: #327a80;
-  --focus: #49ccd2;
+  --action-fill: #08737c;
+  --action-fill-hover: #065d65;
+  --on-action: #ffffff;
+  --focus-ring: #72e0e5;
+  --focus: var(--focus-ring);
+  --placeholder: #91a7ad;
   --success-fg: #8dd8ad;
   --success-bg: #173328;
   --success-border: #376f50;
@@ -275,7 +285,7 @@ tbody tr:hover td { background: #eef7f6; }
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] textarea { border-color: var(--line-strong); background-color: #14232b; color: var(--ink); }
 :root[data-theme="dark"] input::placeholder,
-:root[data-theme="dark"] textarea::placeholder { color: #738991; }
+:root[data-theme="dark"] textarea::placeholder { color: var(--placeholder); }
 :root[data-theme="dark"] input:hover,
 :root[data-theme="dark"] select:hover,
 :root[data-theme="dark"] textarea:hover { border-color: #63808a; }

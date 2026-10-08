@@ -6,7 +6,7 @@ Integration: SQLite/migrations, project creation, file copy/move/register, recov
 
 UI: forms, tables, filters, inline edits, empty/error states, keyboard behavior.
 
-E2E: create project -> folders -> task/RFI/submittal/drawing -> mark waiting -> Attention updates -> register/open file -> search -> archive.
+E2E: create project -> folders -> task/RFI/submittal/drawing -> mark waiting -> Attention updates -> register file and reveal it in Explorer -> search -> archive.
 
 Quality gates: typecheck, lint, tests, production build, no console errors, no placeholder controls, manual visual review with realistic data volume.
 

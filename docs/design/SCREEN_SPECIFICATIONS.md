@@ -16,7 +16,7 @@ Title, status, priority, due/follow-up, waiting-on, category. Fast inline status
 Use professional tables with identifiers, status/revision/date/recipient context. Detail views contain attachments and relationships. Drawing current/superseded state must be obvious.
 
 ## Files
-Filesystem-oriented registered-file list with Open and Show in Explorer. Do not replace Explorer.
+Filesystem-oriented registered-file list with Show in Explorer. SiteDatum reveals the registered file in Windows Explorer and does not directly open it. Do not replace Explorer.
 
 ## Notes / Contacts / Activity
 Fast notes, compact contacts, meaningful chronological activity.

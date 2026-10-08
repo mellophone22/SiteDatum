@@ -4,10 +4,17 @@ RewriteEngine On
 RewriteCond %{HTTP_HOST} ^www\.sitedatum\.site$ [NC]
 RewriteRule ^ https://sitedatum.site%{REQUEST_URI} [R=301,L,NE]
 
+ErrorDocument 404 /404.html
+
 # Revalidate HTML so navigation and legal-copy updates are not stranded in a
 # visitor's browser after a deployment. Fingerprinted/static assets may still
 # use the hosting platform's normal caching policy.
 <IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; upgrade-insecure-requests"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
   <FilesMatch "\.html?$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>

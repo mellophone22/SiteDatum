@@ -67,7 +67,7 @@ Optional Supabase metadata synchronization exists as a separately consented lega
 
 - Explicit Copy, Move, or Register workflows for project files
 - Registered-file and drawing metadata, including missing-file detection and recovery
-- Safe Open and Show in Explorer commands owned by the Rust application boundary
+- Safe Show in Explorer commands owned by the Rust application boundary; SiteDatum does not directly open registered documents
 - Project and workspace notes, a shared contact directory, and searchable activity history
 - Removing a reference does not delete the physical file
 
