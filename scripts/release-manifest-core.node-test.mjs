@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  assertManifestMatches,
   assertExpectedSignature,
   assertInstallerName,
   assertSynchronizedVersions,
@@ -54,4 +55,31 @@ test('keeps staged and publication-candidate manifests distinct', () => {
   assert.equal(createManifest(common).state, 'staged');
   assert.equal(createManifest({ ...common, downloadUrl: 'https://sitedatum.site/app.exe', publicationDate: '2026-10-03' }).state, 'publication-candidate');
   assert.throws(() => createManifest({ ...common, downloadUrl: 'https://sitedatum.site/app.exe' }), /supplied together/);
+});
+
+test('verifies provenance against independently observed artifact evidence', () => {
+  const evidence = {
+    generatedAt: '2026-10-08T18:00:00.000Z',
+    version: '1.4.3',
+    sourceCommit: 'a'.repeat(40),
+    evidenceCommit: 'b'.repeat(40),
+    installerName: 'SiteDatum_1.4.3_x64-setup.exe',
+    sizeBytes: 5_000_000,
+    sha256: 'c'.repeat(64),
+    authenticodeStatus: 'NotSigned',
+  };
+  const manifest = createManifest(evidence);
+  assert.equal(assertManifestMatches({ ...evidence, manifest }), manifest);
+  assert.throws(
+    () => assertManifestMatches({ ...evidence, manifest, sha256: 'd'.repeat(64) }),
+    /sha256 mismatch/,
+  );
+  assert.throws(
+    () => assertManifestMatches({ ...evidence, manifest: { ...manifest, state: 'publication-candidate' } }),
+    /state mismatch/,
+  );
+  assert.throws(
+    () => createManifest({ ...evidence, sourceCommit: 'short' }),
+    /full lowercase Git commit SHA/,
+  );
 });

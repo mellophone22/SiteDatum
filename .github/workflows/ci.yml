@@ -41,6 +41,8 @@ jobs:
         run: npm run lint
       - name: Test
         run: npm test -- --run
+      - name: Test release provenance
+        run: npm run test:release-manifest
       - name: Validate commercial site
         run: npm run test:site
       - name: Build frontend
@@ -72,6 +74,63 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Run Rust tests
         run: cargo test --locked
+
+  windows-native:
+    name: Windows native and staged provenance
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Set up Rust 1.97
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal --component rustfmt
+          rustup default 1.97.0
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+      - name: Test release provenance
+        run: npm run test:release-manifest
+      - name: Run native Windows tests
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Build frontend
+        run: npm run build
+      - name: Build CI-only unsigned NSIS package
+        run: npm run tauri -- build --bundles nsis
+      - name: Smoke-test release executable
+        shell: pwsh
+        run: |
+          $executable = (Resolve-Path -LiteralPath 'src-tauri\target\release\SiteDatum.exe').Path
+          $process = Start-Process -FilePath $executable -WindowStyle Hidden -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            if ($process.HasExited) {
+              throw "SiteDatum exited during the startup smoke with code $($process.ExitCode)."
+            }
+          } finally {
+            if (-not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+            }
+          }
+      - name: Generate and verify staged provenance
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+          $installer = "src-tauri/target/release/bundle/nsis/SiteDatum_${version}_x64-setup.exe"
+          npm run release:manifest -- --source-commit $env:GITHUB_SHA --installer $installer --expect-signature NotSigned --output tmp/windows-ci-manifest.json
+          npm run release:verify -- --manifest tmp/windows-ci-manifest.json --installer $installer --source-commit $env:GITHUB_SHA --evidence-commit $env:GITHUB_SHA --expect-signature NotSigned
+      - name: Confirm CI artifact remains unpublished
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -LiteralPath 'tmp\windows-ci-manifest.json' -Raw | ConvertFrom-Json
+          if ($manifest.state -ne 'staged' -or $null -ne $manifest.publication.downloadUrl -or $null -ne $manifest.publication.date) {
+            throw 'Windows CI may create only an unpublished staged manifest.'
+          }
 
   licensing-database:
     name: Licensing database

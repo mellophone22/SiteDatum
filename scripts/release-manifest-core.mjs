@@ -4,6 +4,35 @@ import { basename } from 'node:path';
 
 export const RELEASE_MANIFEST_SCHEMA_VERSION = 1;
 
+function validateCommit(value, label) {
+  if (!/^[0-9a-f]{40}$/.test(value ?? '')) {
+    throw new Error(`${label} must be a full lowercase Git commit SHA`);
+  }
+  return value;
+}
+
+function validateGeneratedAt(value) {
+  if (!value || Number.isNaN(Date.parse(value)) || new Date(value).toISOString() !== value) {
+    throw new Error('Generated timestamp must be an ISO 8601 UTC timestamp');
+  }
+  return value;
+}
+
+function validateSizeBytes(value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error('Installer size must be a positive safe integer');
+  }
+  return value;
+}
+
+function normalizeSha256(value) {
+  const normalized = String(value ?? '').toUpperCase();
+  if (!/^[0-9A-F]{64}$/.test(normalized)) {
+    throw new Error('Installer SHA-256 must contain 64 hexadecimal characters');
+  }
+  return normalized;
+}
+
 export function parseCargoVersion(source) {
   return source.match(/^version\s*=\s*"([^"]+)"/m)?.[1] ?? null;
 }
@@ -90,19 +119,76 @@ export function createManifest({
     schemaVersion: RELEASE_MANIFEST_SCHEMA_VERSION,
     channel: 'unsigned-early-access',
     state: published ? 'publication-candidate' : 'staged',
-    generatedAt,
+    generatedAt: validateGeneratedAt(generatedAt),
     version,
-    sourceCommit,
-    evidenceCommit,
+    sourceCommit: validateCommit(sourceCommit, 'Source commit'),
+    evidenceCommit: validateCommit(evidenceCommit, 'Evidence commit'),
     artifact: {
       filename: installerName,
-      sizeBytes,
-      sha256,
-      authenticodeStatus,
+      sizeBytes: validateSizeBytes(sizeBytes),
+      sha256: normalizeSha256(sha256),
+      authenticodeStatus: normalizeAuthenticodeStatus(authenticodeStatus),
     },
     publication: {
       date: publicationDate,
       downloadUrl,
     },
   };
+}
+
+export function assertManifestMatches({
+  manifest,
+  version,
+  sourceCommit,
+  evidenceCommit,
+  installerName,
+  sizeBytes,
+  sha256,
+  authenticodeStatus,
+}) {
+  if (manifest?.schemaVersion !== RELEASE_MANIFEST_SCHEMA_VERSION) {
+    throw new Error(`Release manifest schema mismatch: expected ${RELEASE_MANIFEST_SCHEMA_VERSION}`);
+  }
+  if (manifest.channel !== 'unsigned-early-access') {
+    throw new Error('Release manifest channel must be unsigned-early-access');
+  }
+  const publication = manifest.publication ?? {};
+  const published = Boolean(publication.downloadUrl || publication.date);
+  if (published && (!publication.downloadUrl || !publication.date)) {
+    throw new Error('Release manifest publication metadata is incomplete');
+  }
+  const expectedState = published ? 'publication-candidate' : 'staged';
+  if (manifest.state !== expectedState) {
+    throw new Error(`Release manifest state mismatch: expected ${expectedState}`);
+  }
+  if (published) {
+    validateDownloadUrl(publication.downloadUrl);
+    validatePublicationDate(publication.date);
+  }
+  validateGeneratedAt(manifest.generatedAt);
+
+  const expected = {
+    version,
+    sourceCommit: validateCommit(sourceCommit, 'Expected source commit'),
+    evidenceCommit: validateCommit(evidenceCommit, 'Expected evidence commit'),
+    filename: installerName,
+    sizeBytes: validateSizeBytes(sizeBytes),
+    sha256: normalizeSha256(sha256),
+    authenticodeStatus: normalizeAuthenticodeStatus(authenticodeStatus),
+  };
+  const actual = {
+    version: manifest.version,
+    sourceCommit: manifest.sourceCommit,
+    evidenceCommit: manifest.evidenceCommit,
+    filename: manifest.artifact?.filename,
+    sizeBytes: manifest.artifact?.sizeBytes,
+    sha256: manifest.artifact?.sha256,
+    authenticodeStatus: manifest.artifact?.authenticodeStatus,
+  };
+  for (const [key, expectedValue] of Object.entries(expected)) {
+    if (actual[key] !== expectedValue) {
+      throw new Error(`Release manifest ${key} mismatch`);
+    }
+  }
+  return manifest;
 }
