@@ -19,8 +19,8 @@ test('parses and synchronizes release versions', () => {
 });
 
 test('requires the versioned NSIS filename', () => {
-  assert.equal(assertInstallerName('C:\\release\\SiteDatum_1.4.1_x64-setup.exe', '1.4.1'), 'SiteDatum_1.4.1_x64-setup.exe');
-  assert.throws(() => assertInstallerName('SiteDatum_latest.exe', '1.4.1'), /filename mismatch/);
+  assert.equal(assertInstallerName('release/SiteDatum_1.4.1_x64-setup.exe', '1.4.1'), 'SiteDatum_1.4.1_x64-setup.exe');
+  assert.throws(() => assertInstallerName('release/SiteDatum_latest.exe', '1.4.1'), /filename mismatch/);
 });
 
 test('validates expected Authenticode state', () => {
