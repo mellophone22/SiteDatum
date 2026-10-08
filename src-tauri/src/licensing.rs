@@ -71,10 +71,20 @@ struct EntitlementClaims {
     _subject_id: Uuid,
     device_id: Uuid,
     plan: Plan,
+    #[serde(default)]
+    access_kind: AccessKind,
     subscription_status: SubscriptionStatus,
     issued_at_utc: i64,
     refresh_after_utc: i64,
     paid_through_utc: i64,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AccessKind {
+    #[default]
+    Paid,
+    Complimentary,
 }
 
 #[derive(Debug, Serialize)]
@@ -83,6 +93,7 @@ pub struct LicensingStatus {
     pub connected: bool,
     pub email: Option<String>,
     pub plan: Plan,
+    pub access_kind: Option<AccessKind>,
     pub subscription_status: Option<SubscriptionStatus>,
     pub freshness: EntitlementFreshness,
     pub paid_through_utc: Option<i64>,
@@ -568,6 +579,7 @@ fn free_status(email: Option<String>) -> LicensingStatus {
         connected: email.is_some(),
         email,
         plan: Plan::Free,
+        access_kind: None,
         subscription_status: None,
         freshness: EntitlementFreshness::Free,
         paid_through_utc: None,
@@ -614,6 +626,7 @@ pub fn status() -> AppResult<LicensingStatus> {
         connected: email.is_some(),
         email,
         plan: entitlement.plan,
+        access_kind: Some(claims.access_kind),
         subscription_status: Some(claims.subscription_status),
         freshness: entitlement.freshness,
         paid_through_utc: Some(claims.paid_through_utc),

@@ -33,6 +33,7 @@ describe("licensing entitlement contract", () => {
 
     expect(claims.refreshAfterUtc).toBe(claims.paidThroughUtc);
     expect(Object.keys(claims).sort()).toEqual([
+      "accessKind",
       "deviceId",
       "issuedAtUtc",
       "issuer",
@@ -45,6 +46,23 @@ describe("licensing entitlement contract", () => {
       "subscriptionStatus",
     ]);
     expect(JSON.stringify(claims)).not.toMatch(/project|path|email|document/i);
+    expect(claims.accessKind).toBe("paid");
+  });
+
+  it("marks complimentary access without adding customer identity", () => {
+    const claims = buildEntitlementClaims({
+      keyId: "test-key-1",
+      subjectId: SUBJECT_ID,
+      deviceId: DEVICE_ID,
+      plan: "pro_annual",
+      accessKind: "complimentary",
+      subscriptionStatus: "active",
+      issuedAtUtc: 2_000_000_000,
+      paidThroughUtc: 253_402_300_799,
+    });
+
+    expect(claims.accessKind).toBe("complimentary");
+    expect(JSON.stringify(claims)).not.toMatch(/email|name|reason|project|path|document/i);
   });
 
   it("signs and verifies Ed25519 tokens and rejects tampering", async () => {

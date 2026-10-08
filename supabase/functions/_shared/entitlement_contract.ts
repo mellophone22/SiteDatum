@@ -4,6 +4,7 @@ export const ENTITLEMENT_REFRESH_SECONDS = 7 * 24 * 60 * 60;
 
 export type LicensedPlan = "pro_monthly" | "pro_annual";
 export type LicensedSubscriptionStatus = "active" | "past_due" | "canceled" | "expired";
+export type LicensedAccessKind = "paid" | "complimentary";
 
 export type EntitlementClaims = {
   schemaVersion: 1;
@@ -12,6 +13,7 @@ export type EntitlementClaims = {
   subjectId: string;
   deviceId: string;
   plan: LicensedPlan;
+  accessKind: LicensedAccessKind;
   subscriptionStatus: LicensedSubscriptionStatus;
   issuedAtUtc: number;
   refreshAfterUtc: number;
@@ -42,6 +44,7 @@ export function buildEntitlementClaims(input: {
   subjectId: string;
   deviceId: string;
   plan: LicensedPlan;
+  accessKind?: LicensedAccessKind;
   subscriptionStatus: LicensedSubscriptionStatus;
   issuedAtUtc: number;
   paidThroughUtc: number;
@@ -63,6 +66,7 @@ export function buildEntitlementClaims(input: {
     subjectId: input.subjectId,
     deviceId: input.deviceId,
     plan: input.plan,
+    accessKind: input.accessKind ?? "paid",
     subscriptionStatus: input.subscriptionStatus,
     issuedAtUtc: input.issuedAtUtc,
     refreshAfterUtc: Math.min(
@@ -155,7 +159,7 @@ function isEntitlementClaims(value: unknown): value is EntitlementClaims {
   if (!value || typeof value !== "object") return false;
   const claims = value as Record<string, unknown>;
   const expectedKeys = [
-    "deviceId", "issuedAtUtc", "issuer", "keyId", "paidThroughUtc", "plan",
+    "accessKind", "deviceId", "issuedAtUtc", "issuer", "keyId", "paidThroughUtc", "plan",
     "refreshAfterUtc", "schemaVersion", "subjectId", "subscriptionStatus",
   ];
   return Object.keys(claims).sort().join("|") === expectedKeys.join("|")
@@ -165,6 +169,7 @@ function isEntitlementClaims(value: unknown): value is EntitlementClaims {
     && typeof claims.subjectId === "string" && UUID.test(claims.subjectId)
     && typeof claims.deviceId === "string" && UUID.test(claims.deviceId)
     && (claims.plan === "pro_monthly" || claims.plan === "pro_annual")
+    && (claims.accessKind === "paid" || claims.accessKind === "complimentary")
     && ["active", "past_due", "canceled", "expired"].includes(String(claims.subscriptionStatus))
     && Number.isSafeInteger(claims.issuedAtUtc)
     && Number.isSafeInteger(claims.refreshAfterUtc)

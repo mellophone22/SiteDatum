@@ -232,6 +232,12 @@ otp_expiry = 3600
 # sender_name = "Admin"
 
 # Uncomment to customize email template
+# The hosted project uses the same reviewed confirmation copy. SMTP credentials
+# remain in the Supabase dashboard and are never committed to this repository.
+[auth.email.template.confirmation]
+subject = "Confirm your SiteDatum account"
+content_path = "./supabase/templates/confirmation.html"
+
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"

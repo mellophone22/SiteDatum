@@ -20,6 +20,7 @@ type EntitlementRow = {
   subscription_status: LicensedSubscriptionStatus;
   paid_through_utc: string;
   device_id: string;
+  access_kind: "paid" | "complimentary";
 };
 
 Deno.serve(async (request) => {
@@ -117,6 +118,7 @@ Deno.serve(async (request) => {
       subjectId: entitlement.subject_id,
       deviceId: entitlement.device_id,
       plan: entitlement.plan,
+      accessKind: entitlement.access_kind,
       subscriptionStatus: entitlement.subscription_status,
       issuedAtUtc,
       paidThroughUtc,

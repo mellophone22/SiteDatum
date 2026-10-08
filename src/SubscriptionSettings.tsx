@@ -8,11 +8,13 @@ import { continuityState } from "./subscriptionContinuity";
 type Plan = "free" | "pro_monthly" | "pro_annual";
 type SubscriptionStatus = "active" | "past_due" | "canceled" | "expired";
 type Freshness = "free" | "verified" | "grace" | "expired";
+type AccessKind = "paid" | "complimentary";
 
 type LicensingStatus = {
   connected: boolean;
   email: string | null;
   plan: Plan;
+  accessKind: AccessKind | null;
   subscriptionStatus: SubscriptionStatus | null;
   freshness: Freshness;
   paidThroughUtc: number | null;
@@ -32,6 +34,7 @@ const freeStatus: LicensingStatus = {
   connected: false,
   email: null,
   plan: "free",
+  accessKind: null,
   subscriptionStatus: null,
   freshness: "free",
   paidThroughUtc: null,
@@ -57,6 +60,10 @@ function planLabel(plan: Plan) {
   return "Free";
 }
 
+function accessLabel(status: LicensingStatus) {
+  return status.accessKind === "complimentary" ? "Complimentary Pro" : planLabel(status.plan);
+}
+
 function statusSummary(status: LicensingStatus) {
   if (status.freshness === "grace") {
     const continuity = continuityState(status.verifiedAtUtc, status.graceEndsAtUtc);
@@ -65,6 +72,7 @@ function statusSummary(status: LicensingStatus) {
       : `Pro is available from the last verified entitlement for ${continuity.daysRemaining} more day${continuity.daysRemaining === 1 ? "" : "s"}.`;
   }
   if (status.freshness === "expired") return "SiteDatum is using the Free policy. Existing projects and records remain editable.";
+  if (status.accessKind === "complimentary" && status.isPro) return `Complimentary Pro is verified on this computer. Next online verification is due by ${formatDate(status.refreshAfterUtc)}.`;
   if (status.subscriptionStatus === "past_due") return `Payment needs attention. Pro remains available through ${formatDate(status.paidThroughUtc)}.`;
   if (status.subscriptionStatus === "canceled") return `Canceled. Pro remains available through ${formatDate(status.paidThroughUtc)}.`;
   if (status.isPro) return `Verified on this computer. Next online verification is due by ${formatDate(status.refreshAfterUtc)}.`;
@@ -186,6 +194,7 @@ export function SubscriptionSettings() {
   }
 
   const continuity = continuityState(status.verifiedAtUtc, status.graceEndsAtUtc);
+  const isComplimentary = status.accessKind === "complimentary";
   const tone = status.freshness === "expired" || status.subscriptionStatus === "past_due" || continuity.stage === "urgent" ? "warning" : "success";
   const showStatusNotice = status.freshness !== "grace"
     ? status.isPro || status.freshness === "expired" || status.subscriptionStatus === "past_due"
@@ -201,13 +210,13 @@ export function SubscriptionSettings() {
     <div className="subscription-current" aria-live="polite">
       <div>
         <span className="field-label">Current access</span>
-        <strong>{planLabel(status.plan)}</strong>
+        <strong>{accessLabel(status)}</strong>
         <p>{statusSummary(status)}</p>
       </div>
       <dl>
         <div><dt>Account</dt><dd>{status.email ?? "Not connected"}</dd></div>
         <div><dt>Active projects</dt><dd>{status.activeProjectLimit ?? "Unlimited"}</dd></div>
-        <div><dt>Paid through</dt><dd>{formatDate(status.paidThroughUtc)}</dd></div>
+        <div><dt>{isComplimentary ? "Billing" : "Paid through"}</dt><dd>{isComplimentary ? "Not required" : formatDate(status.paidThroughUtc)}</dd></div>
         <div><dt>Verification</dt><dd>{status.freshness === "grace" ? "Offline grace" : status.freshness === "verified" ? "Verified" : status.freshness === "expired" ? "Expired" : "Not required"}</dd></div>
       </dl>
     </div>
@@ -227,7 +236,7 @@ export function SubscriptionSettings() {
       </div>
     </form> : <div className="subscription-actions actions">
       <button type="button" onClick={refreshEntitlement} disabled={!!working}>{working === "refresh" ? "Verifying…" : "Refresh entitlement"}</button>
-      {(status.isPro || status.subscriptionStatus) && <button type="button" className="secondary" onClick={openPortal} disabled={!!working}>{working === "portal" ? "Opening…" : "Manage billing"}</button>}
+      {!isComplimentary && (status.isPro || status.subscriptionStatus) && <button type="button" className="secondary" onClick={openPortal} disabled={!!working}>{working === "portal" ? "Opening…" : "Manage billing"}</button>}
       <button type="button" className="secondary" aria-expanded={devicesOpen} aria-controls="licensing-devices" onClick={toggleDevices} disabled={!!working}>{working === "devices" ? "Loading…" : devicesOpen ? "Hide computers" : "Manage computers"}</button>
       <button type="button" className="quiet" onClick={signOut} disabled={!!working}>{working === "sign-out" ? "Signing out…" : "Sign out on this computer"}</button>
     </div>}
@@ -254,8 +263,8 @@ export function SubscriptionSettings() {
         <thead><tr><th>Plan</th><th>Active projects</th><th>Included workflow</th><th>Price</th><th aria-label="Plan action" /></tr></thead>
         <tbody>
           <tr><th scope="row">Free</th><td>3</td><td>Complete manual workflow, backup, and CSV export</td><td>$0</td><td>{!status.isPro && <span className="current-plan-label">Current</span>}</td></tr>
-          <tr><th scope="row">Pro Monthly</th><td>Unlimited</td><td>Templates, bulk operations, Excel interchange, professional reports</td><td>$15/month</td><td><button type="button" className="secondary" disabled={!status.connected || !!working || status.plan === "pro_monthly"} onClick={() => openCheckout("pro_monthly")}>{working === "pro_monthly" ? "Opening…" : status.plan === "pro_monthly" ? "Current" : "Choose monthly"}</button></td></tr>
-          <tr><th scope="row">Pro Annual</th><td>Unlimited</td><td>Same Pro capabilities; two months saved</td><td>$150/year</td><td><button type="button" className="secondary" disabled={!status.connected || !!working || status.plan === "pro_annual"} onClick={() => openCheckout("pro_annual")}>{working === "pro_annual" ? "Opening…" : status.plan === "pro_annual" ? "Current" : "Choose annual"}</button></td></tr>
+          <tr><th scope="row">Pro Monthly</th><td>Unlimited</td><td>Templates, bulk operations, Excel interchange, professional reports</td><td>$15/month</td><td>{isComplimentary ? <span className="current-plan-label">Included</span> : <button type="button" className="secondary" disabled={!status.connected || !!working || status.plan === "pro_monthly"} onClick={() => openCheckout("pro_monthly")}>{working === "pro_monthly" ? "Opening…" : status.plan === "pro_monthly" ? "Current" : "Choose monthly"}</button>}</td></tr>
+          <tr><th scope="row">Pro Annual</th><td>Unlimited</td><td>Same Pro capabilities; two months saved</td><td>$150/year</td><td>{isComplimentary ? <span className="current-plan-label">Included</span> : <button type="button" className="secondary" disabled={!status.connected || !!working || status.plan === "pro_annual"} onClick={() => openCheckout("pro_annual")}>{working === "pro_annual" ? "Opening…" : status.plan === "pro_annual" ? "Current" : "Choose annual"}</button>}</td></tr>
         </tbody>
       </table>
       {!status.connected && <p className="help">Sign in or create an account to open secure checkout. Ordinary Free use does not require either.</p>}

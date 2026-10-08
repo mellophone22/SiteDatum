@@ -1,6 +1,6 @@
 # C3 Licensing Service Foundation
 
-Status: Completed locally 2026-09-30; not deployed
+Status: Foundation completed 2026-09-30; production licensing boundary extended with complimentary grants 2026-10-08
 
 ## Architecture decision
 
@@ -31,6 +31,12 @@ The licensing database stores only:
 - allowlisted audit event type, outcome, reason code, request UUID, customer/device UUIDs, and timestamp.
 
 It deliberately does not duplicate email in licensing tables and has no free-form audit payload column.
+
+## Complimentary Pro extension
+
+Complimentary Pro is modeled as a separate private grant rather than a synthetic Stripe subscription, a coupon, or a distant paid-through date stored in the subscription table. The grant references the existing customer row by immutable Auth subject, stores only an allowlisted operational reason and timestamps, and may be revoked without affecting local workspace data. Grant and revoke RPCs are service-role-only and write allowlisted audit events. A grant refuses an account that still has paid access so the UI cannot conceal an ongoing charge.
+
+The entitlement issuer marks the signed claim as `complimentary` while retaining the same seven-day refresh horizon, 21-day offline grace, and two-computer limit. The desktop labels that state **Complimentary Pro**, suppresses billing controls, and does not present the non-expiring service boundary as a customer payment date. Older clients safely ignore the additive claim and continue to verify the existing Ed25519 envelope.
 
 ## Authorization and isolation
 

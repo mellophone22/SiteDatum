@@ -17,7 +17,7 @@
     "release:verify": "node scripts/verify-release-manifest.mjs",
     "audit:production-commerce": "node scripts/validate-production-commerce.mjs",
     "tauri:build:production": "npm run audit:production-commerce && tauri build --features commercial-production --bundles nsis",
-    "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql supabase/tests/stripe_adapter.sql",
+    "test:licensing-db": "supabase test db --local supabase/tests/licensing_foundation.sql supabase/tests/stripe_adapter.sql supabase/tests/complimentary_pro_grants.sql",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "preview": "vite preview",

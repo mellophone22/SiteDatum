@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirm your SiteDatum account</title>
+  </head>
+  <body style="margin:0;background:#eef2f3;color:#10273b;font-family:Arial,Helvetica,sans-serif;">
+    <div lang="en" dir="ltr" style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirm the email address used for SiteDatum account and subscription access.</div>
+    <table lang="en" dir="ltr" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef2f3;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #c7d3d8;">
+            <tr>
+              <td style="border-top:4px solid #008c95;padding:30px 34px 18px;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#008c95;">SiteDatum</div>
+                <h1 style="margin:18px 0 12px;font-size:30px;line-height:1.2;color:#10273b;">Confirm your account</h1>
+                <p style="margin:0;font-size:16px;line-height:1.6;color:#425e70;">Confirm this email address to finish setting up your account and, when applicable, SiteDatum Pro access.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 34px 30px;">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="background:#008c95;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:13px 20px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Confirm email address</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 8px;font-size:13px;line-height:1.55;color:#607888;">If the button does not open, copy this address into your browser:</p>
+                <p style="margin:0;word-break:break-all;font-size:12px;line-height:1.55;color:#37566c;">Copy the confirmation address from this message if the button is unavailable.</p>
+                <p style="margin:8px 0 0;word-break:break-all;font-size:12px;line-height:1.55;color:#37566c;">{{ .ConfirmationURL }}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-top:1px solid #dbe3e6;padding:20px 34px 26px;font-size:12px;line-height:1.55;color:#607888;">
+                This account is only for licensing and account recovery. Free local use does not require an account, and SiteDatum project records remain on your Windows computer.
+                If you did not create this account, you can ignore this message. For help, email supportsitedatum@protonmail.com.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
