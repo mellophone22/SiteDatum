@@ -55,3 +55,7 @@ Rust integration coverage creates archived user data and a Pro-created template,
 ## Help and field-guidance coverage
 
 Frontend unit coverage verifies deterministic required-field messages, first-error ordering, persisted Help navigation, and command-palette discovery. TypeScript build and ESLint verify the permanent offline guide and its functional routes. Manual Windows review covers the Help layout at desktop and narrow widths, keyboard access to the System navigation, the distinction between empty and filtered project registers, the Files next action, and focus/announcement behavior after an invalid first-run or project submission.
+
+## Windows, PDF, and filesystem correctness coverage
+
+Focused native Windows tests verify project-root normalization, recoverable unavailable/permission errors, documented project-folder creation, explicit Register/Copy/Move semantics, byte preservation, collision refusal, and missing-source behavior. PDF coverage verifies a readable unencrypted one-page US Letter output, representative field text, existing-destination refusal without byte changes, unavailable/invalid destination refusal without artifacts, and customer-template byte preservation. The retained representative PDF is rendered to pixels for visual review; extraction alone is not treated as layout evidence. These tests use disposable paths and never operate on a customer workspace.

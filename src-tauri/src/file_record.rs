@@ -166,17 +166,36 @@ mod tests {
         let copied = transfer(&input(&source, "copy"), &project.to_string_lossy()).unwrap();
         assert!(Path::new(&copied).is_file());
         assert!(source.exists());
+        assert_eq!(fs::read_to_string(&copied).unwrap(), "content");
         assert_eq!(
             transfer(&input(&source, "copy"), &project.to_string_lossy())
                 .unwrap_err()
                 .code,
             "FILE_DESTINATION_COLLISION"
         );
+        assert_eq!(fs::read_to_string(&copied).unwrap(), "content");
+        assert_eq!(fs::read_to_string(&source).unwrap(), "content");
         let moved_source = root.join("move.pdf");
         fs::write(&moved_source, "content").unwrap();
         let moved = transfer(&input(&moved_source, "move"), &project.to_string_lossy()).unwrap();
         assert!(Path::new(&moved).is_file());
         assert!(!moved_source.exists());
+        assert_eq!(fs::read_to_string(&moved).unwrap(), "content");
+
+        let missing = root.join("missing.pdf");
+        assert_eq!(
+            transfer(&input(&missing, "copy"), &project.to_string_lossy())
+                .unwrap_err()
+                .code,
+            "FILE_SOURCE_UNAVAILABLE"
+        );
+        assert!(!destination(
+            &project.to_string_lossy(),
+            &missing,
+            &Some("controls".into())
+        )
+        .unwrap()
+        .exists());
         fs::remove_dir_all(root).unwrap();
     }
 }

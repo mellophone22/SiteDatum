@@ -279,10 +279,13 @@ mod tests {
         fs::create_dir(&root).unwrap();
         let path = create_folder_tree(&root, &input()).unwrap();
         assert!(path.join("01 Drawings/Controls").is_dir());
+        let marker = path.join("existing-project-document.txt");
+        fs::write(&marker, "preserve me").unwrap();
         assert_eq!(
             create_folder_tree(&root, &input()).unwrap_err().code,
             "PROJECT_PATH_COLLISION"
         );
+        assert_eq!(fs::read_to_string(marker).unwrap(), "preserve me");
         fs::remove_dir_all(root).unwrap();
     }
 }

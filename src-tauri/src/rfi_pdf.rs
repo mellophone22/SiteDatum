@@ -815,6 +815,41 @@ mod tests {
                 .code,
             "RFI_PDF_ALREADY_EXISTS"
         );
+        assert_eq!(
+            Document::load(&destination)
+                .unwrap()
+                .extract_text(&[1])
+                .unwrap(),
+            text
+        );
+        fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn refuses_invalid_or_unavailable_destinations_without_artifacts() {
+        let folder = std::env::temp_dir().join(format!("sitedatum-rfi-path-{}", Uuid::new_v4()));
+        fs::create_dir_all(&folder).unwrap();
+        let settings = RfiPdfSettings::default();
+
+        let relative_name = format!("relative-rfi-{}.pdf", Uuid::new_v4());
+        let relative = Path::new(&relative_name);
+        assert_eq!(
+            write(&rfi(), &project(&folder), &settings, relative)
+                .unwrap_err()
+                .code,
+            "RFI_PDF_PATH_INVALID"
+        );
+        assert!(!relative.exists());
+
+        let unavailable = folder.join("missing-folder").join("rfi.pdf");
+        assert_eq!(
+            write(&rfi(), &project(&folder), &settings, &unavailable)
+                .unwrap_err()
+                .code,
+            "RFI_PDF_FOLDER_UNAVAILABLE"
+        );
+        assert!(!unavailable.exists());
+        assert!(!folder.join("missing-folder").exists());
         fs::remove_dir_all(folder).unwrap();
     }
 
