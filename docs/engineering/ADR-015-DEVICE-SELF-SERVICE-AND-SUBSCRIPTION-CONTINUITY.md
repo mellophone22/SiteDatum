@@ -1,6 +1,6 @@
 # ADR-015: Device self-service and subscription continuity
 
-**Status:** Accepted in repository; deployment pending — 2026-10-08
+**Status:** Accepted and deployed to SiteDatum Licensing Test; production deployment pending — 2026-10-08
 
 ## Decision
 
@@ -24,5 +24,5 @@ If a third computer attempts activation, the desktop presents a specific recover
 
 - Routine device replacement no longer requires founder support.
 - Device management remains a narrow commercial boundary and does not introduce workspace collaboration or a cloud requirement for ordinary work.
-- Deployment requires applying the migration and deploying `licensing-devices`; repository implementation alone does not change production.
+- The migration and `licensing-devices` function are verified in SiteDatum Licensing Test. Production promotion remains a separate reviewed release action.
 - The service cannot provide user-defined device labels without collecting additional customer-supplied metadata, so labels are deliberately omitted.
