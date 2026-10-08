@@ -177,6 +177,7 @@ npm ci --prefer-offline --no-audit
 npm audit --audit-level=high
 npm run lint
 npm test -- --run
+npm run test:release-manifest
 npm run test:site
 npm run build
 
@@ -185,7 +186,7 @@ cargo fmt --all -- --check
 cargo test --locked
 ```
 
-The GitHub Actions workflow also audits Rust dependencies and runs the licensing database tests against a disposable local Supabase stack. The Supabase suite requires Docker:
+The GitHub Actions workflow also audits Rust dependencies, runs the licensing database tests against a disposable local Supabase stack, and exercises native Rust tests, NSIS packaging, startup smoke, and staged provenance verification on an ephemeral Windows runner. The CI-only Windows package is not uploaded or published. The Supabase suite requires Docker:
 
 ```powershell
 npm run supabase:start
@@ -205,12 +206,13 @@ The production commercial build is fail-closed and requires release-only public 
 
 For the current repository checkout, the reproducible frontend gates pass with:
 
-- 28 Vitest files and 88 tests passed
+- 31 Vitest files and 98 tests passed
 - ESLint passed
 - TypeScript and Vite production build passed
-- Eight-page commercial website validation passed
+- Nine-page commercial website validation passed
 - npm high-severity audit reported zero vulnerabilities
 - Rust formatting passed
+- 64 locked Rust tests passed on Windows
 
 The immutable 1.4.3 release candidate separately records 51 Rust tests with the production feature, release-manifest validation, a complete C8 audit with 17 passes and no failures, focused disposable-Windows-profile install/reinstall acceptance, and public-origin artifact verification. See the [1.4.3 publication plan](docs/engineering/release-candidates/SiteDatum-1.4.3-publication-plan.md) for the exact evidence boundary.
 

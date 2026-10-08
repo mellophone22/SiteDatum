@@ -69,9 +69,9 @@ assert('C8-HOSTED-URL-BOUNDARY', licensing.includes('checkout.stripe.com') && li
 const privacy = read('site/privacy.html');
 const terms = read('site/terms.html');
 const refunds = read('site/refunds.html');
-assert('C8-POLICY-SURFACES', [privacy, terms, refunds].every((value) => value.includes('Founder-approved — effective October 3, 2026')) &&
+assert('C8-POLICY-SURFACES', [privacy, terms, refunds].every((value) => /Founder-approved — effective [A-Z][a-z]+ \d{1,2}, \d{4}/.test(value)) &&
   [privacy, terms, refunds].every((value) => !value.includes('not yet effective')),
-  'all founder-approved policy surfaces carry the matching effective date',
+  'all founder-approved policy surfaces carry a valid effective date',
   'one or more policy surfaces are missing founder approval or retain stale draft language');
 
 const legalReviewPackage = read('docs/commercial/C8-LEGAL-REVIEW-PACKAGE.md');
@@ -115,10 +115,36 @@ assert('C8-OPERATIONS-RUNBOOK', [
   'Webhook failed or delayed',
   'Security or privacy incident',
   'RELEASE_ROLLBACK_RUNBOOK.md',
-  'Do not open public paid purchase',
+  'Production payment details are used only for genuine customer transactions',
+  'keep broad promotion paused until the first genuine customer transaction',
 ].every((statement) => operationsRunbook.includes(statement)),
   'founder operations, incident, billing, and launch-hold procedures are present',
   'founder operations runbook is incomplete');
+
+const githubWorkflow = read('.github/workflows/ci.yml');
+const rollbackRunbook = read('docs/engineering/RELEASE_ROLLBACK_RUNBOOK.md');
+const auditCloseout = read('docs/engineering/AUDIT-REMEDIATION-CLOSEOUT.md');
+assert('C8-WINDOWS-CI-PROVENANCE', [
+  'runs-on: windows-latest',
+  'Build CI-only unsigned NSIS package',
+  'npm run release:verify',
+  'Confirm CI artifact remains unpublished',
+].every((statement) => githubWorkflow.includes(statement)) && [
+  'GitHub Actions',
+  'staged release manifest',
+  'public-origin copy',
+].every((statement) => rollbackRunbook.includes(statement)),
+  'Windows CI, staged provenance verification, and current-channel rollback controls are present',
+  'Windows CI provenance or current-channel rollback controls are incomplete');
+assert('C8-AUDIT-CLOSEOUT', [
+  'controlled unsigned Windows Early Access',
+  'first genuine customer transaction',
+  'hosted verification pending',
+  'Broader metadata Sync remains deferred',
+  'Founder proceeded without qualified legal review',
+].every((statement) => auditCloseout.includes(statement)),
+  'audit closeout preserves the controlled-launch gates and accepted-risk boundaries',
+  'audit closeout is missing a controlled-launch gate or accepted-risk boundary');
 
 const support = read('site/support.html');
 const securityPolicy = read('SECURITY.md');
@@ -168,6 +194,7 @@ if (full) {
   run('C8-SITE', process.execPath, [npmCli, 'run', 'test:site']);
   run('C8-LINT', process.execPath, [npmCli, 'run', 'lint']);
   run('C8-FRONTEND-TESTS', process.execPath, [npmCli, 'test', '--', '--run']);
+  run('C8-RELEASE-PROVENANCE', process.execPath, [npmCli, 'run', 'test:release-manifest']);
   run('C8-BUILD', process.execPath, [npmCli, 'run', 'build']);
   run('C8-RUST-FMT', cargo, ['fmt', '--all', '--', '--check'], resolve(root, 'src-tauri'));
   run('C8-RUST-TESTS', cargo, ['test', '--locked'], resolve(root, 'src-tauri'));

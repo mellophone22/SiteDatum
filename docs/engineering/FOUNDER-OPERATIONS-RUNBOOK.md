@@ -22,10 +22,11 @@ Production-commerce promotion is founder-approved, but it remains gated by `C9-P
 
 1. Run `npm run audit:c8:full` from the candidate commit.
 2. Confirm zero failed gates and review every deferred gate.
-3. Confirm GitHub Actions frontend, Rust, and Supabase jobs passed for the same commit, and review repository secret-scanning results.
+3. Confirm GitHub Actions frontend, Rust, Windows native/provenance, and Supabase jobs passed for the same commit, and review repository secret-scanning results.
 4. Record the commit, version, installer SHA-256, Authenticode status, and test environment in private operator notes.
 5. Confirm an unsigned Early Access download remains unavailable unless the canonical page shows the exact candidate version, commit, SHA-256, `NotSigned` status, publication date, and required warning.
 6. Generate the content-free staged manifest with `npm run release:manifest -- --source-commit <candidate-commit>` from a clean repository. Keep the output private until disposable-profile acceptance is complete; manifest generation never uploads or publishes the installer.
+7. Verify the staged manifest against the same installer with `npm run release:verify`; stop if the commit, version, filename, size, SHA-256, or Authenticode state differs.
 
 ### Before each sandbox billing test
 
