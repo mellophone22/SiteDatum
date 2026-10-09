@@ -1,6 +1,6 @@
 # C10-03B initial-device enrollment and proof of possession
 
-**Status:** Local durable boundary verified; trusted bridge and native integration pending — 2026-10-09
+**Status:** Local durable boundary verified; trusted bridge completed in C10-03C; native integration pending — 2026-10-09
 
 ## Purpose
 
@@ -52,8 +52,8 @@ desktop or repository.
 
 ## Current boundary
 
-This slice intentionally does not create the trusted network bridge. Before
-the functions can be used outside the disposable proof, that bridge must:
+This slice intentionally did not create the trusted network bridge. C10-03C
+now implements and locally verifies that separate boundary, including:
 
 1. independently verify the Supabase JWT and required issuer/audience/session;
 2. generate or retrieve the server enrollment context without exposing a
@@ -63,7 +63,9 @@ the functions can be used outside the disposable proof, that bridge must:
    functions; and
 5. apply request-level rate limits in addition to the durable database limit.
 
-Additional devices remain blocked until the approved-device HPKE transfer is
+The bridge evidence is recorded in
+`C10-03C-TRUSTED-ENROLLMENT-BRIDGE.md`. Additional devices remain blocked until
+the approved-device HPKE transfer is
 connected to a separate durable enrollment mode. Recovery, revocation-triggered
 rotation, and proof on ordinary Sync requests remain later C10 responsibilities.
 
@@ -85,5 +87,5 @@ rotation, and proof on ordinary Sync requests remain later C10 responsibilities.
 - Supabase database lint reports no warnings for `sync_v2_private`.
 
 These results verify the repository-owned local boundary only. They do not
-authorize deployment, enable Sync, or substitute for the still-required trusted
-bridge, Windows key integration, hosted-project hardening, and later C10 gates.
+authorize deployment, enable Sync, or substitute for the still-required Windows
+key integration, hosted-project hardening, and later C10 gates.

@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, C10-03A, and the local C10-03B enrollment boundary complete; trusted bridge and remaining C10-03 work pending; customer access remains disabled
+**Status:** C10-01, C10-02, C10-03A, C10-03B, and the disposable local C10-03C trusted bridge complete; remaining C10-03 work pending; customer access remains disabled
 
 ## Objective
 
@@ -110,8 +110,11 @@ or runtime feature flag. The legacy Sync boundary and centralized
 `SYNC_DEFERRED` denial remain in force. C10-03B now adds a verified, local-only
 first-device enrollment boundary with Ed25519 proof of possession, one-time
 server challenges, durable rate limiting, and atomic device/session binding.
-It intentionally exposes no client-callable enrollment function and creates no
-trusted network bridge or production resource. The bridge, native Windows key
-integration, remaining hosted schema/operations, retention/deletion workflow,
-and production-independent deployment proof are still required before C10-03
-can close.
+It intentionally exposed no client-callable enrollment function. C10-03C now
+adds and locally verifies an authenticated Edge Function bridge with exact
+request parsing, live Auth-session revalidation, service-only RPCs, Ed25519
+proof verification, generic errors, and durable request-rate windows. It still
+creates no production resource and changes no desktop behavior. Native Windows
+key integration, the approved second-device path, remaining hosted
+schema/operations, retention/deletion workflow, and production-independent
+deployment proof are still required before C10-03 can close.

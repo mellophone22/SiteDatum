@@ -5,6 +5,7 @@
 //! must verify before consuming a server-side enrollment.
 
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 const CONTEXT_LABEL: &[u8] = b"sitedatum.sync-v2.initial-device-possession.v1";
@@ -125,4 +126,27 @@ fn public_key_substitution_is_bound_into_the_signed_context() {
     substituted.public_key = other_key.verifying_key().to_bytes();
 
     assert!(!verify_proof(&substituted, &signature.to_bytes()));
+}
+
+#[test]
+fn canonical_message_matches_the_trusted_bridge_vector() {
+    let context = EnrollmentContext {
+        owner_id: Uuid::parse_str("61000000-0000-4000-8000-000000000001").unwrap(),
+        auth_session_id: Uuid::parse_str("62000000-0000-4000-8000-000000000001").unwrap(),
+        device_id: Uuid::parse_str("63000000-0000-4000-8000-000000000001").unwrap(),
+        enrollment_id: Uuid::parse_str("64000000-0000-4000-8000-000000000001").unwrap(),
+        public_key: std::array::from_fn(|index| index as u8),
+        challenge: [0xA5; 32],
+        expires_at_unix: 1_800_000_000,
+    };
+    let digest = Sha256::digest(context.signed_bytes());
+
+    let actual = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert_eq!(
+        actual,
+        "1fb13514a81b5f847ed102855decd6c9d6a49761fbc48b16dcdfb8c5665897c4"
+    );
 }
