@@ -1,6 +1,6 @@
 # C10-03B initial-device enrollment and proof of possession
 
-**Status:** Local durable boundary verified; trusted bridge completed in C10-03C; native integration pending — 2026-10-09
+**Status:** Local durable boundary verified; trusted bridge completed in C10-03C and native proof completed in C10-03D — 2026-10-09
 
 ## Purpose
 
@@ -87,5 +87,6 @@ rotation, and proof on ordinary Sync requests remain later C10 responsibilities.
 - Supabase database lint reports no warnings for `sync_v2_private`.
 
 These results verify the repository-owned local boundary only. They do not
-authorize deployment, enable Sync, or substitute for the still-required Windows
-key integration, hosted-project hardening, and later C10 gates.
+authorize deployment, enable Sync, or substitute for hosted-project hardening
+and later C10 gates. The Windows-protected native proof is recorded in
+`C10-03D-NATIVE-DEVICE-ENROLLMENT.md`.

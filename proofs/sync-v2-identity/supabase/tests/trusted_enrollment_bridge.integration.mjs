@@ -29,7 +29,7 @@ function appendField(parts, field) {
   parts.push(length, field);
 }
 
-function proofMessage({ ownerId, sessionId, deviceId, enrollmentId, publicKey, challenge, expiresAt }) {
+function proofMessage({ ownerId, sessionId, deviceId, enrollmentId, publicKey, challenge, expiresAtUnix }) {
   const parts = [];
   appendField(parts, Buffer.from("sitedatum.sync-v2.initial-device-possession.v1", "utf8"));
   appendField(parts, uuidBytes(ownerId));
@@ -39,7 +39,7 @@ function proofMessage({ ownerId, sessionId, deviceId, enrollmentId, publicKey, c
   appendField(parts, publicKey);
   appendField(parts, challenge);
   const expiry = Buffer.alloc(8);
-  expiry.writeBigUInt64BE(BigInt(Math.floor(Date.parse(expiresAt) / 1000)));
+  expiry.writeBigUInt64BE(BigInt(expiresAtUnix));
   parts.push(expiry);
   return Buffer.concat(parts);
 }
@@ -91,18 +91,20 @@ try {
     body: { action: "begin", deviceId, publicKey: base64Url(rawPublicKey) },
   });
   assert.equal(begin.response.status, 200, `begin failed with ${begin.payload.code ?? "unknown response"}`);
+  assert.equal(begin.payload.ownerId, userId);
+  assert.equal(begin.payload.sessionId, jwtPayload.session_id);
   assert.equal(typeof begin.payload.enrollmentId, "string");
   assert.equal(typeof begin.payload.challenge, "string");
-  assert.equal(typeof begin.payload.expiresAt, "string");
+  assert.equal(typeof begin.payload.expiresAtUnix, "number");
 
   const message = proofMessage({
-    ownerId: userId,
-    sessionId: jwtPayload.session_id,
+    ownerId: begin.payload.ownerId,
+    sessionId: begin.payload.sessionId,
     deviceId,
     enrollmentId: begin.payload.enrollmentId,
     publicKey: rawPublicKey,
     challenge: Buffer.from(begin.payload.challenge, "base64url"),
-    expiresAt: begin.payload.expiresAt,
+    expiresAtUnix: begin.payload.expiresAtUnix,
   });
   const signature = sign(null, message, privateKey);
 
@@ -124,8 +126,8 @@ try {
     bearer: accessToken,
     body: completeBody,
   });
-  assert.equal(replay.response.status, 409, "consumed proof must not be replayable");
-  assert.equal(replay.payload.code, "ENROLLMENT_NOT_ACCEPTED");
+  assert.equal(replay.response.status, 200, "lost-response retry must be idempotent");
+  assert.equal(replay.payload.deviceId, deviceId, "retry may return only the exact accepted device");
 
   const secondDevice = await jsonRequest("/functions/v1/sync-device-enrollment", {
     apiKey: publishableKey,

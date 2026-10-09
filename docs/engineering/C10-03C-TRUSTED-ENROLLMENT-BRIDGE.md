@@ -1,6 +1,6 @@
 # C10-03C trusted enrollment bridge
 
-**Status:** Disposable local bridge verified; production deployment and native integration not authorized — 2026-10-09
+**Status:** Disposable local bridge verified; native proof completed in C10-03D; production deployment not authorized — 2026-10-09
 
 ## Purpose
 
@@ -49,9 +49,10 @@ logged by application code.
 
 The function rebuilds the exact versioned, length-prefixed C10-03B message and
 verifies the device's Ed25519 signature with WebCrypto before it can request
-atomic completion. A consumed or invalid enrollment returns a generic refusal;
-proof material cannot be replayed. A different public key, device, owner,
-session, enrollment, challenge, or expiry changes the signed message.
+atomic completion. C10-03D permits an exact verified retry to return only the
+same already-accepted device after response loss. Invalid or altered proof
+material is refused. A different public key, device, owner, session,
+enrollment, challenge, or expiry changes the signed message.
 
 Durable five-minute PostgreSQL rate windows are keyed by owner, live Auth
 session, and action. Begin is limited to 10 requests and complete to 30. An
@@ -65,11 +66,11 @@ continues to provide a second durable control.
 - Focused protocol tests pass strict parsing, the shared vector, valid
   Ed25519 proof, and changed-context refusal.
 - The focused Rust proof suite passes all five tests.
-- The complete database suite passes 106 pgTAP assertions across identity,
+- The complete database suite passes 114 pgTAP assertions across identity,
   RLS, native authorization, enrollment, bridge privileges, session
-  revocation, replay refusal, and rate limiting.
+  revocation, exact-device retry, altered-proof refusal, and rate limiting.
 - Database lint reports no warnings for `public` or `sync_v2_private`.
-- Local and repository migration histories match through C10-03C.
+- Local and repository migration histories match through C10-03D.
 - A disposable end-to-end test creates a fictional confirmed Auth user, signs
   in, enrolls one device through the Edge Function, proves possession with a
   generated Ed25519 key, rejects proof replay, refuses an unapproved second
@@ -78,8 +79,8 @@ continues to provide a second durable control.
 ## Remaining gates
 
 C10-03C does not authorize production deployment. Before first customer use,
-SiteDatum still needs the native Windows-protected key integration, the
-approved-device path for a second computer, the remaining hosted Sync schema
+SiteDatum still needs the approved-device path for a second computer, the
+remaining hosted Sync schema
 and operations, retention/deletion workflow, a clean disposable rebuild, and
 the later C10 verification gates. The legacy Sync boundary and centralized
 `SYNC_DEFERRED` denial remain unchanged.

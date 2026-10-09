@@ -126,11 +126,17 @@ export default {
           typeof row.expires_at !== "string") {
         return response(503, { code: "ENROLLMENT_NOT_AVAILABLE", requestId });
       }
+      const expiresAtUnix = Math.floor(Date.parse(row.expires_at) / 1000);
+      if (!Number.isSafeInteger(expiresAtUnix) || expiresAtUnix < 0) {
+        return response(503, { code: "ENROLLMENT_NOT_AVAILABLE", requestId });
+      }
 
       return response(200, {
+        ownerId,
+        sessionId,
         enrollmentId: row.enrollment_id,
         challenge: encodeBase64Url(standardBase64Bytes(row.challenge_base64)),
-        expiresAt: row.expires_at,
+        expiresAtUnix,
         requestId,
       });
     }

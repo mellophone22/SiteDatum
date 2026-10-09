@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, C10-03A, C10-03B, and the disposable local C10-03C trusted bridge complete; remaining C10-03 work pending; customer access remains disabled
+**Status:** C10-01, C10-02, and disposable local C10-03A through C10-03D complete; remaining C10-03 work pending; customer access remains disabled
 
 ## Objective
 
@@ -114,7 +114,10 @@ It intentionally exposed no client-callable enrollment function. C10-03C now
 adds and locally verifies an authenticated Edge Function bridge with exact
 request parsing, live Auth-session revalidation, service-only RPCs, Ed25519
 proof verification, generic errors, and durable request-rate windows. It still
-creates no production resource and changes no desktop behavior. Native Windows
-key integration, the approved second-device path, remaining hosted
-schema/operations, retention/deletion workflow, and production-independent
-deployment proof are still required before C10-03 can close.
+creates no production resource and changes no desktop behavior. C10-03D now
+adds a non-command native client proof with Windows Credential Manager key
+protection, crash-safe pending state, exact proof signing, bounded HTTPS, and a
+passing end-to-end disposable enrollment drill. The approved second-device
+path, remaining hosted schema/operations, retention/deletion workflow, and
+production-independent deployment proof are still required before C10-03 can
+close.

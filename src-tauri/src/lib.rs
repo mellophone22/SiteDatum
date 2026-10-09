@@ -17,6 +17,7 @@ mod rfi;
 mod rfi_pdf;
 mod rfi_pdf_settings;
 mod submittal;
+mod sync_v2_device_enrollment;
 mod task;
 mod work_item;
 
