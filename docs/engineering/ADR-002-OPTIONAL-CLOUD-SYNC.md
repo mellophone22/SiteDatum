@@ -1,6 +1,6 @@
 # ADR-002 — Optional Supabase Metadata Sync and OneDrive Files
 
-**Status:** Superseded for new installations — 2026-10-08
+**Status:** Superseded by ADR-019 for Sync v2; retained for legacy compatibility — 2026-10-08
 
 ## Context
 
@@ -25,3 +25,5 @@ The first sync implementation must include sign-in, encrypted local session stor
 Metadata synchronization is deferred pending a separate product, privacy, and hosted-security review. Fresh installations do not display Sync and the Rust command boundary rejects attempts to create a new legacy Sync connection. A computer is grandfathered only when it already has a saved legacy Sync credential or local evidence of prior synchronization. That eligibility is then preserved in the local workspace so an existing user can disconnect and reconnect without losing the recovery path. This containment does not delete local sync state, remove remote records, or decommission the legacy service.
 
 The legacy path remains distinct from licensing. It is not included with Pro, is not advertised to new customers, and does not make ordinary local work dependent on a cloud service. Before Sync can return as a generally available capability, SiteDatum must revalidate the hosted project, RLS policies, grants, signup and recovery model, data minimization, retention, deletion, and user-facing consent.
+
+ADR-019 defines the replacement architecture and exit criteria. It does not authorize reactivation of this legacy path.
