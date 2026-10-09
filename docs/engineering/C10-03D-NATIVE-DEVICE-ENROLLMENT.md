@@ -94,11 +94,11 @@ operations must still pass server-side session/device checks.
 ## Remaining gates
 
 C10-03D does not deploy a hosted function, add production coordinates, expose
-a desktop command, or enable customer Sync. C10-03E now establishes the
-durable service-only approved-second-device authorization state. A trusted
-bridge, native integration, and authenticated workspace-key transfer for that
-state are still required, as are the remaining encrypted hosted operations,
-retention and deletion workflow, clean disposable reconstruction, advisor
-evidence, and proof that no privileged credential enters the client or
-repository. Later C10 packages still own local record synchronization, consent
+a desktop command, or enable customer Sync. C10-03E establishes the durable
+service-only approved-second-device authorization state, and C10-03F now adds
+its trusted bridge, native X25519 boundary, and authenticated workspace-key
+transfer proof. The remaining encrypted hosted operations, retention and
+deletion workflow, clean disposable reconstruction, advisor evidence, and
+proof that no privileged credential enters the client or repository are still
+required. Later C10 packages still own local record synchronization, consent
 UX, recovery, operations, and fictional two-profile beta evidence.

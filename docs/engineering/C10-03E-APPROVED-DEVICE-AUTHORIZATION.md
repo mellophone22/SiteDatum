@@ -62,11 +62,9 @@ owner/session rate window constrain concurrent or repeated requests.
 
 ## Remaining gates
 
-C10-03F must add a trusted authenticated bridge and Windows-native integration
-for these exact service-only functions. That work must define versioned
-canonical messages, independently verify both Ed25519 signatures, refuse
-redirects and untrusted origins, perform authenticated X25519 HPKE workspace-key
-wrapping, and keep all service credentials out of the client. Later C10-03
-work still owns encrypted hosted operations, retention and deletion, clean
-disposable reconstruction, advisor evidence, and repository/client secret
-proofs. C10-04 through C10-07 remain required before any customer Sync beta.
+C10-03F now supplies the trusted authenticated bridge, Windows-native X25519
+key boundary, independent Ed25519 verification, and authenticated HPKE
+workspace-key transfer for this state. Later C10-03 work still owns encrypted
+hosted record operations, retention and deletion, clean disposable
+reconstruction, advisor evidence, and repository/client secret proofs. C10-04
+through C10-07 remain required before any customer Sync beta.

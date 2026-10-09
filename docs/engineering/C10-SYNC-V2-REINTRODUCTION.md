@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, and disposable local C10-03A through C10-03E complete; remaining C10-03 work pending; customer access remains disabled
+**Status:** C10-01, C10-02, and disposable local C10-03A through C10-03F complete; remaining C10-03 work pending; customer access remains disabled
 
 ## Objective
 
@@ -121,7 +121,11 @@ passing end-to-end disposable enrollment drill. The approved second-device
 database state is now complete in C10-03E: an exact target proves possession,
 an exact live source device approves it, attempts are single-use and expiring,
 and atomic acceptance binds at most a second active device. The service-only
-functions have no public bridge or desktop exposure and transfer no workspace
-key. The trusted second-device bridge/native path, remaining hosted
-schema/operations, retention/deletion workflow, and production-independent
-deployment proof are still required before C10-03 can close.
+functions had no public bridge or desktop exposure and transferred no workspace
+key. C10-03F now adds a separate authenticated bridge, private opaque relay,
+and non-command Windows-native HPKE proof: both device signatures bind the
+exact enrollment and envelope, only the accepted target fetches it, and the
+service cannot decrypt the workspace key. Remaining hosted record operations,
+retention/deletion workflow, clean reconstruction/advisor evidence, and
+production-independent secret/deployment proof are still required before
+C10-03 can close.
