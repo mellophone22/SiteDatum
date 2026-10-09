@@ -84,7 +84,7 @@ operations must still pass server-side session/device checks.
   protect a device key, begin enrollment, sign the server context, complete
   enrollment, reopen the active identity without another request, and delete
   both fictional user and credential.
-- The complete disposable database suite passes 114 pgTAP assertions,
+- The C10-03D checkpoint database suite passed 114 pgTAP assertions,
   including exact accepted-completion retry, invalid-proof refusal,
   wrong-owner refusal, revoked-session refusal, privileges, RLS, and rate
   limits.
@@ -94,9 +94,11 @@ operations must still pass server-side session/device checks.
 ## Remaining gates
 
 C10-03D does not deploy a hosted function, add production coordinates, expose
-a desktop command, or enable customer Sync. C10-03 still requires the approved
-second-device path, remaining encrypted hosted operations, retention and
-deletion workflow, clean disposable reconstruction, advisor evidence, and
-proof that no privileged credential enters the client or repository. Later
-C10 packages still own local record synchronization, consent UX, recovery,
-operations, and fictional two-profile beta evidence.
+a desktop command, or enable customer Sync. C10-03E now establishes the
+durable service-only approved-second-device authorization state. A trusted
+bridge, native integration, and authenticated workspace-key transfer for that
+state are still required, as are the remaining encrypted hosted operations,
+retention and deletion workflow, clean disposable reconstruction, advisor
+evidence, and proof that no privileged credential enters the client or
+repository. Later C10 packages still own local record synchronization, consent
+UX, recovery, operations, and fictional two-profile beta evidence.
