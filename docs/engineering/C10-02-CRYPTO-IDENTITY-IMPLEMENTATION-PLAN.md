@@ -106,14 +106,15 @@ removed after the run. See `C10-02D-DISPOSABLE-IDENTITY-PROOF.md`.
 Exit: C10-02 evidence is approved before C10-03 begins.
 
 **Current evidence:** The internal preflight was followed by an independent AI
-second-opinion review of immutable commit `738b72d`. That review returned **NOT
-APPROVED FOR C10-03**, primarily because device transfer used unauthenticated
-HPKE with a publicly grindable comparison code and the production legacy Sync
-commands did not enforce the centralized `MetadataSync` kill switch. Both High
-findings and the confirmed production issues were remediated, and the updated
-focused, full, database, frontend, formatting, build, and artifact-containment
-checks pass. See `C10-02E-INDEPENDENT-REVIEW-REMEDIATION.md`. The remediation
-does not self-approve the gate; C10-03 remains blocked pending re-review.
+second-opinion review of immutable commit `738b72d`. Its two High findings were
+remediated in immutable source commit `2009675`. The independent 2026-10-09
+re-review reproduced the archive digest, executed the focused proofs and
+adversarial checks, closed both High findings, and returned **CONDITIONALLY
+APPROVED FOR C10-03**. Its conditions are assigned to C10-03 through C10-07;
+none authorizes production Sync or customer release. C10-03A begins with the
+native identity/authorization conditions. See
+`C10-02E-INDEPENDENT-REVIEW-REMEDIATION.md` and
+`C10-03A-NATIVE-IDENTITY-AUTHORIZATION.md`.
 
 ## Failure behavior
 

@@ -1,7 +1,7 @@
 # C10-02E independent-review remediation
 
-**Status:** Remediation implemented and locally verified; independent AI
-re-review still required — 2026-10-08
+**Status:** Conditionally approved for C10-03 by independent AI re-review —
+2026-10-09
 
 ## Review being answered
 
@@ -133,9 +133,14 @@ None of those items is enabled or represented as complete by this remediation.
 
 ## Gate state
 
-This package does not self-approve C10-02E. A new immutable source snapshot must
-be returned to the same independent reviewer. C10-03 remains blocked until the
-reviewer confirms H-1 and H-2 are closed and returns an updated decision. Any
-conditional approval must name the later package responsible for each
-remaining condition.
+The independent 2026-10-09 re-review of immutable source commit `2009675`
+confirmed H-1 and H-2 closed and returned **CONDITIONALLY APPROVED FOR C10-03**.
+The supplied report's SHA-256 is
+`FCFA1A2167B269623AFADBE71D165A9797663942FE11DAD8797D4819B5CF802B`.
+It identified one new Low fail-closed availability/error-hygiene issue and
+assigned the remaining identity, hosted-envelope, deletion, enrollment,
+device-proof, OAuth, session, keyring, nonce, checkpoint, consent, and recovery
+conditions to C10-03 through C10-07. This approval authorizes isolated C10-03
+implementation only. It does not authorize a hosted production resource,
+customer Sync, general availability, or reuse of the retired token lifecycle.
 

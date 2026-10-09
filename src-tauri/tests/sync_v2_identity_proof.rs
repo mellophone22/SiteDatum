@@ -5,6 +5,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
 const ISSUER: &str = "https://identity.sync-proof.sitedatum.invalid";
 const AUDIENCE: &str = "sitedatum-sync-v2";
@@ -296,7 +297,7 @@ fn validate_id_token(
     if claims.aud != AUDIENCE {
         return Err("TOKEN_AUDIENCE_INVALID");
     }
-    if claims.sub.is_empty() {
+    if Uuid::parse_str(&claims.sub).is_err() {
         return Err("TOKEN_SUBJECT_INVALID");
     }
     if claims.nonce != expected_nonce {
@@ -416,6 +417,14 @@ fn issuer_audience_subject_nonce_signature_and_time_are_enforced() {
             {
                 let mut c = base.clone();
                 c.sub.clear();
+                c
+            },
+            "TOKEN_SUBJECT_INVALID",
+        ),
+        (
+            {
+                let mut c = base.clone();
+                c.sub = "not-a-uuid".into();
                 c
             },
             "TOKEN_SUBJECT_INVALID",

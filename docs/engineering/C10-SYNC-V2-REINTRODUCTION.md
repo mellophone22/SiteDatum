@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01 complete; C10-02A/B/C/D proofs complete; customer access remains disabled
+**Status:** C10-01, C10-02, and the local C10-03A slice complete; C10-03 remains open; customer access remains disabled
 
 ## Objective
 
@@ -99,4 +99,12 @@ Exit: founder approves the evidence package. General availability remains a sepa
 
 ## Current gate
 
-C10-01 is complete and the founder approved the C10-02 key-recovery and identity-proof direction on 2026-10-08. The offline record/recovery proof, isolated Windows device-key lifecycle proof, approved-device transfer/total-device-loss recovery drills, and disposable identity/RLS proof are complete. The identity proof used a local disposable Supabase stack only; it created no hosted resource and left no container or volume running. The contained legacy code remains hidden from fresh installations. C10-02 remains limited to test-only proof work until the independent-review gate passes; no production Supabase project, secret, customer row, application command, or runtime feature flag is changed by this package.
+C10-01 is complete and the founder approved the C10-02 key-recovery and
+identity-proof direction on 2026-10-08. The independent 2026-10-09 re-review
+closed both High findings and conditionally approved beginning C10-03. C10-03A
+completed a reproducible local identity/authorization boundary: hardened
+UUID claim parsing, server-derived device claims, bound and expiring sessions,
+and negative RLS tests. It creates no hosted resource and changes no production
+Supabase project, secret, customer row, application command, billing setting,
+or runtime feature flag. The legacy Sync boundary and centralized
+`SYNC_DEFERRED` denial remain in force.

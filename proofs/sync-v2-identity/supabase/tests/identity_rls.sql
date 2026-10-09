@@ -18,12 +18,36 @@ select ok(has_function_privilege('authenticated', 'sync_v2_private.request_is_ac
 select ok(not has_function_privilege('anon', 'sync_v2_private.request_is_active_owner(uuid)', 'EXECUTE'), 'anonymous callers cannot execute the owner check');
 select ok(not has_function_privilege('authenticated', 'sync_v2_private.jwt_uuid_claim(text)', 'EXECUTE'), 'authenticated callers cannot invoke the private claim parser directly');
 
-insert into sync_v2_private.sessions (id, owner_id) values
-  ('30000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001'),
-  ('30000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002');
 insert into sync_v2_private.devices (id, owner_id) values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002');
+insert into sync_v2_private.sessions (
+  id,
+  owner_id,
+  device_id,
+  issued_at,
+  last_seen_at,
+  idle_expires_at,
+  absolute_expires_at
+) values
+  (
+    '30000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    clock_timestamp(),
+    clock_timestamp(),
+    clock_timestamp() + interval '30 minutes',
+    clock_timestamp() + interval '8 hours'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000002',
+    clock_timestamp(),
+    clock_timestamp(),
+    clock_timestamp() + interval '30 minutes',
+    clock_timestamp() + interval '8 hours'
+  );
 insert into sync_v2_proof.envelopes (id, owner_id, ciphertext) values
   ('40000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', decode('a1', 'hex')),
   ('40000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', decode('b2', 'hex'));
