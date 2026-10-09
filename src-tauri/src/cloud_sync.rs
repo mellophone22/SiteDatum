@@ -12,8 +12,10 @@ use crate::{
     persistence::Database,
 };
 
-const PROJECT_URL: &str = "https://jblmxjowguphehuozfsg.supabase.co";
-const PUBLISHABLE_KEY: &str = "sb_publishable_2ZDEAuL6CSD6SK5omAi-6Q_fkFSTBcU";
+// Legacy Sync is intentionally disabled. Do not compile live legacy service
+// coordinates into release artifacts while MetadataSync remains off.
+const PROJECT_URL: &str = "https://legacy-sync-disabled.invalid";
+const PUBLISHABLE_KEY: &str = "legacy-sync-disabled";
 const TABLES: &[&str] = &[
     "projects",
     "tasks",
@@ -87,14 +89,20 @@ fn sync_error(code: &'static str, message: &str, detail: impl Into<String>) -> A
     )
 }
 
-fn value_from_ref(value: ValueRef<'_>) -> Value {
-    match value {
+fn value_from_ref(value: ValueRef<'_>) -> AppResult<Value> {
+    Ok(match value {
         ValueRef::Null => Value::Null,
         ValueRef::Integer(v) => Value::from(v),
         ValueRef::Real(v) => Value::from(v),
         ValueRef::Text(v) => Value::String(String::from_utf8_lossy(v).into_owned()),
-        ValueRef::Blob(_) => Value::Null,
-    }
+        ValueRef::Blob(_) => {
+            return Err(sync_error(
+                "SYNC_PAYLOAD_UNSUPPORTED",
+                "Local metadata contains a value that legacy Sync cannot preserve.",
+                "BLOB values are not supported by the legacy snapshot format.",
+            ))
+        }
+    })
 }
 
 fn sql_value(value: &Value) -> AppResult<SqlValue> {
@@ -232,7 +240,7 @@ impl Database {
             while let Some(row) = rows.next().map_err(db_error)? {
                 let mut object = Map::new();
                 for (index, column) in columns.iter().enumerate() {
-                    let mut value = value_from_ref(row.get_ref(index).map_err(db_error)?);
+                    let mut value = value_from_ref(row.get_ref(index).map_err(db_error)?)?;
                     if PATH_FIELDS.contains(&(*table, column.as_str())) {
                         if let Some(path) = value.as_str() {
                             value = Value::String(portable_path(path, root));
@@ -252,6 +260,10 @@ impl Database {
 
     pub fn import_workspace_snapshot(&mut self, snapshot: &WorkspaceSnapshot) -> AppResult<()> {
         if snapshot.schema_version != 1
+            || snapshot.tables.len() != TABLES.len()
+            || TABLES
+                .iter()
+                .any(|required| !snapshot.tables.contains_key(*required))
             || snapshot
                 .tables
                 .keys()
@@ -390,10 +402,11 @@ fn fetch_remote(client: &Client, token: &str) -> AppResult<Option<RemoteRecord>>
     let response = client.get(format!("{PROJECT_URL}/rest/v1/sync_records?entity_type=eq.workspace&entity_id=eq.primary&select=version,payload"))
         .header("apikey", PUBLISHABLE_KEY).bearer_auth(token).send().map_err(|e| sync_error("SYNC_NETWORK_FAILED", "The cloud workspace could not be reached.", e.to_string()))?;
     if !response.status().is_success() {
+        let status = response.status().as_u16();
         return Err(sync_error(
             "SYNC_REMOTE_FAILED",
             "Cloud metadata could not be read.",
-            response.text().unwrap_or_default(),
+            format!("Legacy Sync read failed with HTTP {status}."),
         ));
     }
     let mut records: Vec<RemoteRecord> = response.json().map_err(|e| {
@@ -417,10 +430,11 @@ fn push_remote(
         .json(&serde_json::json!({"p_entity_type":"workspace","p_entity_id":"primary","p_expected_version":expected_version,"p_payload":snapshot,"p_is_deleted":false}))
         .send().map_err(|e| sync_error("SYNC_NETWORK_FAILED", "The cloud workspace could not be reached.", e.to_string()))?;
     if !response.status().is_success() {
+        let status = response.status().as_u16();
         return Err(sync_error(
             "SYNC_REMOTE_FAILED",
             "Cloud metadata could not be saved.",
-            response.text().unwrap_or_default(),
+            format!("Legacy Sync write failed with HTTP {status}."),
         ));
     }
     response.json().map_err(|e| {
@@ -725,6 +739,55 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 1);
+        drop(database);
+        std::fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn incomplete_snapshot_is_rejected_without_replacing_existing_workspace() {
+        let base = std::env::temp_dir().join(format!("anydesk-sync-incomplete-{}", Uuid::new_v4()));
+        let root = base.join("projects");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut database = Database::open(&base.join("workspace.sqlite3")).unwrap();
+        database.save_project_root(&root.to_string_lossy()).unwrap();
+        database.connection.execute(
+            "INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES('existing','E-1','Existing',?1,'2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')",
+            [root.join("E-1 - Existing").to_string_lossy().to_string()],
+        ).unwrap();
+
+        let mut snapshot = database.export_workspace_snapshot().unwrap();
+        snapshot.tables.remove("tasks");
+        let error = database.import_workspace_snapshot(&snapshot).unwrap_err();
+        assert_eq!(error.code, "SYNC_SCHEMA_UNSUPPORTED");
+        let count: i64 = database
+            .connection
+            .query_row(
+                "SELECT count(*) FROM projects WHERE id='existing'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+
+        drop(database);
+        std::fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn blob_value_is_rejected_instead_of_silently_exported_as_null() {
+        let base = std::env::temp_dir().join(format!("anydesk-sync-blob-{}", Uuid::new_v4()));
+        let root = base.join("projects");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut database = Database::open(&base.join("workspace.sqlite3")).unwrap();
+        database.save_project_root(&root.to_string_lossy()).unwrap();
+        database.connection.execute(
+            "INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES('blob','B-1',?1,?2,'2026-09-22T00:00:00Z','2026-09-22T00:00:00Z')",
+            rusqlite::params![vec![0_u8, 1_u8, 2_u8], root.join("B-1").to_string_lossy().to_string()],
+        ).unwrap();
+
+        let error = database.export_workspace_snapshot().unwrap_err();
+        assert_eq!(error.code, "SYNC_PAYLOAD_UNSUPPORTED");
+
         drop(database);
         std::fs::remove_dir_all(base).unwrap();
     }

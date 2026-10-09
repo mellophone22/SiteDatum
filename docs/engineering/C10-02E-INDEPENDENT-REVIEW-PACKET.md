@@ -1,6 +1,6 @@
 # C10-02E independent cryptographic and protocol review packet
 
-**Status:** Internal preflight and proof hardening complete; independent approval pending — 2026-10-08
+**Status:** Independent AI review returned NOT APPROVED; remediation implemented and re-review pending — 2026-10-08
 
 ## Purpose
 
@@ -38,13 +38,19 @@ The reviewer must examine:
 12. `proofs/sync-v2-identity/supabase/tests/identity_rls.sql`
 13. the pinned development dependencies in `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`
 
-The internal evidence run produced:
+The original internal evidence run produced:
 
 - 82 passing Rust tests and one deliberately ignored live Windows Credential Manager test;
 - a separately selected passing Windows Credential Manager lifecycle drill;
 - 20 passing disposable local Supabase pgTAP assertions;
 - a clean repository secret-pattern scan; and
 - removal of the disposable Supabase containers and volumes after the proof.
+
+The independent AI second-opinion report subsequently identified two blocking
+High findings and returned **NOT APPROVED FOR C10-03**. The remediation and new
+verification evidence are recorded in
+`C10-02E-INDEPENDENT-REVIEW-REMEDIATION.md`. This packet's original result must
+not be presented as the current gate decision.
 
 ## Required review questions
 
@@ -97,7 +103,7 @@ All high and critical findings must be resolved and re-reviewed. Lower-severity 
 C10-02E remains open until:
 
 1. a new immutable digest is recorded for the hardened source;
-2. a qualified independent reviewer examines that immutable snapshot;
+2. the independent reviewer examines the new immutable remediation snapshot;
 3. every high or critical finding is closed; and
 4. the approval and residual-risk record are committed with the C10 evidence.
 

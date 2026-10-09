@@ -77,8 +77,16 @@ struct CloudSyncAvailability {
     email: Option<String>,
 }
 
-fn legacy_cloud_sync_is_available(has_local_evidence: bool, has_stored_session: bool) -> bool {
-    has_local_evidence || has_stored_session
+fn metadata_sync_is_enabled(access: CommercialAccess) -> bool {
+    matches!(
+        access,
+        CommercialAccess::Enforced(entitlement)
+            if entitlement.can_use_feature(CommercialFeature::MetadataSync)
+    )
+}
+
+fn legacy_cloud_sync_is_available(metadata_sync_enabled: bool, has_local_evidence: bool) -> bool {
+    metadata_sync_enabled && has_local_evidence
 }
 
 #[tauri::command]
@@ -133,29 +141,21 @@ fn recover_startup_database(
 }
 
 fn legacy_cloud_sync_available(state: &AppState) -> AppResult<bool> {
+    if !metadata_sync_is_enabled(current_commercial_access(state)?) {
+        return Ok(false);
+    }
     let has_local_evidence = state
         .database
         .lock()
         .map_err(|_| AppError::internal("Database state is unavailable."))?
         .has_legacy_cloud_sync_access()?;
-    if legacy_cloud_sync_is_available(has_local_evidence, false) {
-        return Ok(true);
-    }
-    let has_stored_session = cloud_auth::has_stored_session()?;
-    if !legacy_cloud_sync_is_available(false, has_stored_session) {
-        return Ok(false);
-    }
-    state
-        .database
-        .lock()
-        .map_err(|_| AppError::internal("Database state is unavailable."))?
-        .preserve_legacy_cloud_sync_access()?;
-    Ok(true)
+    Ok(legacy_cloud_sync_is_available(true, has_local_evidence))
 }
 
 #[cfg(test)]
 mod legacy_cloud_sync_access_tests {
-    use super::legacy_cloud_sync_is_available;
+    use super::{legacy_cloud_sync_is_available, metadata_sync_is_enabled, CommercialAccess};
+    use crate::entitlement::{EffectiveEntitlement, EntitlementFreshness, Plan};
 
     #[test]
     fn fresh_installations_are_not_eligible_for_legacy_sync() {
@@ -163,14 +163,37 @@ mod legacy_cloud_sync_access_tests {
     }
 
     #[test]
-    fn prior_history_or_a_saved_session_preserves_legacy_sync() {
-        assert!(legacy_cloud_sync_is_available(true, false));
-        assert!(legacy_cloud_sync_is_available(false, true));
+    fn disabled_metadata_sync_overrides_prior_local_history() {
+        assert!(!legacy_cloud_sync_is_available(false, true));
         assert!(legacy_cloud_sync_is_available(true, true));
+    }
+
+    #[test]
+    fn metadata_sync_is_disabled_for_every_current_access_mode() {
+        assert!(!metadata_sync_is_enabled(CommercialAccess::Precommercial));
+        for entitlement in [
+            EffectiveEntitlement::free(),
+            EffectiveEntitlement {
+                plan: Plan::ProMonthly,
+                freshness: EntitlementFreshness::Verified,
+            },
+            EffectiveEntitlement {
+                plan: Plan::ProAnnual,
+                freshness: EntitlementFreshness::Grace,
+            },
+        ] {
+            assert!(!metadata_sync_is_enabled(CommercialAccess::Enforced(
+                entitlement
+            )));
+        }
     }
 }
 
 fn require_legacy_cloud_sync(state: &AppState) -> AppResult<()> {
+    require_feature(
+        current_commercial_access(state)?,
+        CommercialFeature::MetadataSync,
+    )?;
     if legacy_cloud_sync_available(state)? {
         return Ok(());
     }
@@ -178,7 +201,7 @@ fn require_legacy_cloud_sync(state: &AppState) -> AppResult<()> {
         "SYNC_DEFERRED",
         "Workspace synchronization is not available on this computer.",
         "Continue using the local workspace. No account or cloud connection is required.",
-        "Legacy sync access requires an existing device credential or prior local sync state.",
+        "MetadataSync is disabled at the shared command boundary.",
     ))
 }
 
@@ -1319,12 +1342,20 @@ fn get_cloud_sync_availability(
 
 #[tauri::command]
 fn disconnect_cloud(state: tauri::State<'_, AppState>) -> AppResult<()> {
-    require_legacy_cloud_sync(&state)?;
-    let result = cloud_auth::disconnect();
-    if let Err(error) = &result {
+    let credential_result = cloud_auth::disconnect();
+    if let Err(error) = &credential_result {
         log_error(&state.log_path, error);
     }
-    result
+    let access_result = state
+        .database
+        .lock()
+        .map_err(|_| AppError::internal("Database state is unavailable."))?
+        .disable_legacy_cloud_sync_access();
+    if let Err(error) = &access_result {
+        log_error(&state.log_path, error);
+    }
+    credential_result?;
+    access_result
 }
 
 #[tauri::command]

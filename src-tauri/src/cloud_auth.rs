@@ -3,8 +3,10 @@ use keyring::Entry;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-const PROJECT_URL: &str = "https://jblmxjowguphehuozfsg.supabase.co";
-const PUBLISHABLE_KEY: &str = "sb_publishable_2ZDEAuL6CSD6SK5omAi-6Q_fkFSTBcU";
+// Legacy Sync is intentionally disabled. Do not compile live legacy service
+// coordinates into release artifacts while MetadataSync remains off.
+const PROJECT_URL: &str = "https://legacy-sync-disabled.invalid";
+const PUBLISHABLE_KEY: &str = "legacy-sync-disabled";
 const CREDENTIAL_SERVICE: &str = "com.cabre.project-engineer-workspace.anydesk-sync";
 const CREDENTIAL_ACCOUNT: &str = "supabase-session";
 
@@ -88,19 +90,6 @@ fn save_session(session: &StoredSession) -> AppResult<()> {
     })
 }
 
-pub fn has_stored_session() -> AppResult<bool> {
-    match session_entry()?.get_password() {
-        Ok(_) => Ok(true),
-        Err(keyring::Error::NoEntry) => Ok(false),
-        Err(error) => Err(AppError::from_technical(
-            "CLOUD_CREDENTIAL_STORE_UNAVAILABLE",
-            "Secure Windows credential storage is unavailable.",
-            "Check Windows Credential Manager, then restart SiteDatum.",
-            error.to_string(),
-        )),
-    }
-}
-
 fn auth_error(code: &'static str, error: reqwest::Error) -> AppError {
     AppError::from_technical(
         code,
@@ -117,7 +106,7 @@ pub fn sign_in_with_password(email: String, password: String) -> AppResult<Cloud
             "CLOUD_EMAIL_INVALID",
             "Enter a valid email address.",
             "Use the confirmed Supabase user created for SiteDatum.",
-            email,
+            "The submitted legacy cloud email did not pass local shape validation.",
         ));
     }
     if password.len() < 8 {
@@ -136,11 +125,12 @@ pub fn sign_in_with_password(email: String, password: String) -> AppResult<Cloud
         .send()
         .map_err(|error| auth_error("CLOUD_SIGN_IN_FAILED", error))?;
     if !response.status().is_success() {
+        let status = response.status().as_u16();
         return Err(AppError::from_technical(
             "CLOUD_SIGN_IN_FAILED",
             "The email or password was not accepted.",
             "Confirm the user in Supabase Authentication, then try again.",
-            response.text().unwrap_or_default(),
+            format!("Legacy identity provider rejected sign-in with HTTP {status}."),
         ));
     }
 
@@ -176,11 +166,12 @@ pub fn refreshed_access_token() -> AppResult<String> {
         .send()
         .map_err(|error| auth_error("CLOUD_SESSION_REFRESH_FAILED", error))?;
     if !response.status().is_success() {
+        let status = response.status().as_u16();
         return Err(AppError::from_technical(
             "CLOUD_SIGN_IN_REQUIRED",
             "Your cloud session expired.",
             "Open Settings, disconnect this computer, and sign in again.",
-            response.text().unwrap_or_default(),
+            format!("Legacy identity provider rejected refresh with HTTP {status}."),
         ));
     }
 

@@ -1,6 +1,6 @@
 # C10-02C approved-device transfer and recovery proof
 
-**Status:** Complete in isolated fictional tests (2026-10-08)
+**Status:** Remediated in isolated fictional tests; independent re-review required (2026-10-08)
 
 ## Purpose
 
@@ -11,7 +11,7 @@ not enable Sync or establish a production protocol.
 
 ## Selected suite
 
-- RFC 9180 HPKE Base mode;
+- RFC 9180 HPKE Auth mode;
 - DHKEM(X25519, HKDF-SHA-256);
 - HKDF-SHA-256; and
 - ChaCha20-Poly1305.
@@ -25,7 +25,10 @@ remains mandatory.
 ## Approved-device protocol model
 
 The surviving source computer encrypts the workspace key directly to the target
-device public key. Canonical authenticated context binds:
+device public key while authenticating with its static source-device key. The
+target starts with an independently retained expectation containing the source
+public key and the complete enrollment context. It does not learn either value
+from the relay. Canonical authenticated context binds:
 
 - protocol version;
 - authenticated owner ID;
@@ -35,13 +38,15 @@ device public key. Canonical authenticated context binds:
 - workspace-key version; and
 - expiry time.
 
-Both computers independently derive a six-digit comparison code from the
-authenticated context, target public key, and HPKE encapsulated key. The owner
-must compare the source display with the target and enter the code. Each
+Both computers independently derive a six-digit comparison code from the HPKE
+exporter secret using a versioned comparison context. The owner must compare
+the source display with the target and enter the code. A relay-only attacker
+cannot calculate or grind that code from public transcript values. Each
 enrollment permits one approval attempt: a wrong code consumes it and requires
-a fresh enrollment, limiting a blind substitution attempt to one chance in one
-million per owner-initiated enrollment. A production design must retain that
-single-attempt rule and present the comparison on trusted local screens.
+a fresh enrollment. A production design must durably enforce that single-use
+rule, rate limits, and expiry and must present the comparison on trusted local
+screens. The six-digit code is a human confirmation signal, not an independent
+cryptographic authenticator or a quantified one-in-a-million security claim.
 
 The modeled relay sees only the bounded routing context, target public key,
 encapsulated key, and ciphertext. It never receives the workspace key, device
@@ -55,9 +60,13 @@ The integration proof in
 1. surviving-device transfer recovers the same workspace key;
 2. a wrong comparison code consumes the enrollment and replay is refused;
 3. a substituted target key is refused before decryption;
-4. modified owner/workspace/device/version/expiry context cannot authenticate;
-5. expired and revoked-device enrollments are refused; and
-6. a customer-held 256-bit secret recovers the workspace key locally after
+4. modified owner/workspace/device/version/expiry context cannot authenticate,
+   even when an attacker creates an internally consistent fresh envelope;
+5. substituted source identity is refused using the independently retained
+   source public key;
+6. expired and revoked-device enrollments are refused;
+7. every expected context field is checked against target-held state; and
+8. a customer-held 256-bit secret recovers the workspace key locally after
    total device loss, while a wrong secret fails authentication.
 
 No key, recovery secret, comparison code, plaintext, ciphertext, project field,

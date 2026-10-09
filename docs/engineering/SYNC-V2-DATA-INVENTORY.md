@@ -29,7 +29,7 @@ This inventory is the allowlist for Sync v2 design. It does not enable transmiss
 | Work item | All constrained and optional fields, project ID, dates, parties, company, location, amount, checklist counts, archive state, timestamps | Operational, personal, location, and commercial data |
 | Project template | `id`, name, task/milestone title arrays, timestamps | Internal process and workflow data |
 
-Every row is encrypted independently with authenticated additional data binding the protocol version, owner, workspace, record kind, record ID, and expected version. The server-visible envelope must not include a searchable copy of any content field.
+Every row is encrypted independently with authenticated additional data binding the protocol version, owner, workspace, record kind, record ID, workspace-key version, and expected record revision. The server-visible envelope must not include a searchable copy of any content field.
 
 ## Server-visible Sync envelope
 
@@ -42,11 +42,20 @@ Every row is encrypted independently with authenticated additional data binding 
 | `server_version` | Optimistic concurrency | Server-controlled monotonic integer |
 | `client_mutation_id` | Idempotent retry | Random unique value |
 | `protocol_version` | Compatibility gate | Constrained supported integer |
+| `workspace_key_version` | Selects the locally held decrypting key | Constrained positive integer and authenticated as envelope AAD |
 | `ciphertext` | Encrypted record payload | Size-limited authenticated ciphertext |
 | `is_tombstone` | Propagates deletion | Boolean; tombstone body contains no plaintext |
 | `created_at`, `updated_at`, `deleted_at` | Retention and pull cursor ordering | Server-generated timestamps |
 
 No provider-facing column may contain a project number, record title, contact detail, file name/path, document text, local database path, encryption key, or licensing token.
+
+An encrypted workspace-checkpoint envelope authenticates a monotonic client
+counter and the digest of the complete sorted record/version/key-version/
+tombstone set. The provider may route it by opaque workspace ID and counter but
+cannot read or forge its contents. Each device keeps the highest accepted
+counter and digest locally; device-transfer and customer-held recovery material
+carry the minimum acceptable checkpoint anchor so a replayed partial set fails
+closed.
 
 ## Local-only data
 

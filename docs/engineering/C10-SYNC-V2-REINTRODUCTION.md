@@ -50,6 +50,9 @@ Exit: a disposable project can be built and verified from the repository; securi
 ### C10-04 — Local record protocol
 
 - Add versioned record codecs, encrypted outbox, pull cursor, idempotent mutation IDs, tombstones, and record-scoped conflicts.
+- Add an authenticated encrypted workspace checkpoint, durable per-device
+  high-water counter/digest, and transfer/recovery anchors that reject whole-set
+  rollback, omission, and equal-counter substitution.
 - Validate all pulled changes before a transaction and create a verified safety backup before application.
 - Preserve local work through every network, schema, authentication, and decryption failure.
 

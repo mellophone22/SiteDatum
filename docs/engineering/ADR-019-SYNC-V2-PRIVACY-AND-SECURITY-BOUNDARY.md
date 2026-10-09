@@ -16,14 +16,22 @@ Repository evidence for this decision:
 - whole-workspace export and replacement are in `src-tauri/src/cloud_sync.rs:210-341`;
 - the legacy REST/RPC boundary is in `src-tauri/src/cloud_sync.rs:389-433`;
 - the reconciliation baseline stores the serialized workspace in a column named `content_hash` (`src-tauri/src/cloud_sync.rs:344-350` and `src-tauri/migrations/0008_cloud_sync.sql:1-7`);
-- disconnect deletes only the local credential (`src-tauri/src/cloud_auth.rs:232-243`); and
-- fresh-install containment is enforced in Rust at `src-tauri/src/lib.rs:135-182` and `src-tauri/src/lib.rs:1278-1395`.
+- disconnect deletes the local credential and records an explicit local opt-out
+  without deleting local records, documents, or Sync history;
+- the centralized `MetadataSync` feature boundary denies every legacy network
+  and data command for Precommercial, Free, and Pro access; and
+- the legacy availability getter is read-only and a stored credential is not
+  treated as authorization.
 
 ## Decision
 
 ### 1. Legacy Sync remains contained
 
-The existing Rust `SYNC_DEFERRED` boundary remains in force. No C10 package may expose Sync v2 to customers until the exit criteria below pass. Existing grandfathered legacy access is a compatibility path, not the foundation for Sync v2, and there is no automatic migration of legacy cloud data.
+The Rust `SYNC_DEFERRED` boundary remains in force for every access mode. No C10
+package may expose Sync v2 to customers until the exit criteria below pass.
+Legacy credentials and historical eligibility never authorize a network or
+data operation. Disconnect remains available only as a privacy cleanup action,
+and there is no automatic migration of legacy cloud data.
 
 ### 2. Local-first authority does not change
 
@@ -61,6 +69,30 @@ The detailed plaintext inventory and the permitted server-visible envelope are d
 The local implementation will use an outbox and a durable pull cursor. Each mutation has a unique idempotency key and an expected record version. A stale expected version creates a record-scoped conflict; it never silently overwrites the remote value. Deletions are explicit tombstones so an offline computer cannot resurrect a deleted record unknowingly.
 
 Downloaded changes are validated completely before a local transaction begins. Foreign-key and schema compatibility failures leave the current SQLite workspace unchanged. A verified local safety backup is created before applying a pull batch or resolving a conflict. Conflict resolution names the affected record and preserves both encrypted candidates until the user chooses a result.
+
+Every record envelope authenticates the workspace-key version in addition to
+the protocol, owner, workspace, record kind, record ID, and record revision.
+Changing a routing header without re-encrypting under the matching key fails
+authentication.
+
+Record versions alone do not prove that the provider returned a complete,
+current set. Each accepted pull therefore requires an authenticated encrypted
+workspace checkpoint containing a monotonically increasing checkpoint counter
+and a digest over the sorted set of `(record_id, record_revision,
+workspace_key_version, tombstone)` tuples. Each computer durably retains the
+highest accepted counter and digest outside the replicated dataset. It rejects
+lower counters, equal counters with different digests, missing records, and
+records inconsistent with the checkpoint. Approved-device transfer includes
+that minimum checkpoint anchor in the independently held enrollment context.
+The local outbox advances the checkpoint atomically with the mutations it
+covers, and a crash cannot publish a checkpoint without its complete batch.
+
+Total-device-loss recovery cannot prove freshness against a malicious provider
+unless the customer also retains a recent checkpoint anchor outside that
+provider. The recovery material format must therefore carry a customer-held
+checkpoint anchor, clearly state its date/counter, and warn when a restore can
+prove confidentiality and integrity but not latest-state freshness. C10-04
+must implement and test these rules before Sync can be enabled.
 
 ### 6. Identity and entitlement are narrow gates, not data authority
 

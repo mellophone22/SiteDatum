@@ -33,6 +33,28 @@ revoke all on all tables in schema sync_v2_private from public, anon, authentica
 revoke all on all tables in schema sync_v2_proof from public, anon, authenticated;
 grant select, insert, update, delete on sync_v2_proof.envelopes to authenticated;
 
+create function sync_v2_private.jwt_uuid_claim(p_claim text)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  claim_value text := auth.jwt() ->> p_claim;
+begin
+  if claim_value is null or claim_value = '' then
+    return null;
+  end if;
+  return claim_value::uuid;
+exception
+  when invalid_text_representation then
+    return null;
+end;
+$$;
+
+revoke all on function sync_v2_private.jwt_uuid_claim(text) from public, anon, authenticated;
+
 create function sync_v2_private.request_is_active_owner(p_owner_id uuid)
 returns boolean
 language sql
@@ -45,14 +67,14 @@ as $$
     and exists (
       select 1
       from sync_v2_private.sessions s
-      where s.id = nullif((select auth.jwt() ->> 'session_id'), '')::uuid
+      where s.id = (select sync_v2_private.jwt_uuid_claim('session_id'))
         and s.owner_id = p_owner_id
         and s.revoked_at is null
     )
     and exists (
       select 1
       from sync_v2_private.devices d
-      where d.id = nullif((select auth.jwt() ->> 'sync_device_id'), '')::uuid
+      where d.id = (select sync_v2_private.jwt_uuid_claim('sync_device_id'))
         and d.owner_id = p_owner_id
         and d.revoked_at is null
     );

@@ -25,6 +25,7 @@ pub struct Database {
 
 const LATEST_MIGRATION_VERSION: i64 = 10;
 const LEGACY_CLOUD_SYNC_ACCESS_KEY: &str = "legacy_cloud_sync_access";
+const LEGACY_CLOUD_SYNC_DISABLED_KEY: &str = "legacy_cloud_sync_disabled";
 
 fn migrations() -> [(i64, &'static str); 10] {
     [
@@ -89,6 +90,19 @@ impl Database {
         })
     }
     pub fn has_legacy_cloud_sync_access(&self) -> AppResult<bool> {
+        let disabled = self
+            .connection
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = ?1",
+                [LEGACY_CLOUD_SYNC_DISABLED_KEY],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(database_error)?
+            .is_some_and(|value| value == "1");
+        if disabled {
+            return Ok(false);
+        }
         let preserved = self
             .connection
             .query_row(
@@ -112,13 +126,39 @@ impl Database {
             .map_err(database_error)?;
         Ok(has_history)
     }
+    #[cfg(test)]
     pub fn preserve_legacy_cloud_sync_access(&mut self) -> AppResult<()> {
-        self.connection
+        let transaction = self.connection.transaction().map_err(database_error)?;
+        transaction
             .execute(
                 "INSERT INTO app_settings (key, value, updated_at_utc) VALUES (?1, '1', strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at_utc = excluded.updated_at_utc",
                 [LEGACY_CLOUD_SYNC_ACCESS_KEY],
             )
             .map_err(database_error)?;
+        transaction
+            .execute(
+                "DELETE FROM app_settings WHERE key = ?1",
+                [LEGACY_CLOUD_SYNC_DISABLED_KEY],
+            )
+            .map_err(database_error)?;
+        transaction.commit().map_err(database_error)?;
+        Ok(())
+    }
+    pub fn disable_legacy_cloud_sync_access(&mut self) -> AppResult<()> {
+        let transaction = self.connection.transaction().map_err(database_error)?;
+        transaction
+            .execute(
+                "DELETE FROM app_settings WHERE key = ?1",
+                [LEGACY_CLOUD_SYNC_ACCESS_KEY],
+            )
+            .map_err(database_error)?;
+        transaction
+            .execute(
+                "INSERT INTO app_settings (key, value, updated_at_utc) VALUES (?1, '1', strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at_utc = excluded.updated_at_utc",
+                [LEGACY_CLOUD_SYNC_DISABLED_KEY],
+            )
+            .map_err(database_error)?;
+        transaction.commit().map_err(database_error)?;
         Ok(())
     }
     pub fn get_rfi_pdf_settings(&self) -> AppResult<RfiPdfSettings> {
@@ -1400,6 +1440,21 @@ mod tests {
         database
             .connection
             .execute("DELETE FROM sync_local_records", [])
+            .unwrap();
+        assert!(!database.has_legacy_cloud_sync_access().unwrap());
+
+        database.preserve_legacy_cloud_sync_access().unwrap();
+        assert!(database.has_legacy_cloud_sync_access().unwrap());
+
+        database.disable_legacy_cloud_sync_access().unwrap();
+        assert!(!database.has_legacy_cloud_sync_access().unwrap());
+
+        database
+            .connection
+            .execute(
+                "INSERT INTO sync_local_records(entity_type,entity_id,content_hash,cloud_version) VALUES('workspace','primary','hash',1)",
+                [],
+            )
             .unwrap();
         assert!(!database.has_legacy_cloud_sync_access().unwrap());
 

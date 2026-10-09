@@ -17,7 +17,7 @@ use sha2::Sha256;
 use zeroize::Zeroizing;
 
 const PROTOCOL_LABEL: &[u8] = b"sitedatum.sync-v2.record.v1";
-const RECOVERY_LABEL: &[u8] = b"sitedatum.sync-v2.recovery-wrap.v1";
+const RECOVERY_LABEL: &[u8] = b"sitedatum.sync-v2.total-loss-recovery.v1";
 
 #[derive(Clone, Copy)]
 struct RecordContext<'a> {
@@ -25,6 +25,7 @@ struct RecordContext<'a> {
     workspace_id: &'a str,
     entity: &'a str,
     record_id: &'a str,
+    workspace_key_version: u32,
     revision: u64,
 }
 
@@ -54,6 +55,7 @@ impl RecordContext<'_> {
         push_field(&mut bytes, self.workspace_id.as_bytes());
         push_field(&mut bytes, self.entity.as_bytes());
         push_field(&mut bytes, self.record_id.as_bytes());
+        bytes.extend_from_slice(&self.workspace_key_version.to_be_bytes());
         bytes.extend_from_slice(&self.revision.to_be_bytes());
         bytes
     }
@@ -116,28 +118,34 @@ fn derive_recovery_wrap_key(
 fn seal_recovery_envelope(
     recovery_secret: &[u8; 32],
     context: RecoveryContext<'_>,
-    nonce: &[u8; 24],
     workspace_key: &[u8; 32],
-) -> Result<Vec<u8>, &'static str> {
+) -> Result<RecoveryEnvelope, &'static str> {
+    let mut nonce = [0_u8; 24];
+    getrandom::fill(&mut nonce).map_err(|_| "recovery nonce generation failed")?;
     let binding = context.authenticated_bytes();
     let wrap_key = derive_recovery_wrap_key(recovery_secret, context);
     let cipher = XChaCha20Poly1305::new(Key::from_slice(wrap_key.as_ref()));
-    cipher
+    let ciphertext = cipher
         .encrypt(
-            XNonce::from_slice(nonce),
+            XNonce::from_slice(&nonce),
             Payload {
                 msg: workspace_key,
                 aad: &binding,
             },
         )
-        .map_err(|_| "recovery envelope encryption failed")
+        .map_err(|_| "recovery envelope encryption failed")?;
+    Ok(RecoveryEnvelope { nonce, ciphertext })
+}
+
+struct RecoveryEnvelope {
+    nonce: [u8; 24],
+    ciphertext: Vec<u8>,
 }
 
 fn open_recovery_envelope(
     recovery_secret: &[u8; 32],
     context: RecoveryContext<'_>,
-    nonce: &[u8; 24],
-    envelope: &[u8],
+    envelope: &RecoveryEnvelope,
 ) -> Result<Zeroizing<[u8; 32]>, &'static str> {
     let binding = context.authenticated_bytes();
     let wrap_key = derive_recovery_wrap_key(recovery_secret, context);
@@ -145,9 +153,9 @@ fn open_recovery_envelope(
     let plaintext = Zeroizing::new(
         cipher
             .decrypt(
-                XNonce::from_slice(nonce),
+                XNonce::from_slice(&envelope.nonce),
                 Payload {
-                    msg: envelope,
+                    msg: &envelope.ciphertext,
                     aad: &binding,
                 },
             )
@@ -156,9 +164,9 @@ fn open_recovery_envelope(
     if plaintext.len() != 32 {
         return Err("recovery envelope length is invalid");
     }
-    let mut key = [0_u8; 32];
+    let mut key = Zeroizing::new([0_u8; 32]);
     key.copy_from_slice(plaintext.as_slice());
-    Ok(Zeroizing::new(key))
+    Ok(key)
 }
 
 #[derive(Default)]
@@ -192,6 +200,7 @@ fn context() -> RecordContext<'static> {
         workspace_id: "workspace-fixture-01",
         entity: "task",
         record_id: "task-fixture-01",
+        workspace_key_version: 3,
         revision: 7,
     }
 }
@@ -230,7 +239,7 @@ fn record_ciphertext_is_stable_and_bound_to_its_context() {
 
     assert_eq!(
         hex(&ciphertext),
-        "f84594783dcd91e7c77736bcdc10d58b5cf0e1f837ea93900c2e54dd53a6305d2aa2c426a590b42e9e5d1e229d53c45d213f36b5fffc8b57f5890e"
+        "f84594783dcd91e7c77736bcdc10d58b5cf0e1f837ea93900c2e54dd53a6305d2aa2c426a590b42e9e5d1e4db320f139065810bf141714c716acf1"
     );
     assert_eq!(
         open_record(&workspace_key, &nonce, context(), &ciphertext).unwrap(),
@@ -243,6 +252,14 @@ fn record_ciphertext_is_stable_and_bound_to_its_context() {
     };
     assert_eq!(
         open_record(&workspace_key, &nonce, wrong_revision, &ciphertext),
+        Err("record authentication failed")
+    );
+    let wrong_key_version = RecordContext {
+        workspace_key_version: 4,
+        ..context()
+    };
+    assert_eq!(
+        open_record(&workspace_key, &nonce, wrong_key_version, &ciphertext),
         Err("record authentication failed")
     );
 }
@@ -265,38 +282,31 @@ fn tampering_is_rejected_without_returning_plaintext() {
 fn customer_held_secret_recovers_the_workspace_key_locally() {
     let recovery_secret = [0x51_u8; 32];
     let workspace_key = [0x61_u8; 32];
-    let nonce = [0x71_u8; 24];
     let envelope =
-        seal_recovery_envelope(&recovery_secret, recovery_context(), &nonce, &workspace_key)
-            .unwrap();
+        seal_recovery_envelope(&recovery_secret, recovery_context(), &workspace_key).unwrap();
 
-    assert_eq!(
-        hex(&envelope),
-        "3a87401b953f95809ea256ac21ab38911920a756948de7ad556e597a195c8ee1006c833ec120fe7a1d520fc983ba85db"
-    );
+    assert_eq!(envelope.nonce.len(), 24);
     let recovered =
-        open_recovery_envelope(&recovery_secret, recovery_context(), &nonce, &envelope).unwrap();
+        open_recovery_envelope(&recovery_secret, recovery_context(), &envelope).unwrap();
     assert_eq!(recovered.as_ref(), &workspace_key);
 
     let wrong_secret = [0x52_u8; 32];
-    assert!(open_recovery_envelope(&wrong_secret, recovery_context(), &nonce, &envelope).is_err());
+    assert!(open_recovery_envelope(&wrong_secret, recovery_context(), &envelope).is_err());
     let wrong_owner = RecoveryContext {
         owner_id: "owner-fixture-02",
         ..recovery_context()
     };
-    assert!(open_recovery_envelope(&recovery_secret, wrong_owner, &nonce, &envelope).is_err());
+    assert!(open_recovery_envelope(&recovery_secret, wrong_owner, &envelope).is_err());
     let wrong_workspace = RecoveryContext {
         workspace_id: "another-workspace",
         ..recovery_context()
     };
-    assert!(open_recovery_envelope(&recovery_secret, wrong_workspace, &nonce, &envelope).is_err());
+    assert!(open_recovery_envelope(&recovery_secret, wrong_workspace, &envelope).is_err());
     let wrong_key_version = RecoveryContext {
         workspace_key_version: 4,
         ..recovery_context()
     };
-    assert!(
-        open_recovery_envelope(&recovery_secret, wrong_key_version, &nonce, &envelope).is_err()
-    );
+    assert!(open_recovery_envelope(&recovery_secret, wrong_key_version, &envelope).is_err());
 }
 
 #[test]

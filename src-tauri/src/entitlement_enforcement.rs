@@ -29,6 +29,14 @@ pub fn require_project_activation(
 }
 
 pub fn require_feature(access: CommercialAccess, feature: CommercialFeature) -> AppResult<()> {
+    if feature == CommercialFeature::MetadataSync {
+        return Err(AppError::from_technical(
+            "SYNC_DEFERRED",
+            "Workspace synchronization is not available on this computer.",
+            "Continue using the local workspace. No account or cloud connection is required.",
+            "MetadataSync is disabled at the centralized feature boundary.",
+        ));
+    }
     if matches!(access, CommercialAccess::Precommercial)
         || matches!(access, CommercialAccess::Enforced(entitlement) if entitlement.can_use_feature(feature))
     {
@@ -95,6 +103,18 @@ mod tests {
             let error = require_feature(CommercialAccess::Enforced(free), feature).unwrap_err();
             assert_eq!(error.code, "PRO_FEATURE_REQUIRED");
             assert!(require_feature(CommercialAccess::Enforced(pro()), feature).is_ok());
+        }
+    }
+
+    #[test]
+    fn metadata_sync_is_denied_for_every_access_mode() {
+        for access in [
+            CommercialAccess::Precommercial,
+            CommercialAccess::Enforced(EffectiveEntitlement::free()),
+            CommercialAccess::Enforced(pro()),
+        ] {
+            let error = require_feature(access, CommercialFeature::MetadataSync).unwrap_err();
+            assert_eq!(error.code, "SYNC_DEFERRED");
         }
     }
 }

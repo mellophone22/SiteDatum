@@ -1,6 +1,6 @@
 # C10-02 cryptographic and identity proof plan
 
-**Status:** Approved design; C10-02A through C10-02D complete; C10-02E internal hardening complete and independent approval pending
+**Status:** C10-02A through C10-02D complete; C10-02E independent AI review returned NOT APPROVED and remediation is awaiting re-review
 
 ## Selected design
 
@@ -17,7 +17,7 @@ Neither decision enables Sync. `CommercialFeature::MetadataSync` remains denied,
 - Recovery-key separation: HKDF-SHA-256 with an explicit protocol label and workspace-specific salt.
 - Device-to-device key transfer: RFC 9180 HPKE using DHKEM(X25519, HKDF-SHA-256), HKDF-SHA-256, and ChaCha20-Poly1305; this is a later isolated proof, not part of the first slice.
 - Secret lifetime: bounded secret buffers with zeroization where supported, followed by a Windows Credential Manager proof for device-private material.
-- Protocol serialization: versioned canonical binary fields with explicit lengths. Owner, workspace, entity, record, revision, and protocol version are authenticated data.
+- Protocol serialization: versioned canonical binary fields with explicit lengths. Owner, workspace, entity, record, workspace-key version, revision, and protocol version are authenticated data.
 
 A high-entropy generated recovery secret is key material, not a human password. It must not be weakened through a password-style transform, sent to SiteDatum, logged, or included in support diagnostics. The printable encoding and transcription/error-detection format remain a separate reviewed decision.
 
@@ -60,19 +60,20 @@ printed or retained by the proof.
 
 ### C10-02C — Approved-device transfer and recovery drill
 
-- Prove RFC 9180 HPKE device enrollment using a short owner-visible comparison code.
+- Prove RFC 9180 authenticated-mode HPKE device enrollment using a short owner-visible comparison code derived from the HPKE exporter secret.
 - Bind envelopes to owner, workspace, target device, key version, and expiry.
 - Reject substituted keys, replay, expired enrollment, revoked devices, and wrong comparison codes.
 - Exercise surviving-device transfer and total-device-loss recovery with the customer-held secret.
 
 Exit: both drills recover the same workspace key locally without server decryption authority.
 
-**Evidence:** Complete in an isolated integration proof. RFC 9180 HPKE with
+**Evidence:** Remediated after independent review in an isolated integration proof. RFC 9180 authenticated-mode HPKE with
 DHKEM(X25519, HKDF-SHA-256), HKDF-SHA-256, and ChaCha20-Poly1305 recovered the
 same fictional workspace key on an approved target device. The proof binds the
 owner, workspace, source device, target device, key version, one-time enrollment
-ID, and expiry; it rejects a substituted key, replay, expired enrollment,
-revoked target, wrong comparison code, and modified context. A separate
+ID, and expiry against target-held enrollment state; it rejects fresh
+attacker-sealed source/context substitutions, a substituted target key, replay,
+expired enrollment, revoked target, wrong comparison code, and modified context. A separate
 customer-held-secret drill recovered the same key class after total device loss.
 The `hpke` dependency is development-only and independent review remains an
 explicit C10-02E gate.
@@ -90,8 +91,9 @@ Exit: all identity and negative-authorization tests pass with no production chan
 tests cover authorization code plus S256 PKCE, redirect/state/nonce and token
 claim validation, one-time codes, native session issuance, revocation,
 deletion, and signing-key rotation behavior. A separate local Supabase stack
-passed 20 pgTAP assertions covering owner-scoped CRUD, immutable ownership,
-anonymous/cross-owner denial, and active session/device enforcement. No hosted
+passed 31 pgTAP assertions covering owner-scoped CRUD, immutable ownership,
+anonymous/cross-owner denial, active session/device enforcement, explicit
+privilege boundaries, and fail-closed missing or malformed UUID claims. No hosted
 resource was created or changed, and the disposable containers and volumes were
 removed after the run. See `C10-02D-DISPOSABLE-IDENTITY-PROOF.md`.
 
@@ -103,14 +105,15 @@ removed after the run. See `C10-02D-DISPOSABLE-IDENTITY-PROOF.md`.
 
 Exit: C10-02 evidence is approved before C10-03 begins.
 
-**Current evidence:** The internal security preflight completed with no
-production-reachable finding and confirmed that Sync v2 remains disabled. It
-identified three test-only proof-hardening items: exclusive expiry boundaries
-for device enrollment and authorization codes, plus pending-code invalidation
-after modeled account deletion. All three are corrected and the focused and
-full Rust regression suites pass. See
-`C10-02E-INDEPENDENT-REVIEW-PACKET.md`. This internal preflight is not the
-required independent approval, so C10-03 remains blocked.
+**Current evidence:** The internal preflight was followed by an independent AI
+second-opinion review of immutable commit `738b72d`. That review returned **NOT
+APPROVED FOR C10-03**, primarily because device transfer used unauthenticated
+HPKE with a publicly grindable comparison code and the production legacy Sync
+commands did not enforce the centralized `MetadataSync` kill switch. Both High
+findings and the confirmed production issues were remediated, and the updated
+focused, full, database, frontend, formatting, build, and artifact-containment
+checks pass. See `C10-02E-INDEPENDENT-REVIEW-REMEDIATION.md`. The remediation
+does not self-approve the gate; C10-03 remains blocked pending re-review.
 
 ## Failure behavior
 

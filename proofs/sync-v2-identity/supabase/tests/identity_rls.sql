@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(31);
 
 select has_schema('sync_v2_proof', 'disposable proof schema exists');
 select has_table('sync_v2_proof', 'envelopes', 'encrypted-envelope proof table exists');
@@ -9,6 +9,14 @@ select ok((select relrowsecurity from pg_class where oid = 'sync_v2_proof.envelo
 select ok((select relforcerowsecurity from pg_class where oid = 'sync_v2_proof.envelopes'::regclass), 'RLS is forced');
 select ok(not has_schema_privilege('anon', 'sync_v2_proof', 'USAGE'), 'anonymous callers cannot use the proof schema');
 select ok(not has_schema_privilege('authenticated', 'sync_v2_private', 'USAGE'), 'authenticated callers cannot use the private schema');
+select ok(has_table_privilege('authenticated', 'sync_v2_proof.envelopes', 'SELECT'), 'authenticated callers receive explicit SELECT');
+select ok(has_table_privilege('authenticated', 'sync_v2_proof.envelopes', 'INSERT'), 'authenticated callers receive explicit INSERT');
+select ok(has_table_privilege('authenticated', 'sync_v2_proof.envelopes', 'UPDATE'), 'authenticated callers receive explicit UPDATE');
+select ok(has_table_privilege('authenticated', 'sync_v2_proof.envelopes', 'DELETE'), 'authenticated callers receive explicit DELETE');
+select ok(not has_table_privilege('anon', 'sync_v2_proof.envelopes', 'SELECT'), 'anonymous callers receive no table SELECT');
+select ok(has_function_privilege('authenticated', 'sync_v2_private.request_is_active_owner(uuid)', 'EXECUTE'), 'authenticated policy calls may execute the owner check');
+select ok(not has_function_privilege('anon', 'sync_v2_private.request_is_active_owner(uuid)', 'EXECUTE'), 'anonymous callers cannot execute the owner check');
+select ok(not has_function_privilege('authenticated', 'sync_v2_private.jwt_uuid_claim(text)', 'EXECUTE'), 'authenticated callers cannot invoke the private claim parser directly');
 
 insert into sync_v2_private.sessions (id, owner_id) values
   ('30000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001'),
@@ -47,6 +55,14 @@ select results_eq(
   array[0],
   'owner cannot delete another owner envelope'
 );
+
+set local request.jwt.claims = '{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"not-a-uuid","sync_device_id":"20000000-0000-4000-8000-000000000001"}';
+select is((select count(*)::integer from sync_v2_proof.envelopes), 0, 'malformed session claim fails closed without aborting the statement');
+set local request.jwt.claims = '{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30000000-0000-4000-8000-000000000001","sync_device_id":"not-a-uuid"}';
+select is((select count(*)::integer from sync_v2_proof.envelopes), 0, 'malformed device claim fails closed without aborting the statement');
+set local request.jwt.claims = '{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}';
+select is((select count(*)::integer from sync_v2_proof.envelopes), 0, 'missing authorization claims fail closed');
+set local request.jwt.claims = '{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30000000-0000-4000-8000-000000000001","sync_device_id":"20000000-0000-4000-8000-000000000001"}';
 
 reset role;
 update sync_v2_private.sessions set revoked_at = clock_timestamp() where id = '30000000-0000-4000-8000-000000000001';

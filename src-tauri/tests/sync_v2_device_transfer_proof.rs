@@ -12,10 +12,10 @@ use chacha20poly1305::{
 };
 use hkdf::Hkdf;
 use hpke::{
-    aead::ChaCha20Poly1305, kdf::HkdfSha256, kem::X25519HkdfSha256, single_shot_open,
-    single_shot_seal, Deserializable, Kem as KemTrait, OpModeR, OpModeS, Serializable,
+    aead::ChaCha20Poly1305, kdf::HkdfSha256, kem::X25519HkdfSha256, setup_receiver, setup_sender,
+    Deserializable, Kem as KemTrait, OpModeR, OpModeS, Serializable,
 };
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -30,7 +30,7 @@ const RECOVERY_LABEL: &[u8] = b"sitedatum.sync-v2.total-loss-recovery.v1";
 const WORKSPACE_KEY_BYTES: usize = 32;
 const COMPARISON_MODULUS: u64 = 1_000_000;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct TransferContext {
     owner_id: String,
     workspace_id: String,
@@ -63,12 +63,19 @@ struct ServerVisibleTransfer {
     ciphertext: Vec<u8>,
 }
 
+struct EnrollmentExpectation {
+    context: TransferContext,
+    source_public_key: [u8; 32],
+    target_public_key: [u8; 32],
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum TransferError {
     Expired,
     RevokedDevice,
     Replay,
     ComparisonMismatch,
+    ContextMismatch,
     EnvelopeInvalid,
     WorkspaceKeyLength,
 }
@@ -87,6 +94,7 @@ impl EnrollmentState {
     fn accept(
         &mut self,
         transfer: &ServerVisibleTransfer,
+        expected: &EnrollmentExpectation,
         target_private_key: &<Kem as KemTrait>::PrivateKey,
         target_public_key: &<Kem as KemTrait>::PublicKey,
         owner_entered_code: &str,
@@ -101,6 +109,14 @@ impl EnrollmentState {
         // new enrollment instead of permitting online guessing of the short code.
         self.consumed.insert(enrollment_id.clone());
 
+        // The relay is untrusted. Every routing and authorization field must
+        // match state the target retained when enrollment was created.
+        if transfer.context != expected.context
+            || transfer.target_public_key != expected.target_public_key
+        {
+            return Err(TransferError::ContextMismatch);
+        }
+
         // Expiry is exclusive: an enrollment is no longer valid at the exact
         // expires_at instant.
         if now_unix >= transfer.context.expires_at_unix {
@@ -114,31 +130,34 @@ impl EnrollmentState {
         }
 
         let own_public_key = array32(target_public_key.to_bytes().as_slice());
-        if own_public_key != transfer.target_public_key {
-            return Err(TransferError::ComparisonMismatch);
+        if own_public_key != expected.target_public_key {
+            return Err(TransferError::ContextMismatch);
         }
-        let expected_code = comparison_code(
-            &transfer.context,
-            &own_public_key,
-            &transfer.encapsulated_key,
-        );
+        let source_public_key =
+            <Kem as KemTrait>::PublicKey::from_bytes(&expected.source_public_key)
+                .map_err(|_| TransferError::EnvelopeInvalid)?;
+        let encapsulated_key =
+            <Kem as KemTrait>::EncappedKey::from_bytes(&transfer.encapsulated_key)
+                .map_err(|_| TransferError::EnvelopeInvalid)?;
+        let mut receiver = setup_receiver::<HpkeAead, Kdf, Kem>(
+            &OpModeR::Auth(source_public_key),
+            target_private_key,
+            &encapsulated_key,
+            TRANSFER_INFO,
+        )
+        .map_err(|_| TransferError::EnvelopeInvalid)?;
+        let expected_code = comparison_code(&receiver, &expected.context)?;
         if !constant_time_code_eq(owner_entered_code, &expected_code) {
             return Err(TransferError::ComparisonMismatch);
         }
 
-        let encapsulated_key =
-            <Kem as KemTrait>::EncappedKey::from_bytes(&transfer.encapsulated_key)
-                .map_err(|_| TransferError::EnvelopeInvalid)?;
         let plaintext = Zeroizing::new(
-            single_shot_open::<HpkeAead, Kdf, Kem>(
-                &OpModeR::Base,
-                target_private_key,
-                &encapsulated_key,
-                TRANSFER_INFO,
-                &transfer.ciphertext,
-                &transfer.context.authenticated_bytes(),
-            )
-            .map_err(|_| TransferError::EnvelopeInvalid)?,
+            receiver
+                .open(
+                    &transfer.ciphertext,
+                    &expected.context.authenticated_bytes(),
+                )
+                .map_err(|_| TransferError::EnvelopeInvalid)?,
         );
         if plaintext.len() != WORKSPACE_KEY_BYTES {
             return Err(TransferError::WorkspaceKeyLength);
@@ -204,20 +223,29 @@ fn transfer_context() -> TransferContext {
 fn seal_transfer(
     context: TransferContext,
     workspace_key: &[u8; WORKSPACE_KEY_BYTES],
+    source_private_key: &<Kem as KemTrait>::PrivateKey,
+    source_public_key: &<Kem as KemTrait>::PublicKey,
     target_public_key: &<Kem as KemTrait>::PublicKey,
-) -> (ServerVisibleTransfer, String) {
+) -> (ServerVisibleTransfer, EnrollmentExpectation, String) {
     let aad = context.authenticated_bytes();
-    let (encapsulated_key, ciphertext) = single_shot_seal::<HpkeAead, Kdf, Kem>(
-        &OpModeS::Base,
+    let (encapsulated_key, mut sender) = setup_sender::<HpkeAead, Kdf, Kem>(
+        &OpModeS::Auth((source_private_key.clone(), source_public_key.clone())),
         target_public_key,
         TRANSFER_INFO,
-        workspace_key,
-        &aad,
     )
-    .expect("fictional workspace key seals to the approved target");
+    .expect("authenticated transfer context is created");
+    let ciphertext = sender
+        .seal(workspace_key, &aad)
+        .expect("fictional workspace key seals to the approved target");
+    let code = comparison_code(&sender, &context).expect("comparison secret is exported");
     let target_public_key = array32(target_public_key.to_bytes().as_slice());
+    let source_public_key = array32(source_public_key.to_bytes().as_slice());
     let encapsulated_key = array32(encapsulated_key.to_bytes().as_slice());
-    let code = comparison_code(&context, &target_public_key, &encapsulated_key);
+    let expectation = EnrollmentExpectation {
+        context: context.clone(),
+        source_public_key,
+        target_public_key,
+    };
     (
         ServerVisibleTransfer {
             context,
@@ -225,23 +253,44 @@ fn seal_transfer(
             encapsulated_key,
             ciphertext,
         },
+        expectation,
         code,
     )
 }
 
-fn comparison_code(
-    context: &TransferContext,
-    target_public_key: &[u8; 32],
-    encapsulated_key: &[u8; 32],
-) -> String {
-    let mut hash = Sha256::new();
-    hash.update(COMPARISON_LABEL);
-    hash.update(context.authenticated_bytes());
-    hash.update(target_public_key);
-    hash.update(encapsulated_key);
-    let digest = hash.finalize();
-    let number = u64::from_be_bytes(digest[..8].try_into().unwrap()) % COMPARISON_MODULUS;
-    format!("{number:06}")
+fn comparison_exporter_context(context: &TransferContext) -> Vec<u8> {
+    let mut value = Vec::with_capacity(256);
+    push_field(&mut value, COMPARISON_LABEL);
+    value.extend_from_slice(&context.authenticated_bytes());
+    value
+}
+
+fn comparison_code<C>(hpke_context: &C, context: &TransferContext) -> Result<String, TransferError>
+where
+    C: HpkeExporter,
+{
+    let mut secret = Zeroizing::new([0_u8; 32]);
+    hpke_context
+        .export_secret(&comparison_exporter_context(context), secret.as_mut())
+        .map_err(|_| TransferError::EnvelopeInvalid)?;
+    let number = u64::from_be_bytes(secret[..8].try_into().unwrap()) % COMPARISON_MODULUS;
+    Ok(format!("{number:06}"))
+}
+
+trait HpkeExporter {
+    fn export_secret(&self, context: &[u8], output: &mut [u8]) -> Result<(), hpke::HpkeError>;
+}
+
+impl HpkeExporter for hpke::aead::AeadCtxS<HpkeAead, Kdf, Kem> {
+    fn export_secret(&self, context: &[u8], output: &mut [u8]) -> Result<(), hpke::HpkeError> {
+        self.export(context, output)
+    }
+}
+
+impl HpkeExporter for hpke::aead::AeadCtxR<HpkeAead, Kdf, Kem> {
+    fn export_secret(&self, context: &[u8], output: &mut [u8]) -> Result<(), hpke::HpkeError> {
+        self.export(context, output)
+    }
 }
 
 fn constant_time_code_eq(left: &str, right: &str) -> bool {
@@ -329,14 +378,21 @@ fn open_recovery_envelope(
 #[test]
 fn surviving_device_transfer_recovers_the_same_workspace_key() {
     let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
     let (target_private_key, target_public_key) = Kem::gen_keypair();
-    let (transfer, comparison_code) =
-        seal_transfer(transfer_context(), &workspace_key, &target_public_key);
+    let (transfer, expected, comparison_code) = seal_transfer(
+        transfer_context(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
     let mut state = EnrollmentState::default();
 
     let recovered = state
         .accept(
             &transfer,
+            &expected,
             &target_private_key,
             &target_public_key,
             &comparison_code,
@@ -350,15 +406,22 @@ fn surviving_device_transfer_recovers_the_same_workspace_key() {
 #[test]
 fn comparison_code_is_single_attempt_and_replay_is_refused() {
     let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
     let (target_private_key, target_public_key) = Kem::gen_keypair();
-    let (transfer, comparison_code) =
-        seal_transfer(transfer_context(), &workspace_key, &target_public_key);
+    let (transfer, expected, comparison_code) = seal_transfer(
+        transfer_context(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
     let mut state = EnrollmentState::default();
     let wrong_code = different_code(&comparison_code);
 
     assert_eq!(
         state.accept(
             &transfer,
+            &expected,
             &target_private_key,
             &target_public_key,
             wrong_code,
@@ -369,6 +432,7 @@ fn comparison_code_is_single_attempt_and_replay_is_refused() {
     assert_eq!(
         state.accept(
             &transfer,
+            &expected,
             &target_private_key,
             &target_public_key,
             &comparison_code,
@@ -381,46 +445,103 @@ fn comparison_code_is_single_attempt_and_replay_is_refused() {
 #[test]
 fn substituted_target_key_is_refused_before_decryption() {
     let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
     let (_target_private_key, target_public_key) = Kem::gen_keypair();
     let (attacker_private_key, attacker_public_key) = Kem::gen_keypair();
-    let (transfer, comparison_code) =
-        seal_transfer(transfer_context(), &workspace_key, &target_public_key);
+    let (transfer, expected, comparison_code) = seal_transfer(
+        transfer_context(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
     let mut state = EnrollmentState::default();
 
     assert_eq!(
         state.accept(
             &transfer,
+            &expected,
             &attacker_private_key,
             &attacker_public_key,
             &comparison_code,
             1_800_000_000,
         ),
-        Err(TransferError::ComparisonMismatch)
+        Err(TransferError::ContextMismatch)
     );
 }
 
 #[test]
-fn modified_context_is_rejected_by_hpke_authentication() {
+fn fresh_valid_seal_with_substituted_context_is_refused() {
     let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
     let (target_private_key, target_public_key) = Kem::gen_keypair();
-    let (mut transfer, _) = seal_transfer(transfer_context(), &workspace_key, &target_public_key);
-    transfer.context.workspace_id = "substituted-workspace".to_owned();
-    let recomputed_code = comparison_code(
-        &transfer.context,
-        &transfer.target_public_key,
-        &transfer.encapsulated_key,
+    let original_context = transfer_context();
+    let (_, expected, _) = seal_transfer(
+        original_context.clone(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
+    let mut substituted_context = original_context;
+    substituted_context.workspace_id = "substituted-workspace".to_owned();
+    let (transfer, _, attacker_known_code) = seal_transfer(
+        substituted_context,
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
     );
     let mut state = EnrollmentState::default();
 
     assert_eq!(
         state.accept(
             &transfer,
+            &expected,
             &target_private_key,
             &target_public_key,
-            &recomputed_code,
+            &attacker_known_code,
             1_800_000_000,
         ),
-        Err(TransferError::EnvelopeInvalid)
+        Err(TransferError::ContextMismatch)
+    );
+}
+
+#[test]
+fn fresh_valid_seal_from_substituted_source_device_is_refused() {
+    let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
+    let (attacker_private_key, attacker_public_key) = Kem::gen_keypair();
+    let (target_private_key, target_public_key) = Kem::gen_keypair();
+    let context = transfer_context();
+    let (_, expected, _) = seal_transfer(
+        context.clone(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
+    let (transfer, _, attacker_known_code) = seal_transfer(
+        context,
+        &workspace_key,
+        &attacker_private_key,
+        &attacker_public_key,
+        &target_public_key,
+    );
+    let mut state = EnrollmentState::default();
+
+    assert_eq!(
+        state.accept(
+            &transfer,
+            &expected,
+            &target_private_key,
+            &target_public_key,
+            &attacker_known_code,
+            1_800_000_000,
+        ),
+        // The target derives a different exporter secret when the sender
+        // identity key differs, so even an attacker-known code is rejected.
+        Err(TransferError::ComparisonMismatch)
     );
 }
 
@@ -458,16 +579,83 @@ fn every_transfer_context_field_changes_the_authenticated_binding() {
 }
 
 #[test]
+fn every_freshly_sealed_context_substitution_is_refused_by_local_expectations() {
+    let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
+    let (target_private_key, target_public_key) = Kem::gen_keypair();
+    let original = transfer_context();
+    let (_, expected, _) = seal_transfer(
+        original.clone(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
+
+    let mut mutations = Vec::new();
+    let mut owner = original.clone();
+    owner.owner_id.push_str("-changed");
+    mutations.push(owner);
+    let mut workspace = original.clone();
+    workspace.workspace_id.push_str("-changed");
+    mutations.push(workspace);
+    let mut source = original.clone();
+    source.source_device_id.push_str("-changed");
+    mutations.push(source);
+    let mut target = original.clone();
+    target.target_device_id.push_str("-changed");
+    mutations.push(target);
+    let mut enrollment = original.clone();
+    enrollment.enrollment_id.push_str("-changed");
+    mutations.push(enrollment);
+    let mut version = original.clone();
+    version.workspace_key_version += 1;
+    mutations.push(version);
+    let mut expiry = original;
+    expiry.expires_at_unix += 1;
+    mutations.push(expiry);
+
+    for mutation in mutations {
+        let (transfer, _, attacker_known_code) = seal_transfer(
+            mutation,
+            &workspace_key,
+            &source_private_key,
+            &source_public_key,
+            &target_public_key,
+        );
+        let mut state = EnrollmentState::default();
+        assert_eq!(
+            state.accept(
+                &transfer,
+                &expected,
+                &target_private_key,
+                &target_public_key,
+                &attacker_known_code,
+                1_800_000_000,
+            ),
+            Err(TransferError::ContextMismatch)
+        );
+    }
+}
+
+#[test]
 fn expired_and_revoked_enrollments_are_refused() {
     let workspace_key = random_32();
+    let (source_private_key, source_public_key) = Kem::gen_keypair();
     let (target_private_key, target_public_key) = Kem::gen_keypair();
 
-    let (boundary_transfer, boundary_code) =
-        seal_transfer(transfer_context(), &workspace_key, &target_public_key);
+    let (boundary_transfer, boundary_expected, boundary_code) = seal_transfer(
+        transfer_context(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
     let mut boundary_state = EnrollmentState::default();
     assert_eq!(
         boundary_state.accept(
             &boundary_transfer,
+            &boundary_expected,
             &target_private_key,
             &target_public_key,
             &boundary_code,
@@ -476,12 +664,18 @@ fn expired_and_revoked_enrollments_are_refused() {
         Err(TransferError::Expired)
     );
 
-    let (expired_transfer, expired_code) =
-        seal_transfer(transfer_context(), &workspace_key, &target_public_key);
+    let (expired_transfer, expired_expected, expired_code) = seal_transfer(
+        transfer_context(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
     let mut expired_state = EnrollmentState::default();
     assert_eq!(
         expired_state.accept(
             &expired_transfer,
+            &expired_expected,
             &target_private_key,
             &target_public_key,
             &expired_code,
@@ -490,13 +684,19 @@ fn expired_and_revoked_enrollments_are_refused() {
         Err(TransferError::Expired)
     );
 
-    let (revoked_transfer, revoked_code) =
-        seal_transfer(transfer_context(), &workspace_key, &target_public_key);
+    let (revoked_transfer, revoked_expected, revoked_code) = seal_transfer(
+        transfer_context(),
+        &workspace_key,
+        &source_private_key,
+        &source_public_key,
+        &target_public_key,
+    );
     let mut revoked_state = EnrollmentState::default();
     revoked_state.revoke_device(&revoked_transfer.context.target_device_id);
     assert_eq!(
         revoked_state.accept(
             &revoked_transfer,
+            &revoked_expected,
             &target_private_key,
             &target_public_key,
             &revoked_code,

@@ -63,7 +63,8 @@ Environment:
 - local GoTrue 2.197.0; and
 - local PostgREST 16.4.
 
-Result: 20 pgTAP assertions passed, 0 failed, followed by transaction rollback and `supabase stop --no-backup`.
+Latest remediation validation: 31 pgTAP assertions passed, 0 failed,
+followed by transaction rollback and `supabase stop --no-backup`.
 
 The database proof verifies:
 
@@ -76,6 +77,10 @@ The database proof verifies:
 - session revocation and device revocation remove access on the next SQL statement;
 - deleting the subject's authorization state removes access on the next SQL statement; and
 - negative tests do not modify the other fictional owner's row.
+- explicit table and function grants match the intended authenticated/anonymous
+  boundary; and
+- malformed, missing, or non-UUID session/device claims fail closed without
+  aborting the SQL statement.
 
 ## Cost and cleanup
 
