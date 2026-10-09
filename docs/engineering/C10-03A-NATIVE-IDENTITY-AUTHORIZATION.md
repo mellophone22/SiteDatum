@@ -67,6 +67,9 @@ This slice does not close C10-03. Later C10-03 slices still own:
 
 No retired `cloud_auth.rs` token lifecycle may be reused.
 
+The next bounded slice is documented in
+`C10-03B-INITIAL-DEVICE-ENROLLMENT.md`.
+
 ## Verification
 
 - Native Rust identity proof: 5 passed, including non-UUID subject rejection.

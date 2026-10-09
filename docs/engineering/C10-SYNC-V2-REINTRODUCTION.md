@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, and the local C10-03A slice complete; C10-03 remains open; customer access remains disabled
+**Status:** C10-01, C10-02, C10-03A, and the local C10-03B enrollment boundary complete; trusted bridge and remaining C10-03 work pending; customer access remains disabled
 
 ## Objective
 
@@ -107,4 +107,11 @@ UUID claim parsing, server-derived device claims, bound and expiring sessions,
 and negative RLS tests. It creates no hosted resource and changes no production
 Supabase project, secret, customer row, application command, billing setting,
 or runtime feature flag. The legacy Sync boundary and centralized
-`SYNC_DEFERRED` denial remain in force.
+`SYNC_DEFERRED` denial remain in force. C10-03B now adds a verified, local-only
+first-device enrollment boundary with Ed25519 proof of possession, one-time
+server challenges, durable rate limiting, and atomic device/session binding.
+It intentionally exposes no client-callable enrollment function and creates no
+trusted network bridge or production resource. The bridge, native Windows key
+integration, remaining hosted schema/operations, retention/deletion workflow,
+and production-independent deployment proof are still required before C10-03
+can close.
