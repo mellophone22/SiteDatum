@@ -87,9 +87,10 @@ documents, or database content.
 
 ## Remaining gates
 
-C10-03 still requires the remaining encrypted hosted record operations,
-retention/deletion workflow, clean reconstruction/advisor evidence, and
-repository/client secret proof before it can close. C10-04 owns the local
+C10-03G now supplies the disposable encrypted hosted record operations.
+C10-03 still requires the retention/deletion workflow, clean
+reconstruction/advisor evidence, and repository/client secret proof before it
+can close. C10-04 owns the local
 record protocol and persistent workspace/checkpoint integration. C10-05 owns
 the deliberate comparison/consent/device UX; no visible control is added by
 this proof. C10-06 and C10-07 remain required before any customer Sync beta.

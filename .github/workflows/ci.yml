@@ -178,3 +178,42 @@ jobs:
       - name: Stop disposable Supabase stack
         if: always()
         run: npm run supabase:stop
+
+  sync-v2-proof:
+    name: Sync v2 disposable proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: proofs/sync-v2-identity
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --prefix ../.. --prefer-offline --no-audit
+      - name: Start disposable Sync v2 stack
+        run: npx --prefix ../.. supabase start
+      - name: Test migrations and private database boundary
+        run: npx --prefix ../.. supabase test db --local
+      - name: Lint database schemas
+        run: npx --prefix ../.. supabase db lint --local --schema public --schema sync_v2_private
+      - name: Test authenticated Edge bridges
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --prefix ../.. supabase status -o env)"
+          set +a
+          export SYNC_TEST_API_URL="$API_URL"
+          export SYNC_TEST_PUBLISHABLE_KEY="$PUBLISHABLE_KEY"
+          export SYNC_TEST_SECRET_KEY="$SECRET_KEY"
+          node supabase/tests/trusted_enrollment_bridge.integration.mjs
+          node supabase/tests/authenticated_device_transfer.integration.mjs
+          node supabase/tests/encrypted_record_operations.integration.mjs
+      - name: Stop disposable Sync v2 stack
+        if: always()
+        run: npx --prefix ../.. supabase stop --no-backup

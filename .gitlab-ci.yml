@@ -79,6 +79,40 @@ supabase_database:
   after_script:
     - npx supabase stop --no-backup || true
 
+sync_v2_proof:
+  stage: test
+  image: node:24-bookworm
+  tags:
+    - saas-linux-small-amd64
+  services:
+    - name: docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2376"
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+    DOCKER_TLS_VERIFY: "1"
+  before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends docker.io
+    - docker info
+    - npm ci --prefer-offline --no-audit
+  script:
+    - cd proofs/sync-v2-identity
+    - npx supabase start
+    - npx supabase test db --local
+    - npx supabase db lint --local --schema public --schema sync_v2_private
+    - set -a
+    - eval "$(npx supabase status -o env)"
+    - set +a
+    - export SYNC_TEST_API_URL="$API_URL"
+    - export SYNC_TEST_PUBLISHABLE_KEY="$PUBLISHABLE_KEY"
+    - export SYNC_TEST_SECRET_KEY="$SECRET_KEY"
+    - node supabase/tests/trusted_enrollment_bridge.integration.mjs
+    - node supabase/tests/authenticated_device_transfer.integration.mjs
+    - node supabase/tests/encrypted_record_operations.integration.mjs
+  after_script:
+    - npx supabase stop --no-backup --workdir proofs/sync-v2-identity || true
+
 secret_detection:
   stage: secret-detection
 

@@ -76,3 +76,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/sync-approved-device/deno.json"
 entrypoint = "./functions/sync-approved-device/index.ts"
+
+[functions.sync-records]
+enabled = true
+verify_jwt = true
+import_map = "./functions/sync-records/deno.json"
+entrypoint = "./functions/sync-records/index.ts"
