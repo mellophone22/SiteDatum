@@ -46,7 +46,9 @@ async function readBoundedJson(request: Request): Promise<unknown> {
     if (done) break;
     total += value.byteLength;
     if (total > MAX_REQUEST_BYTES) {
-      await reader.cancel();
+      // Do not block the 413 response on transport-level stream cancellation.
+      // Some reverse proxies acknowledge cancellation only after their own timeout.
+      void reader.cancel().catch(() => undefined);
       throw new Error("REQUEST_TOO_LARGE");
     }
     chunks.push(value);

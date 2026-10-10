@@ -55,7 +55,9 @@ async function readBoundedJson(request: Request): Promise<unknown> {
     if (done) break;
     total += value.byteLength;
     if (total > MAX_REQUEST_BYTES) {
-      await reader.cancel();
+      // Return the bounded-body rejection without waiting for a proxy to
+      // acknowledge transport-level stream cancellation.
+      void reader.cancel().catch(() => undefined);
       throw new Error("REQUEST_TOO_LARGE");
     }
     chunks.push(value);
