@@ -371,10 +371,15 @@ fn aad(header: &RecordHeader) -> Vec<u8> {
 
 pub(crate) fn seal_record(
     header: RecordHeader,
-    key: &[u8; 32],
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     content: &RecordContent,
 ) -> AppResult<SealedRecord> {
     validate_content(&header, content)?;
+    let key = key.select(
+        header.owner_id,
+        header.workspace_id,
+        header.workspace_key_version,
+    )?;
     let plaintext = Zeroizing::new(serde_json::to_vec(content).map_err(|_| invalid())?);
     if plaintext.len() + NONCE_BYTES + 16 > MAX_CIPHERTEXT {
         return Err(invalid());
@@ -396,8 +401,16 @@ pub(crate) fn seal_record(
     Ok(SealedRecord { header, ciphertext })
 }
 
-pub(crate) fn open_record(record: &SealedRecord, key: &[u8; 32]) -> AppResult<RecordContent> {
+pub(crate) fn open_record(
+    record: &SealedRecord,
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
+) -> AppResult<RecordContent> {
     validate_header(&record.header)?;
+    let key = key.select(
+        record.header.owner_id,
+        record.header.workspace_id,
+        record.header.workspace_key_version,
+    )?;
     if !(NONCE_BYTES + 16..=MAX_CIPHERTEXT).contains(&record.ciphertext.len()) {
         return Err(invalid());
     }

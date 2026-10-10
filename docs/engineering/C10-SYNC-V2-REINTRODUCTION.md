@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; remaining hosted, key/recovery and UX gates pending; customer access remains disabled
+**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; C10-04D implemented locally awaiting independent review; hosted and UX gates pending; customer access remains disabled
 
 ## Objective
 
@@ -196,3 +196,11 @@ backups. Historical C1–C5 limitations above describe earlier slices, not the
 current boundary. See `C10-04C-COMPLETION.md` for behavior, proofs and remaining
 gates. Customer Sync, ordinary-command integration, key rotation, recovery
 anchors, signed hosted compaction and C10-05 UI are not enabled by this closeout.
+
+C10-04D adds scoped versioned keyrings, mixed-key reads, active-key writes,
+atomic encrypted rotation staging/retries (schema 15), Windows protected storage
+and an encrypted recovery file with a separate generated code. The founder
+approved the direction on 2026-10-10. Independent format review is still required;
+the saved minimum cannot prove latest state after total loss. No command, UI,
+transport, deployment or activation is added. See
+`C10-04D-KEY-ROTATION-RECOVERY.md` and its Claude review instructions.

@@ -23,6 +23,12 @@ A high-entropy generated recovery secret is key material, not a human password. 
 
 ## Work packages
 
+The founder approved the C10-04D encrypted-file/separate-code direction on
+2026-10-10, carrying a capture date and checkpoint minimum with an explicit
+total-loss freshness limitation. The new printable and wire format are a
+dormant local proof awaiting independent review before acceptance. See
+`C10-04D-KEY-ROTATION-RECOVERY.md`.
+
 ### C10-02A — Offline record and recovery proof
 
 - Keep all code in an integration test so it cannot enter the production command graph.

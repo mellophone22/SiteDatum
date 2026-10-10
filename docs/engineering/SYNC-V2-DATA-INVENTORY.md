@@ -98,6 +98,13 @@ references use an unresolved local marker; original filename tokens remain
 encrypted content only. Receipt output exposes opaque IDs/counters/digest, never
 a backup path. See `C10-04C-COMPLETION.md`.
 
+Schema-15 rotation state is local-only: opaque workspace ID, key version,
+checkpoint counter/cursor and encrypted checkpoint bytes. Keys remain
+Windows-protected. The encrypted recovery file and separate generated code are
+customer-held artifacts, not replicated records or support/CSV data. No project
+content category or licensing/billing/telemetry upload is added. Independent
+recovery-format review remains pending.
+
 Adding an entity or field requires all of the following in the same work package:
 
 1. update this inventory and the user-facing consent categories;

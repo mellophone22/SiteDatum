@@ -141,7 +141,7 @@ impl Database {
         &mut self,
         s: StreamScope,
         record: &SealedRecord,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<()> {
         self.stage_sync_v2_mutation_with_apply(s, record, key, |_| Ok(()))
     }
@@ -149,15 +149,31 @@ impl Database {
         &mut self,
         s: StreamScope,
         record: &SealedRecord,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
     ) -> AppResult<()> {
         matches_scope(s, record)?;
         open_record(record, key)?;
         let bytes = encode(record)?;
         let h = &record.header;
+        if key
+            .write_version()
+            .is_some_and(|active| active != h.workspace_key_version)
+        {
+            return Err(blocked());
+        }
         let tx = self.connection.transaction().map_err(storage)?;
         scope(&tx, s)?;
+        let rotating: bool = tx
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM sync_v2_rotation_batches WHERE workspace_id=?1)",
+                [s.workspace_id.to_string()],
+                |r| r.get(0),
+            )
+            .map_err(storage)?;
+        if rotating {
+            return Err(blocked());
+        }
         let queued: Option<Vec<u8>> = tx
             .query_row(
                 "SELECT envelope FROM sync_v2_outbox WHERE workspace_id=?1 AND record_id=?2",
@@ -256,7 +272,7 @@ impl Database {
         after: u64,
         changes: &[PulledRecord],
         checkpoint: &SealedWorkspaceCheckpoint,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<()> {
         self.stage_sync_v2_pull_with_apply(s, after, changes, checkpoint, key, |_| Ok(()))
     }
@@ -269,7 +285,7 @@ impl Database {
         after: u64,
         changes: &[PulledRecord],
         checkpoint: &SealedWorkspaceCheckpoint,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
     ) -> AppResult<()> {
         self.stage_sync_v2_pull_options(s, after, changes, checkpoint, key, false, apply)
@@ -280,7 +296,7 @@ impl Database {
         after: u64,
         changes: &[PulledRecord],
         checkpoint: &SealedWorkspaceCheckpoint,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         allow_pending: bool,
         apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
     ) -> AppResult<()> {
@@ -429,6 +445,7 @@ impl Database {
         let verified =
             open_workspace_checkpoint(s.owner_id, s.workspace_id, key, checkpoint, &manifest)?;
         accept_checkpoint_in_transaction(&tx, s.workspace_id, &verified)?;
+        tx.execute("DELETE FROM sync_v2_rotation_batches WHERE workspace_id=?1 AND checkpoint_counter<=?2 AND through_change_seq<=?3",params![s.workspace_id.to_string(),verified.checkpoint_counter as i64,verified.through_change_seq as i64]).map_err(storage)?;
         tx.execute(
             "UPDATE sync_v2_local_streams SET pull_cursor=?2 WHERE workspace_id=?1",
             params![
@@ -556,7 +573,7 @@ mod tests {
                         0
                     ))
                     .unwrap(),
-                14
+                15
             );
             assert_eq!(
                 db.connection

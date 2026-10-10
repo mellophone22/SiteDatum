@@ -102,7 +102,7 @@ fn portable_candidate(
     p: &Prepared,
     local: Option<Value>,
     remote: &crate::sync_v2_record_codec::SealedRecord,
-    key: &[u8; 32],
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
 ) -> AppResult<crate::sync_v2_record_codec::SealedRecord> {
     let mut fields = local;
     if let Some(f) = &mut fields {
@@ -154,7 +154,7 @@ fn portable_candidate(
 fn project_candidate(
     p: &Prepared,
     record: &crate::sync_v2_record_codec::SealedRecord,
-    key: &[u8; 32],
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
 ) -> AppResult<Option<Value>> {
     let fields = open_record(record, key)?.fields;
     if p.kind == 1 {
@@ -232,7 +232,7 @@ fn prepare(
     db: &Database,
     scope: StreamScope,
     changes: &[PulledRecord],
-    key: &[u8; 32],
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
 ) -> AppResult<Vec<Prepared>> {
     prepare_policy(db, scope, changes, key, false)
 }
@@ -240,7 +240,7 @@ fn prepare_policy(
     db: &Database,
     scope: StreamScope,
     changes: &[PulledRecord],
-    key: &[u8; 32],
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     allow_conflicts: bool,
 ) -> AppResult<Vec<Prepared>> {
     let mut identities: std::collections::HashMap<
@@ -625,7 +625,7 @@ impl Database {
         s: StreamScope,
         local_id: &str,
         key_version: u32,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<crate::sync_v2_record_codec::SealedRecord> {
         let tx = self.connection.transaction().map_err(sql)?;
         crate::sync_v2_local_queue::scope(&tx, s)?;
@@ -690,7 +690,7 @@ impl Database {
         register: Uuid,
         task: Uuid,
         key_version: u32,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<crate::sync_v2_record_codec::SealedRecord> {
         let binding = crate::sync_v2_relationship_adapters::Binding {
             kind,
@@ -734,7 +734,7 @@ impl Database {
     pub(crate) fn applied_sync_v2_receipt(
         &self,
         s: StreamScope,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         backups: &Path,
     ) -> AppResult<Option<AppliedReceipt>> {
         let pending:bool=self.connection.query_row("SELECT EXISTS(SELECT 1 FROM sync_v2_outbox WHERE workspace_id=?1) OR EXISTS(SELECT 1 FROM sync_v2_record_conflicts WHERE workspace_id=?1 AND resolved_counter IS NULL)",[s.workspace_id.to_string()],|r|r.get(0)).map_err(sql)?;
@@ -799,7 +799,7 @@ impl Database {
         after: u64,
         changes: &[PulledRecord],
         cp: &SealedWorkspaceCheckpoint,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         backups: &Path,
     ) -> AppResult<PullOutcome> {
         let mut prepared = prepare_policy(self, s, changes, key, true)?;
@@ -914,7 +914,7 @@ impl Database {
         id: Uuid,
         counter: u64,
         choice: ConflictChoice,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<()> {
         if counter == 0 || counter > crate::sync_v2_record_codec::MAX_SAFE_INTEGER {
             return Err(refused());
@@ -948,6 +948,7 @@ impl Database {
         open_record(&remote, key)?;
         let resolution = if choice == ConflictChoice::KeepLocal {
             let mut h = remote.header.clone();
+            h.workspace_key_version = key.write_version().unwrap_or(h.workspace_key_version);
             h.expected_server_version += 1;
             h.mutation_id = Uuid::new_v4();
             h.tombstone = local.header.tombstone;
@@ -961,7 +962,7 @@ impl Database {
     pub(crate) fn apply_buffered_sync_v2_records(
         &mut self,
         s: StreamScope,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         backups: &Path,
     ) -> AppResult<PullOutcome> {
         let (after, changes, cp) = self.buffered_sync_v2_batch(s)?;
@@ -973,7 +974,7 @@ impl Database {
         &mut self,
         scope: StreamScope,
         record: &crate::sync_v2_record_codec::SealedRecord,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<()> {
         crate::sync_v2_record_codec::validate_header(&record.header)?;
         let change = PulledRecord {
@@ -993,7 +994,7 @@ impl Database {
         after: u64,
         changes: &[PulledRecord],
         checkpoint: &SealedWorkspaceCheckpoint,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
         backup_directory: &Path,
     ) -> AppResult<BackupInfo> {
         let prepared = prepare(self, scope, changes, key)?;

@@ -91,7 +91,7 @@ pub(crate) fn seal_workspace_checkpoint(
     owner_id: Uuid,
     workspace_id: Uuid,
     workspace_key_version: u32,
-    workspace_key: &[u8; 32],
+    workspace_key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     checkpoint_counter: u64,
     through_change_seq: u64,
     manifest: &[RecordManifestEntry],
@@ -114,6 +114,7 @@ pub(crate) fn seal_workspace_checkpoint(
             "Operating-system random generation failed: {error}"
         ))
     })?;
+    let workspace_key = workspace_key.select(owner_id, workspace_id, workspace_key_version)?;
     let cipher = XChaCha20Poly1305::new(workspace_key.into());
     let encrypted = cipher
         .encrypt(
@@ -145,7 +146,7 @@ pub(crate) fn seal_workspace_checkpoint(
 pub(crate) fn open_workspace_checkpoint(
     owner_id: Uuid,
     workspace_id: Uuid,
-    workspace_key: &[u8; 32],
+    workspace_key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     envelope: &SealedWorkspaceCheckpoint,
     manifest: &[RecordManifestEntry],
 ) -> AppResult<VerifiedWorkspaceCheckpoint> {
@@ -162,6 +163,8 @@ pub(crate) fn open_workspace_checkpoint(
         envelope.through_change_seq,
     )?;
     let (nonce, encrypted) = envelope.ciphertext.split_at(NONCE_BYTES);
+    let workspace_key =
+        workspace_key.select(owner_id, workspace_id, envelope.workspace_key_version)?;
     let cipher = XChaCha20Poly1305::new(workspace_key.into());
     let plaintext = cipher
         .decrypt(

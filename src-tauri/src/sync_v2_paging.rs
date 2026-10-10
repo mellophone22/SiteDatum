@@ -15,7 +15,7 @@ impl Database {
         start_after: u64,
         page: &[PulledRecord],
         checkpoint: &SealedWorkspaceCheckpoint,
-        key: &[u8; 32],
+        key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
     ) -> AppResult<bool> {
         if page.is_empty()
             || page.len() > 100
