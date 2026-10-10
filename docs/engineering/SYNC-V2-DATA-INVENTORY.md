@@ -80,6 +80,16 @@ Sync v2 never uploads, downloads, opens, transforms, indexes, or deletes project
 
 ## Change control
 
+C10-04B's schema-1 content codecs implement this inventory as an explicit field
+allowlist. Local absolute paths are replaced by typed portable references;
+template title JSON is represented as bounded text arrays. These conversions
+add no data category. Hosted kind codes and the encrypted work-item/template
+subtype are recorded in `C10-04B-ENCRYPTED-LOCAL-QUEUE.md`. Local stream state,
+encrypted staging snapshots/outbox, and staging acknowledgements are excluded
+from replicated content and CSV portability. Later adapters must validate
+dependency relationships, local ID mapping, and safe filesystem rebasing before
+any live project application.
+
 Adding an entity or field requires all of the following in the same work package:
 
 1. update this inventory and the user-facing consent categories;

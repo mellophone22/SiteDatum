@@ -144,6 +144,13 @@ manifest over record IDs, revisions, workspace-key versions, and tombstone
 state; an XChaCha20-Poly1305 authenticated encrypted checkpoint bound to its
 owner/workspace routing metadata; and a durable local-only high-water anchor
 that rejects rollback and equal-counter substitution after restart. This code
-has no command or UI and does not enable Sync. Encrypted record codecs,
-outbox/cursor/device acknowledgements, atomic local apply, conflict handling,
-recovery anchors, and deterministic two-computer scenarios remain pending.
+has no command or UI and does not enable Sync. C10-04B now adds explicit
+versioned codecs for every inventoried record category, authenticated encrypted
+records/tombstones, an atomic encrypted staging outbox, exact receipt retries,
+and durable checkpoint-covered pull cursor/device staging acknowledgements.
+Thirteen focused tests include restart, injected transaction failures, corrupt
+and omitted pages, and competing fictional offline edits. These acknowledgements
+prove staging only and cannot authorize tombstone compaction. Live project
+adapters/application with safety backups, conflict resolution, partial paging,
+key rotation, recovery anchors, and comprehensive two-computer scenarios remain
+pending in C10-04C and later slices. See `C10-04B-ENCRYPTED-LOCAL-QUEUE.md`.

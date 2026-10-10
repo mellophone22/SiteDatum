@@ -23,11 +23,11 @@ pub struct Database {
     pub(crate) connection: Connection,
 }
 
-const LATEST_MIGRATION_VERSION: i64 = 11;
+const LATEST_MIGRATION_VERSION: i64 = 12;
 const LEGACY_CLOUD_SYNC_ACCESS_KEY: &str = "legacy_cloud_sync_access";
 const LEGACY_CLOUD_SYNC_DISABLED_KEY: &str = "legacy_cloud_sync_disabled";
 
-fn migrations() -> [(i64, &'static str); 11] {
+fn migrations() -> [(i64, &'static str); 12] {
     [
         (1_i64, include_str!("../migrations/0001_foundation.sql")),
         (2_i64, include_str!("../migrations/0002_projects.sql")),
@@ -42,6 +42,10 @@ fn migrations() -> [(i64, &'static str); 11] {
         (
             11_i64,
             include_str!("../migrations/0011_sync_v2_checkpoint_anchors.sql"),
+        ),
+        (
+            12_i64,
+            include_str!("../migrations/0012_sync_v2_local_queue.sql"),
         ),
     ]
 }
@@ -1701,7 +1705,7 @@ mod tests {
             .file_name()
             .unwrap()
             .to_string_lossy()
-            .starts_with("pre-migration-v9-to-v11-"));
+            .starts_with("pre-migration-v9-to-v12-"));
         let backup = Connection::open(&backup_paths[0]).unwrap();
         assert_eq!(super::current_migration_version(&backup).unwrap(), 9);
         assert_representative_version_nine_records(&backup, &ordinary_file);
@@ -1782,7 +1786,7 @@ mod tests {
             database
                 .connection
                 .execute(
-                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(12, '2026-10-02T00:00:00Z')",
+                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(13, '2026-10-02T00:00:00Z')",
                     [],
                 )
                 .unwrap();

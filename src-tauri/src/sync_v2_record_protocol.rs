@@ -222,7 +222,25 @@ impl Database {
             ));
         }
         let transaction = self.connection.transaction().map_err(database_error)?;
-        let existing = transaction
+        let acceptance = accept_checkpoint_in_transaction(&transaction, workspace_id, checkpoint)?;
+        transaction.commit().map_err(database_error)?;
+        Ok(acceptance)
+    }
+}
+
+pub(crate) fn accept_checkpoint_in_transaction(
+    transaction: &rusqlite::Transaction<'_>,
+    workspace_id: Uuid,
+    checkpoint: &VerifiedWorkspaceCheckpoint,
+) -> AppResult<CheckpointAcceptance> {
+    if checkpoint.checkpoint_counter == 0
+        || checkpoint.through_change_seq == 0
+        || checkpoint.checkpoint_counter > i64::MAX as u64
+        || checkpoint.through_change_seq > i64::MAX as u64
+    {
+        return Err(checkpoint_invalid("Checkpoint storage bounds failed."));
+    }
+    let existing = transaction
             .query_row(
                 "SELECT checkpoint_counter, checkpoint_digest, through_change_seq FROM sync_v2_checkpoint_anchors WHERE workspace_id = ?1",
                 [workspace_id.to_string()],
@@ -230,31 +248,31 @@ impl Database {
             )
             .optional()
             .map_err(database_error)?;
-        if let Some((counter, digest, through)) = existing {
-            let new_counter = checkpoint.checkpoint_counter as i64;
-            if new_counter < counter {
-                return Err(checkpoint_rollback(
-                    "The checkpoint counter is lower than this computer's durable anchor.",
-                ));
-            }
-            if new_counter == counter {
-                if digest.as_slice() != checkpoint.manifest_digest
-                    || through != checkpoint.through_change_seq as i64
-                {
-                    return Err(checkpoint_rollback(
-                        "The checkpoint reused an accepted counter with different content.",
-                    ));
-                }
-                return Ok(CheckpointAcceptance::AlreadyAccepted);
-            }
-            if checkpoint.through_change_seq as i64 <= through {
-                return Err(checkpoint_rollback(
-                    "A newer checkpoint did not advance the authenticated change cursor.",
-                ));
-            }
+    if let Some((counter, digest, through)) = existing {
+        let new_counter = checkpoint.checkpoint_counter as i64;
+        if new_counter < counter {
+            return Err(checkpoint_rollback(
+                "The checkpoint counter is lower than this computer's durable anchor.",
+            ));
         }
+        if new_counter == counter {
+            if digest.as_slice() != checkpoint.manifest_digest
+                || through != checkpoint.through_change_seq as i64
+            {
+                return Err(checkpoint_rollback(
+                    "The checkpoint reused an accepted counter with different content.",
+                ));
+            }
+            return Ok(CheckpointAcceptance::AlreadyAccepted);
+        }
+        if checkpoint.through_change_seq as i64 <= through {
+            return Err(checkpoint_rollback(
+                "A newer checkpoint did not advance the authenticated change cursor.",
+            ));
+        }
+    }
 
-        transaction
+    transaction
             .execute(
                 "INSERT INTO sync_v2_checkpoint_anchors (workspace_id, protocol_version, checkpoint_counter, checkpoint_digest, through_change_seq, updated_at_utc) VALUES (?1, 1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(workspace_id) DO UPDATE SET checkpoint_counter = excluded.checkpoint_counter, checkpoint_digest = excluded.checkpoint_digest, through_change_seq = excluded.through_change_seq, updated_at_utc = excluded.updated_at_utc",
                 params![
@@ -265,9 +283,7 @@ impl Database {
                 ],
             )
             .map_err(database_error)?;
-        transaction.commit().map_err(database_error)?;
-        Ok(CheckpointAcceptance::Advanced)
-    }
+    Ok(CheckpointAcceptance::Advanced)
 }
 
 fn checkpoint_aad(
