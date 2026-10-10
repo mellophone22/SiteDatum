@@ -64,4 +64,6 @@ Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BO
 
 - **C10-04C3 — project adapter/local mapping:** adds backed-up project application with explicit portable-root projection under the existing device-local root, project/task dependency ordering, reference-preserving deletion and collision/reparse-point/path reassignment refusal. No document operation or customer activation is added. Remaining adapters and other C10-04C gates stay pending. Evidence: `docs/engineering/C10-04C3-PROJECT-ADAPTER.md`.
 
+- **C10-04C4 — RFI/submittal adapters:** adds exact allowlisted register metadata application, lifecycle validation, project/link/parent checks, cycle refusal and cascade-preserving tombstone guards. Eight focused scenarios extend safe-apply coverage to 28 tests. New relationship/attachment/file envelopes, other adapters and runtime activation remain pending. Evidence: `docs/engineering/C10-04C4-RFI-SUBMITTAL-ADAPTERS.md`.
+
 No commercial work package authorizes production provider accounts, secrets, deployment, or telemetry for a later package. Resolve and record its required founder decisions before implementation.

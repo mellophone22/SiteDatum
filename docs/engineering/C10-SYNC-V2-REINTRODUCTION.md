@@ -175,3 +175,9 @@ Existing local project paths cannot be redirected by remote edits; reserved
 names, reparse points, path collisions and orphaning project deletions fail
 closed. No document operation, applied-device receipt or runtime Sync activation
 is added. See `C10-04C3-PROJECT-ADAPTER.md` for proof tests and remaining gates.
+
+C10-04C4 adds exact RFI/submittal metadata application with lifecycle validation,
+existing link/parent checks, parent-cycle refusal and guards against cascading
+deletion of links or attachment references. New relationship/attachment envelopes
+remain unsupported. No document operation or customer activation is added. See
+`C10-04C4-RFI-SUBMITTAL-ADAPTERS.md` for evidence and remaining work.

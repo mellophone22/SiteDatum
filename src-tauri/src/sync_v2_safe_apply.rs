@@ -1,4 +1,4 @@
-//! C10-04C1-C3: dormant, fail-closed project/task/notes/contact adapters.
+//! C10-04C1-C4: dormant, fail-closed project/register/task/notes/contact adapters.
 //! No transport, document operations, or commands.
 #![allow(dead_code)]
 
@@ -36,6 +36,7 @@ fn timestamp_order(value: &str) -> (&str, String) {
 fn live(connection: &Connection, kind: u8, id: Uuid) -> AppResult<Option<Value>> {
     let id = id.to_string();
     match kind {
+        3 | 4 => crate::sync_v2_register_adapters::live(connection,kind,Uuid::parse_str(&id).map_err(|_|invalid())?),
         1 => connection.query_row(
             "SELECT id,number,name,status,phase,custom_phase_name,customer,general_contractor,engineer,project_manager,superintendent,location,start_date,target_date,description,important_notes,project_path,is_pinned,archived_at_utc,created_at_utc,updated_at_utc FROM projects WHERE id=?1",
             [id], |r| Ok(json!({"id":r.get::<_,String>(0)?,"number":r.get::<_,String>(1)?,"name":r.get::<_,String>(2)?,"status":r.get::<_,String>(3)?,"phase":r.get::<_,String>(4)?,"custom_phase_name":r.get::<_,Option<String>>(5)?,"customer":r.get::<_,Option<String>>(6)?,"general_contractor":r.get::<_,Option<String>>(7)?,"engineer":r.get::<_,Option<String>>(8)?,"project_manager":r.get::<_,Option<String>>(9)?,"superintendent":r.get::<_,Option<String>>(10)?,"location":r.get::<_,Option<String>>(11)?,"start_date":r.get::<_,Option<String>>(12)?,"target_date":r.get::<_,Option<String>>(13)?,"description":r.get::<_,Option<String>>(14)?,"important_notes":r.get::<_,Option<String>>(15)?,"project_path":r.get::<_,String>(16)?,"is_pinned":r.get::<_,bool>(17)?,"archived_at_utc":r.get::<_,Option<String>>(18)?,"created_at_utc":r.get::<_,String>(19)?,"updated_at_utc":r.get::<_,String>(20)?})),
@@ -105,7 +106,7 @@ fn prepare(
     };
     changes.iter().map(|change| {
         let h = &change.record.header;
-        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,1|2|10|11) {
+        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,1|2|3|4|10|11) {
             return Err(refused());
         }
         let mut after = open_record(&change.record,key)?.fields;
@@ -113,12 +114,13 @@ fn prepare(
         if let Some(fields) = &after {
             // Preserve exact identity rather than silently canonicalizing UUID
             // text during SQL application (SQLite text keys are case-sensitive).
-            for field in ["id","project_id","related_contact_id"] {
+            for field in ["id","project_id","related_contact_id","parent_submittal_id"] {
                 if let Some(value)=fields.get(field).and_then(Value::as_str) {
                     if Uuid::parse_str(value).map_err(|_|invalid())?.to_string()!=value {return Err(refused());}
                 }
             }
-            let required = match h.record_kind {2=>"title",10=>"body",_=>"name"};
+            if matches!(h.record_kind,3|4) {crate::sync_v2_register_adapters::validate(h.record_kind,fields)?;}
+            let required = match h.record_kind {2=>"title",3=>"subject",10=>"body",_=>"name"};
             if fields[required].as_str().is_none_or(|s|s.trim().is_empty()) {
                 return Err(refused());
             }
@@ -175,6 +177,10 @@ fn nullable<'a>(fields: &'a Value, name: &str) -> AppResult<Option<&'a str>> {
     }
 }
 fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
+    // Allows a submittal child before its parent in the verified stream. Final
+    // FK and ancestry validation still runs before this transaction can commit.
+    tx.execute_batch("PRAGMA defer_foreign_keys=ON;")
+        .map_err(sql)?;
     // Check every baseline before any adapter changes dependency rows.
     for record in records {
         if live(tx, record.kind, record.id)? != record.before {
@@ -188,8 +194,10 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
         (1, true) => -1,
         (11, true) => 0,
         (2, true) => 1,
+        (3 | 4, true) => 2,
         (10, true) => 2,
         (10, false) => 3,
+        (3 | 4, false) => 3,
         (2, false) => 4,
         (11, false) => 5,
         (1, false) => 6,
@@ -198,6 +206,8 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
     for record in ordered {
         let id = record.id.to_string();
         match (record.kind, &record.after) {
+            (3 | 4, Some(f)) => crate::sync_v2_register_adapters::upsert(tx, record.kind, f)?,
+            (3 | 4, None) => crate::sync_v2_register_adapters::delete(tx, record.kind, record.id)?,
             (1, Some(f)) => {
                 crate::sync_v2_project_paths::verify_local_path(
                     record.project_root.as_deref().ok_or_else(refused)?,
@@ -281,6 +291,9 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
             }
             _ => return Err(refused()),
         }
+    }
+    if records.iter().any(|r| matches!(r.kind, 3 | 4)) {
+        crate::sync_v2_register_adapters::validate_relationships(tx)?;
     }
     let violations: bool = tx
         .prepare("PRAGMA foreign_key_check")
@@ -548,7 +561,7 @@ mod tests {
         let omitted = record("Omitted record");
         assert!(f.run(0, &[r.clone()], &[r.clone(), omitted]).is_err());
         let mut unsupported = r.clone();
-        unsupported.header.record_kind = 3;
+        unsupported.header.record_kind = 7;
         assert!(f.run(0, &[unsupported.clone()], &[unsupported]).is_err());
         assert_eq!(cursor(&f), 0);
         assert_eq!(std::fs::read_dir(&f.root).unwrap().count(), 0);
@@ -842,7 +855,9 @@ mod tests {
                 [path.to_str().unwrap()],
             )
             .unwrap();
-        path
+        // Windows hosted runners may expose TEMP through an 8.3 alias. Expected
+        // paths must use the same canonical root as production mapping.
+        crate::sync_v2_project_paths::selected_root(&f.db).unwrap()
     }
     fn project_record(component: &str) -> SealedRecord {
         let h = header(1);
@@ -978,5 +993,295 @@ mod tests {
             root.join("Fictional").to_str().unwrap()
         );
         assert_eq!(std::fs::read_dir(root).unwrap().count(), 0);
+    }
+    fn rfi_record(project: Uuid) -> SealedRecord {
+        let h = header(3);
+        seal_record(h.clone(),&KEY,&RecordContent {schema_version:1,fields:Some(json!({"id":h.record_id.to_string(),"project_id":project.to_string(),"number":"F-RFI-1","subject":"Fictional RFI","question":"Fictional question","recipient":"Fictional engineer","status":"open","created_date":"2026-10-10","submitted_date":"2026-10-10","response_due_date":"2026-10-15","response_received_date":null,"response":null,"notes":"Fictional notes","rfi_location":"Fictional location","drawing_number":"F-DWG-1","cost_impact":"None","time_delay":"None","suggested_solution":"Fictional suggestion","requested_by":"Fictional requester","created_at_utc":"2026-10-10T00:00:00Z","updated_at_utc":"2026-10-10T00:00:00Z"}))}).unwrap()
+    }
+    fn submittal_record(project: Uuid, parent: Option<Uuid>, revision: &str) -> SealedRecord {
+        let h = header(4);
+        seal_record(h.clone(),&KEY,&RecordContent {schema_version:1,fields:Some(json!({"id":h.record_id.to_string(),"project_id":project.to_string(),"parent_submittal_id":parent.map(|p|p.to_string()),"number":"F-SUB-1","name":"Fictional submittal","package":"Fictional package","revision":revision,"recipient":"Fictional reviewer","status":"approved","disposition":"approved","created_date":"2026-10-10","submitted_date":"2026-10-10","response_date":"2026-10-10","resubmission_required":false,"notes":"Fictional notes","created_at_utc":"2026-10-10T00:00:00Z","updated_at_utc":"2026-10-10T00:00:00Z"}))}).unwrap()
+    }
+    fn next_record(record: &SealedRecord, change: impl FnOnce(&mut Value)) -> SealedRecord {
+        let mut h = record.header.clone();
+        h.expected_server_version += 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(record, &KEY).unwrap();
+        change(content.fields.as_mut().unwrap());
+        seal_record(h, &KEY, &content).unwrap()
+    }
+    #[test]
+    fn register_fields_parent_order_backup_and_exact_retry() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let r = rfi_record(p);
+        let parent = submittal_record(p, None, "0");
+        let child = submittal_record(p, Some(parent.header.record_id), "1");
+        let rows = [child.clone(), r.clone(), parent.clone()];
+        let backup = f.run(0, &rows, &rows).unwrap();
+        let preview = recovery::preview(Path::new(&backup.path)).unwrap();
+        assert_eq!(preview.rfis, 0);
+        assert_eq!(preview.submittals, 0);
+        for row in &rows {
+            assert_eq!(
+                live(
+                    &f.db.connection,
+                    row.header.record_kind,
+                    row.header.record_id
+                )
+                .unwrap(),
+                open_record(row, &KEY).unwrap().fields
+            );
+        }
+        f.run(0, &rows, &rows).unwrap();
+        assert_eq!(cursor(&f), 3);
+    }
+    #[test]
+    fn invalid_register_lifecycle_refuses_entire_page() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let r = rfi_record(p);
+        let sub = submittal_record(p, None, "0");
+        for (row, field, value) in [
+            (&r, "recipient", Value::Null),
+            (&r, "question", json!(" ")),
+            (&sub, "response_date", Value::Null),
+            (&sub, "disposition", json!("rejected")),
+        ] {
+            let mut content = open_record(row, &KEY).unwrap();
+            content.fields.as_mut().unwrap()[field] = value;
+            let invalid = seal_record(row.header.clone(), &KEY, &content).unwrap();
+            let note = record("Must not partially apply");
+            assert!(f
+                .run(
+                    0,
+                    &[note.clone(), invalid.clone()],
+                    &[note.clone(), invalid]
+                )
+                .is_err());
+            assert_eq!(cursor(&f), 0);
+            assert!(live(&f.db.connection, 10, note.header.record_id)
+                .unwrap()
+                .is_none());
+        }
+        let mut content = open_record(&r, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["status"] = json!("closed");
+        let closed = seal_record(r.header.clone(), &KEY, &content).unwrap();
+        assert!(f.run(0, &[closed.clone()], &[closed]).is_err());
+        assert_eq!(cursor(&f), 0);
+    }
+    #[test]
+    fn submittal_parent_cycles_missing_and_cross_project_refused() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let missing = submittal_record(p, Some(Uuid::new_v4()), "0");
+        assert!(f.run(0, &[missing.clone()], &[missing]).is_err());
+        let parent = submittal_record(p, None, "0");
+        let other = Uuid::new_v4();
+        f.db.connection.execute("INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES(?1,'F-PARENT-OTHER','Fictional other','C:\\Fictional\\ParentOther','2026-10-10T00:00:00Z','2026-10-10T00:00:00Z')",[other.to_string()]).unwrap();
+        let child = submittal_record(other, Some(parent.header.record_id), "1");
+        assert!(f
+            .run(
+                0,
+                &[parent.clone(), child.clone()],
+                &[parent.clone(), child]
+            )
+            .is_err());
+        let child = submittal_record(p, Some(parent.header.record_id), "1");
+        let mut content = open_record(&parent, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["parent_submittal_id"] =
+            json!(child.header.record_id.to_string());
+        let cyclic = seal_record(parent.header.clone(), &KEY, &content).unwrap();
+        assert!(f
+            .run(0, &[cyclic.clone(), child.clone()], &[cyclic, child])
+            .is_err());
+        let mut content = open_record(&parent, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["parent_submittal_id"] =
+            json!(parent.header.record_id.to_string());
+        let self_parent = seal_record(parent.header.clone(), &KEY, &content).unwrap();
+        assert!(f.run(0, &[self_parent.clone()], &[self_parent]).is_err());
+        assert_eq!(cursor(&f), 0);
+        let child = submittal_record(p, Some(parent.header.record_id), "1");
+        f.run(
+            0,
+            &[parent.clone(), child.clone()],
+            &[parent.clone(), child.clone()],
+        )
+        .unwrap();
+        let cyclic_update = next_record(&parent, |v| {
+            v["parent_submittal_id"] = json!(child.header.record_id.to_string())
+        });
+        assert!(f
+            .run(2, &[cyclic_update.clone()], &[cyclic_update, child])
+            .is_err());
+        assert_eq!(cursor(&f), 2);
+        assert!(live(&f.db.connection, 4, parent.header.record_id)
+            .unwrap()
+            .unwrap()["parent_submittal_id"]
+            .is_null());
+    }
+    #[test]
+    fn register_local_edits_and_unknown_project_are_preserved() {
+        let mut f = Fixture::new();
+        let missing = rfi_record(Uuid::new_v4());
+        assert!(f.run(0, &[missing.clone()], &[missing]).is_err());
+        let p = project(&f);
+        let r = rfi_record(p);
+        let s = submittal_record(p, None, "0");
+        f.run(0, &[r.clone(), s.clone()], &[r.clone(), s.clone()])
+            .unwrap();
+        f.db.connection
+            .execute("UPDATE rfis SET question='Local RFI edit'", [])
+            .unwrap();
+        let remote = next_record(&r, |v| v["question"] = json!("Remote RFI edit"));
+        assert!(f.run(2, &[remote.clone()], &[remote, s.clone()]).is_err());
+        f.db.connection
+            .execute("UPDATE submittals SET notes='Local submittal edit'", [])
+            .unwrap();
+        let remote = next_record(&s, |v| v["notes"] = json!("Remote submittal edit"));
+        assert!(f.run(2, &[remote.clone()], &[r.clone(), remote]).is_err());
+        assert_eq!(cursor(&f), 2);
+        assert_eq!(
+            live(&f.db.connection, 3, r.header.record_id)
+                .unwrap()
+                .unwrap()["question"],
+            "Local RFI edit"
+        );
+        assert_eq!(
+            live(&f.db.connection, 4, s.header.record_id)
+                .unwrap()
+                .unwrap()["notes"],
+            "Local submittal edit"
+        );
+    }
+    #[test]
+    fn register_tombstones_refuse_cascades_and_preserve_documents() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let r = rfi_record(p);
+        let s = submittal_record(p, None, "0");
+        f.run(0, &[r.clone(), s.clone()], &[r.clone(), s.clone()])
+            .unwrap();
+        let path = f.root.join("fictional-sentinel.txt");
+        std::fs::write(&path, b"Fictional document").unwrap();
+        f.db.connection.execute("INSERT INTO rfi_attachment_references(id,rfi_id,file_path,display_name,created_at_utc) VALUES(?1,?2,?3,'Fictional','2026-10-10T00:00:00Z')",params![Uuid::new_v4().to_string(),r.header.record_id.to_string(),path.to_str().unwrap()]).unwrap();
+        f.db.connection.execute("INSERT INTO submittal_attachment_references(id,submittal_id,file_path,display_name,created_at_utc) VALUES(?1,?2,?3,'Fictional','2026-10-10T00:00:00Z')",params![Uuid::new_v4().to_string(),s.header.record_id.to_string(),path.to_str().unwrap()]).unwrap();
+        let rd = tombstone(&r);
+        let sd = tombstone(&s);
+        assert!(f.run(2, &[rd.clone()], &[rd, s.clone()]).is_err());
+        assert!(f.run(2, &[sd.clone()], &[r.clone(), sd]).is_err());
+        assert_eq!(cursor(&f), 2);
+        assert_eq!(std::fs::read(path).unwrap(), b"Fictional document");
+        for table in [
+            "rfi_attachment_references",
+            "submittal_attachment_references",
+        ] {
+            assert_eq!(
+                f.db.connection
+                    .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r
+                        .get::<_, i64>(0))
+                    .unwrap(),
+                1
+            );
+        }
+    }
+    #[test]
+    fn linked_register_reassignment_and_deletion_refused() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let r = rfi_record(p);
+        let s = submittal_record(p, None, "0");
+        let t = task_record(p, None);
+        f.run(
+            0,
+            &[r.clone(), s.clone(), t.clone()],
+            &[r.clone(), s.clone(), t.clone()],
+        )
+        .unwrap();
+        f.db.connection.execute("INSERT INTO rfi_task_relationships(rfi_id,task_id,created_at_utc) VALUES(?1,?2,'2026-10-10T00:00:00Z')",params![r.header.record_id.to_string(),t.header.record_id.to_string()]).unwrap();
+        f.db.connection.execute("INSERT INTO submittal_task_relationships(submittal_id,task_id,created_at_utc) VALUES(?1,?2,'2026-10-10T00:00:00Z')",params![s.header.record_id.to_string(),t.header.record_id.to_string()]).unwrap();
+        let other = Uuid::new_v4();
+        f.db.connection.execute("INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES(?1,'F-OTHER','Fictional other','C:\\Fictional\\Other','2026-10-10T00:00:00Z','2026-10-10T00:00:00Z')",[other.to_string()]).unwrap();
+        for row in [&r, &s] {
+            let moved = next_record(row, |v| v["project_id"] = json!(other.to_string()));
+            let manifest = if row.header.record_kind == 3 {
+                vec![moved.clone(), s.clone(), t.clone()]
+            } else {
+                vec![r.clone(), moved.clone(), t.clone()]
+            };
+            assert!(f.run(3, &[moved], &manifest).is_err());
+            let deleted = tombstone(row);
+            let manifest = if row.header.record_kind == 3 {
+                vec![deleted.clone(), s.clone(), t.clone()]
+            } else {
+                vec![r.clone(), deleted.clone(), t.clone()]
+            };
+            assert!(f.run(3, &[deleted], &manifest).is_err());
+        }
+        assert_eq!(cursor(&f), 3);
+    }
+    #[test]
+    fn register_uniqueness_and_parent_delete_preserve_all_rows() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let r = rfi_record(p);
+        let duplicate = rfi_record(p);
+        assert!(f
+            .run(0, &[r.clone(), duplicate.clone()], &[r.clone(), duplicate])
+            .is_err());
+        let parent = submittal_record(p, None, "0");
+        let child = submittal_record(p, Some(parent.header.record_id), "1");
+        f.run(
+            0,
+            &[r.clone(), parent.clone(), child.clone()],
+            &[r.clone(), parent.clone(), child.clone()],
+        )
+        .unwrap();
+        let deleted = tombstone(&parent);
+        assert!(f
+            .run(3, &[deleted.clone()], &[r.clone(), deleted, child.clone()])
+            .is_err());
+        assert_eq!(cursor(&f), 3);
+        assert!(live(&f.db.connection, 4, parent.header.record_id)
+            .unwrap()
+            .is_some());
+    }
+    #[test]
+    fn valid_register_updates_and_unreferenced_tombstones_are_recoverable() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let r = rfi_record(p);
+        let s = submittal_record(p, None, "0");
+        f.run(0, &[r.clone(), s.clone()], &[r.clone(), s.clone()])
+            .unwrap();
+        let closed = next_record(&r, |v| {
+            v["status"] = json!("closed");
+            v["response"] = json!("Fictional answer");
+            v["response_received_date"] = json!("2026-10-10");
+        });
+        let closed_s = next_record(&s, |v| v["status"] = json!("closed"));
+        f.run(
+            2,
+            &[closed.clone(), closed_s.clone()],
+            &[closed.clone(), closed_s.clone()],
+        )
+        .unwrap();
+        assert_eq!(
+            live(&f.db.connection, 3, r.header.record_id).unwrap(),
+            open_record(&closed, &KEY).unwrap().fields
+        );
+        let rd = tombstone(&closed);
+        let sd = tombstone(&closed_s);
+        let backup = f.run(4, &[rd.clone(), sd.clone()], &[rd, sd]).unwrap();
+        let preview = recovery::preview(Path::new(&backup.path)).unwrap();
+        assert_eq!(preview.rfis, 1);
+        assert_eq!(preview.submittals, 1);
+        assert!(live(&f.db.connection, 3, r.header.record_id)
+            .unwrap()
+            .is_none());
+        assert!(live(&f.db.connection, 4, s.header.record_id)
+            .unwrap()
+            .is_none());
+        assert_eq!(cursor(&f), 6);
     }
 }
