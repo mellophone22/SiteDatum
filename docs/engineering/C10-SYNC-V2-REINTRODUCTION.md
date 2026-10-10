@@ -169,3 +169,9 @@ exact field preservation and safe local dependency ordering. Task deletion or
 project reassignment cannot orphan existing RFI/submittal relationships. No
 customer runtime or Sync transport is enabled. Full adapter coverage and other
 C10-04C gates remain pending; see `C10-04C2-TASK-ADAPTER.md`.
+
+C10-04C3 adds projects and conservative device-local portable-root mapping.
+Existing local project paths cannot be redirected by remote edits; reserved
+names, reparse points, path collisions and orphaning project deletions fail
+closed. No document operation, applied-device receipt or runtime Sync activation
+is added. See `C10-04C3-PROJECT-ADAPTER.md` for proof tests and remaining gates.

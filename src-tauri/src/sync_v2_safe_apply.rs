@@ -1,4 +1,4 @@
-//! C10-04C1/C2: dormant, fail-closed task/notes/contact adapters.
+//! C10-04C1-C3: dormant, fail-closed project/task/notes/contact adapters.
 //! No transport, document operations, or commands.
 #![allow(dead_code)]
 
@@ -36,6 +36,10 @@ fn timestamp_order(value: &str) -> (&str, String) {
 fn live(connection: &Connection, kind: u8, id: Uuid) -> AppResult<Option<Value>> {
     let id = id.to_string();
     match kind {
+        1 => connection.query_row(
+            "SELECT id,number,name,status,phase,custom_phase_name,customer,general_contractor,engineer,project_manager,superintendent,location,start_date,target_date,description,important_notes,project_path,is_pinned,archived_at_utc,created_at_utc,updated_at_utc FROM projects WHERE id=?1",
+            [id], |r| Ok(json!({"id":r.get::<_,String>(0)?,"number":r.get::<_,String>(1)?,"name":r.get::<_,String>(2)?,"status":r.get::<_,String>(3)?,"phase":r.get::<_,String>(4)?,"custom_phase_name":r.get::<_,Option<String>>(5)?,"customer":r.get::<_,Option<String>>(6)?,"general_contractor":r.get::<_,Option<String>>(7)?,"engineer":r.get::<_,Option<String>>(8)?,"project_manager":r.get::<_,Option<String>>(9)?,"superintendent":r.get::<_,Option<String>>(10)?,"location":r.get::<_,Option<String>>(11)?,"start_date":r.get::<_,Option<String>>(12)?,"target_date":r.get::<_,Option<String>>(13)?,"description":r.get::<_,Option<String>>(14)?,"important_notes":r.get::<_,Option<String>>(15)?,"project_path":r.get::<_,String>(16)?,"is_pinned":r.get::<_,bool>(17)?,"archived_at_utc":r.get::<_,Option<String>>(18)?,"created_at_utc":r.get::<_,String>(19)?,"updated_at_utc":r.get::<_,String>(20)?})),
+        ).optional().map_err(sql),
         2 => connection.query_row(
             "SELECT id,project_id,title,description,priority,status,category,due_date,follow_up_date,waiting_since_utc,waiting_on,related_contact_id,created_at_utc,updated_at_utc FROM tasks WHERE id=?1",
             [id], |r| Ok(json!({"id":r.get::<_,String>(0)?,"project_id":r.get::<_,String>(1)?,"title":r.get::<_,String>(2)?,"description":r.get::<_,Option<String>>(3)?,"priority":r.get::<_,String>(4)?,"status":r.get::<_,String>(5)?,"category":r.get::<_,Option<String>>(6)?,"due_date":r.get::<_,Option<String>>(7)?,"follow_up_date":r.get::<_,Option<String>>(8)?,"waiting_since_utc":r.get::<_,Option<String>>(9)?,"waiting_on":r.get::<_,Option<String>>(10)?,"related_contact_id":r.get::<_,Option<String>>(11)?,"created_at_utc":r.get::<_,String>(12)?,"updated_at_utc":r.get::<_,String>(13)?})),
@@ -56,6 +60,37 @@ struct Prepared {
     kind: u8,
     before: Option<Value>,
     after: Option<Value>,
+    project_root: Option<std::path::PathBuf>,
+}
+fn project_fields(mut fields: Option<Value>, root: &Path) -> AppResult<Option<Value>> {
+    if let Some(fields) = &mut fields {
+        let path = crate::sync_v2_project_paths::project_path(root, &fields["portable_root"])?;
+        let input = crate::project::ProjectInput {
+            number: text(fields, "number")?.to_owned(),
+            name: text(fields, "name")?.to_owned(),
+            status: text(fields, "status")?.to_owned(),
+            phase: text(fields, "phase")?.to_owned(),
+            custom_phase_name: nullable(fields, "custom_phase_name")?.map(str::to_owned),
+            customer: nullable(fields, "customer")?.map(str::to_owned),
+            general_contractor: nullable(fields, "general_contractor")?.map(str::to_owned),
+            engineer: nullable(fields, "engineer")?.map(str::to_owned),
+            project_manager: nullable(fields, "project_manager")?.map(str::to_owned),
+            superintendent: nullable(fields, "superintendent")?.map(str::to_owned),
+            location: nullable(fields, "location")?.map(str::to_owned),
+            start_date: nullable(fields, "start_date")?.map(str::to_owned),
+            target_date: nullable(fields, "target_date")?.map(str::to_owned),
+            description: nullable(fields, "description")?.map(str::to_owned),
+            important_notes: nullable(fields, "important_notes")?.map(str::to_owned),
+        };
+        crate::project::validate_input(&input).map_err(|_| refused())?;
+        let object = fields.as_object_mut().ok_or_else(invalid)?;
+        object.remove("portable_root");
+        object.insert(
+            "project_path".to_owned(),
+            json!(path.to_str().ok_or_else(refused)?),
+        );
+    }
+    Ok(fields)
 }
 fn prepare(
     db: &Database,
@@ -63,12 +98,18 @@ fn prepare(
     changes: &[PulledRecord],
     key: &[u8; 32],
 ) -> AppResult<Vec<Prepared>> {
+    let project_root = if changes.iter().any(|c| c.record.header.record_kind == 1) {
+        Some(crate::sync_v2_project_paths::selected_root(db)?)
+    } else {
+        None
+    };
     changes.iter().map(|change| {
         let h = &change.record.header;
-        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,2|10|11) {
+        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,1|2|10|11) {
             return Err(refused());
         }
-        let after = open_record(&change.record,key)?.fields;
+        let mut after = open_record(&change.record,key)?.fields;
+        if h.record_kind==1 {after=project_fields(after,project_root.as_deref().ok_or_else(refused)?)?;}
         if let Some(fields) = &after {
             // Preserve exact identity rather than silently canonicalizing UUID
             // text during SQL application (SQLite text keys are case-sensitive).
@@ -100,7 +141,8 @@ fn prepare(
                 if kind != h.record_kind || old.header.owner_id != scope.owner_id || old.header.workspace_id != scope.workspace_id || old.header.record_id != h.record_id {
                     return Err(refused());
                 }
-                open_record(&old,key)?.fields
+                let fields=open_record(&old,key)?.fields;
+                if h.record_kind==1 {project_fields(fields,project_root.as_deref().ok_or_else(refused)?)?} else {fields}
             },
             None => None,
         };
@@ -109,7 +151,17 @@ fn prepare(
         if before != expected && before != after {
             return Err(refused());
         }
-        Ok(Prepared {id:h.record_id,kind:h.record_kind,before,after})
+        if h.record_kind==1 {
+            if let (Some(before),Some(after))=(&before,&after) {
+                if before["project_path"]!=after["project_path"] {return Err(refused());}
+            } else if before.is_none() {
+                if let Some(after)=&after {
+                    // Never silently adopt a pre-existing folder for a new ID.
+                    if std::fs::symlink_metadata(text(after,"project_path")?).is_ok() {return Err(refused());}
+                }
+            }
+        }
+        Ok(Prepared {id:h.record_id,kind:h.record_kind,before,after,project_root:project_root.clone()})
     }).collect()
 }
 fn text<'a>(fields: &'a Value, name: &str) -> AppResult<&'a str> {
@@ -133,17 +185,47 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
     // order. Stream cursor order is never changed by this local application sort.
     let mut ordered = records.iter().collect::<Vec<_>>();
     ordered.sort_by_key(|r| match (r.kind, r.after.is_some()) {
+        (1, true) => -1,
         (11, true) => 0,
         (2, true) => 1,
         (10, true) => 2,
         (10, false) => 3,
         (2, false) => 4,
         (11, false) => 5,
-        _ => 6,
+        (1, false) => 6,
+        _ => 7,
     });
     for record in ordered {
         let id = record.id.to_string();
         match (record.kind, &record.after) {
+            (1, Some(f)) => {
+                crate::sync_v2_project_paths::verify_local_path(
+                    record.project_root.as_deref().ok_or_else(refused)?,
+                    Path::new(text(f, "project_path")?),
+                )?;
+                if record.before.is_none()
+                    && std::fs::symlink_metadata(text(f, "project_path")?).is_ok()
+                {
+                    return Err(refused());
+                }
+                let target = text(f, "project_path")?.replace('/', "\\").to_uppercase();
+                let mut paths = tx
+                    .prepare("SELECT project_path FROM projects WHERE id<>?1")
+                    .map_err(sql)?;
+                let mut collision = false;
+                for path in paths
+                    .query_map([&id], |r| r.get::<_, String>(0))
+                    .map_err(sql)?
+                {
+                    if path.map_err(sql)?.replace('/', "\\").to_uppercase() == target {
+                        collision = true;
+                    }
+                }
+                if collision {
+                    return Err(refused());
+                }
+                tx.execute("INSERT INTO projects(id,number,name,status,phase,custom_phase_name,customer,general_contractor,engineer,project_manager,superintendent,location,start_date,target_date,description,important_notes,project_path,is_pinned,archived_at_utc,created_at_utc,updated_at_utc) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21) ON CONFLICT(id) DO UPDATE SET number=excluded.number,name=excluded.name,status=excluded.status,phase=excluded.phase,custom_phase_name=excluded.custom_phase_name,customer=excluded.customer,general_contractor=excluded.general_contractor,engineer=excluded.engineer,project_manager=excluded.project_manager,superintendent=excluded.superintendent,location=excluded.location,start_date=excluded.start_date,target_date=excluded.target_date,description=excluded.description,important_notes=excluded.important_notes,project_path=excluded.project_path,is_pinned=excluded.is_pinned,archived_at_utc=excluded.archived_at_utc,created_at_utc=excluded.created_at_utc,updated_at_utc=excluded.updated_at_utc",params![id,text(f,"number")?,text(f,"name")?,text(f,"status")?,text(f,"phase")?,nullable(f,"custom_phase_name")?,nullable(f,"customer")?,nullable(f,"general_contractor")?,nullable(f,"engineer")?,nullable(f,"project_manager")?,nullable(f,"superintendent")?,nullable(f,"location")?,nullable(f,"start_date")?,nullable(f,"target_date")?,nullable(f,"description")?,nullable(f,"important_notes")?,text(f,"project_path")?,f["is_pinned"].as_bool().ok_or_else(invalid)?,nullable(f,"archived_at_utc")?,text(f,"created_at_utc")?,text(f,"updated_at_utc")?]).map_err(sql)?;
+            }
             (2, Some(f)) => {
                 let cross_project:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM rfi_task_relationships l JOIN rfis r ON r.id=l.rfi_id WHERE l.task_id=?1 AND r.project_id<>?2) OR EXISTS(SELECT 1 FROM submittal_task_relationships l JOIN submittals s ON s.id=l.submittal_id WHERE l.task_id=?1 AND s.project_id<>?2)",params![id,text(f,"project_id")?],|r|r.get(0)).map_err(sql)?;
                 if cross_project {
@@ -177,6 +259,10 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
                 // RESTRICT relationships prevent orphaning linked RFI/submittal
                 // work. Their explicit relationship adapters are a later slice.
                 tx.execute("DELETE FROM tasks WHERE id=?1", [id])
+                    .map_err(sql)?;
+            }
+            (1, None) => {
+                tx.execute("DELETE FROM projects WHERE id=?1", [id])
                     .map_err(sql)?;
             }
             (11, None) => {
@@ -462,7 +548,7 @@ mod tests {
         let omitted = record("Omitted record");
         assert!(f.run(0, &[r.clone()], &[r.clone(), omitted]).is_err());
         let mut unsupported = r.clone();
-        unsupported.header.record_kind = 1;
+        unsupported.header.record_kind = 3;
         assert!(f.run(0, &[unsupported.clone()], &[unsupported]).is_err());
         assert_eq!(cursor(&f), 0);
         assert_eq!(std::fs::read_dir(&f.root).unwrap().count(), 0);
@@ -746,5 +832,151 @@ mod tests {
             live(&f.db.connection, 2, t.header.record_id).unwrap(),
             open_record(&updated, &KEY).unwrap().fields
         );
+    }
+    fn mapping_root(f: &Fixture) -> std::path::PathBuf {
+        let path = f.root.join("projects");
+        std::fs::create_dir(&path).unwrap();
+        f.db.connection
+            .execute(
+                "INSERT INTO app_settings(key,value,updated_at_utc) VALUES('project_root_path',?1,'2026-10-10T00:00:00Z')",
+                [path.to_str().unwrap()],
+            )
+            .unwrap();
+        path
+    }
+    fn project_record(component: &str) -> SealedRecord {
+        let h = header(1);
+        seal_record(h.clone(),&KEY,&RecordContent {schema_version:1,fields:Some(json!({"id":h.record_id.to_string(),"number":"FICTIONAL-SYNC","name":"Fictional synced project","status":"active","phase":"construction","custom_phase_name":null,"customer":null,"general_contractor":null,"engineer":null,"project_manager":null,"superintendent":null,"location":null,"start_date":"2026-10-10","target_date":null,"description":null,"important_notes":null,"portable_root":{"kind":"workspace_relative","components":[component]},"is_pinned":true,"archived_at_utc":null,"created_at_utc":"2026-10-10T00:00:00Z","updated_at_utc":"2026-10-10T00:00:00Z"}))}).unwrap()
+    }
+    #[test]
+    fn project_dependency_page_maps_locally_without_creating_documents() {
+        let mut f = Fixture::new();
+        let root = mapping_root(&f);
+        let p = project_record("Fictional");
+        let t = task_record(p.header.record_id, None);
+        let backup = f
+            .run(0, &[t.clone(), p.clone()], &[p.clone(), t.clone()])
+            .unwrap();
+        assert_eq!(
+            recovery::preview(Path::new(&backup.path)).unwrap().projects,
+            0
+        );
+        let row = live(&f.db.connection, 1, p.header.record_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            row["project_path"],
+            root.join("Fictional").to_str().unwrap()
+        );
+        assert_eq!(row["number"], "FICTIONAL-SYNC");
+        assert_eq!(row["is_pinned"], true);
+        assert!(!root.join("Fictional").exists());
+        assert_eq!(cursor(&f), 2);
+        f.run(0, &[t.clone(), p.clone()], &[p.clone(), t.clone()])
+            .unwrap();
+        assert_eq!(cursor(&f), 2);
+        let pd = tombstone(&p);
+        assert!(f.run(2, &[pd.clone()], &[pd.clone(), t.clone()]).is_err());
+        assert!(live(&f.db.connection, 1, p.header.record_id)
+            .unwrap()
+            .is_some());
+        let td = tombstone(&t);
+        let backup = f.run(2, &[pd.clone(), td.clone()], &[pd, td]).unwrap();
+        assert_eq!(
+            recovery::preview(Path::new(&backup.path)).unwrap().projects,
+            1
+        );
+        assert!(live(&f.db.connection, 1, p.header.record_id)
+            .unwrap()
+            .is_none());
+        assert_eq!(cursor(&f), 4);
+        assert_eq!(std::fs::read_dir(root).unwrap().count(), 0);
+    }
+    #[test]
+    fn project_local_edits_and_remote_path_reassignment_are_preserved() {
+        let mut f = Fixture::new();
+        let root = mapping_root(&f);
+        let p = project_record("Original");
+        f.run(0, &[p.clone()], &[p.clone()]).unwrap();
+        let mut h = p.header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(&p, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["portable_root"]["components"] = json!(["Redirected"]);
+        let moved = seal_record(h.clone(), &KEY, &content).unwrap();
+        assert!(f.run(1, &[moved.clone()], &[moved]).is_err());
+        assert_eq!(cursor(&f), 1);
+        f.db.connection
+            .execute("UPDATE projects SET name='Local offline project'", [])
+            .unwrap();
+        let mut content = open_record(&p, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["name"] = json!("Remote competing project");
+        let remote = seal_record(h, &KEY, &content).unwrap();
+        assert!(f.run(1, &[remote.clone()], &[remote]).is_err());
+        let row = live(&f.db.connection, 1, p.header.record_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(row["name"], "Local offline project");
+        assert_eq!(row["project_path"], root.join("Original").to_str().unwrap());
+        assert_eq!(cursor(&f), 1);
+    }
+    #[test]
+    fn missing_root_reserved_names_external_and_existing_folder_refused() {
+        let mut f = Fixture::new();
+        let p = project_record("Fictional");
+        assert!(f.run(0, &[p.clone()], &[p.clone()]).is_err());
+        let root = mapping_root(&f);
+        let reserved = project_record("NUL.txt");
+        assert!(f.run(0, &[reserved.clone()], &[reserved]).is_err());
+        let mut content = open_record(&p, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["portable_root"] =
+            json!({"kind":"external_name","components":["Fictional"]});
+        let external = seal_record(p.header.clone(), &KEY, &content).unwrap();
+        assert!(f.run(0, &[external.clone()], &[external]).is_err());
+        std::fs::create_dir(root.join("Fictional")).unwrap();
+        std::fs::write(
+            root.join("Fictional").join("sentinel"),
+            b"Fictional existing document",
+        )
+        .unwrap();
+        assert!(f.run(0, &[p.clone()], &[p]).is_err());
+        assert_eq!(
+            std::fs::read(root.join("Fictional").join("sentinel")).unwrap(),
+            b"Fictional existing document"
+        );
+        assert_eq!(cursor(&f), 0);
+    }
+    #[test]
+    fn colliding_project_mapping_rolls_back_page_and_valid_update_preserves_path() {
+        let mut f = Fixture::new();
+        let root = mapping_root(&f);
+        let p = project_record("Fictional");
+        let other = project_record("FICTIONAL");
+        let mut content = open_record(&other, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["number"] = json!("FICTIONAL-OTHER");
+        let other = seal_record(other.header.clone(), &KEY, &content).unwrap();
+        assert!(f
+            .run(0, &[p.clone(), other.clone()], &[p.clone(), other])
+            .is_err());
+        assert_eq!(cursor(&f), 0);
+        assert!(live(&f.db.connection, 1, p.header.record_id)
+            .unwrap()
+            .is_none());
+        f.run(0, &[p.clone()], &[p.clone()]).unwrap();
+        let mut h = p.header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(&p, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["name"] = json!("Updated fictional project");
+        let updated = seal_record(h, &KEY, &content).unwrap();
+        f.run(1, &[updated.clone()], &[updated]).unwrap();
+        assert_eq!(cursor(&f), 2);
+        assert_eq!(
+            live(&f.db.connection, 1, p.header.record_id)
+                .unwrap()
+                .unwrap()["project_path"],
+            root.join("Fictional").to_str().unwrap()
+        );
+        assert_eq!(std::fs::read_dir(root).unwrap().count(), 0);
     }
 }

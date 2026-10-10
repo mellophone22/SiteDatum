@@ -62,4 +62,6 @@ Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BO
 
 - **C10-04C2 — backed-up task adapter:** extends C1 with exact task application, existing-project/contact validation, safe local dependency ordering, and refusal of linked-task deletion or cross-project reassignment. Six new focused scenarios preserve local edits, backups, references and cursor state. Other adapters, conflict resolution and runtime activation remain pending. Evidence: `docs/engineering/C10-04C2-TASK-ADAPTER.md`.
 
+- **C10-04C3 — project adapter/local mapping:** adds backed-up project application with explicit portable-root projection under the existing device-local root, project/task dependency ordering, reference-preserving deletion and collision/reparse-point/path reassignment refusal. No document operation or customer activation is added. Remaining adapters and other C10-04C gates stay pending. Evidence: `docs/engineering/C10-04C3-PROJECT-ADAPTER.md`.
+
 No commercial work package authorizes production provider accounts, secrets, deployment, or telemetry for a later package. Resolve and record its required founder decisions before implementation.
