@@ -138,3 +138,12 @@ tombstone compaction remains blocked on C10-04's durable acknowledgement and
 replacement-checkpoint proof. Other remaining C10-03 gates are clean
 reconstruction and security-advisor evidence, and client/repository secret
 proof.
+
+C10-04A now implements the first local record-protocol foundation: a canonical
+manifest over record IDs, revisions, workspace-key versions, and tombstone
+state; an XChaCha20-Poly1305 authenticated encrypted checkpoint bound to its
+owner/workspace routing metadata; and a durable local-only high-water anchor
+that rejects rollback and equal-counter substitution after restart. This code
+has no command or UI and does not enable Sync. Encrypted record codecs,
+outbox/cursor/device acknowledgements, atomic local apply, conflict handling,
+recovery anchors, and deterministic two-computer scenarios remain pending.
