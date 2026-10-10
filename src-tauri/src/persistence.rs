@@ -23,11 +23,11 @@ pub struct Database {
     pub(crate) connection: Connection,
 }
 
-const LATEST_MIGRATION_VERSION: i64 = 13;
+const LATEST_MIGRATION_VERSION: i64 = 14;
 const LEGACY_CLOUD_SYNC_ACCESS_KEY: &str = "legacy_cloud_sync_access";
 const LEGACY_CLOUD_SYNC_DISABLED_KEY: &str = "legacy_cloud_sync_disabled";
 
-fn migrations() -> [(i64, &'static str); 13] {
+fn migrations() -> [(i64, &'static str); 14] {
     [
         (1_i64, include_str!("../migrations/0001_foundation.sql")),
         (2_i64, include_str!("../migrations/0002_projects.sql")),
@@ -50,6 +50,10 @@ fn migrations() -> [(i64, &'static str); 13] {
         (
             13_i64,
             include_str!("../migrations/0013_sync_v2_relationship_bindings.sql"),
+        ),
+        (
+            14_i64,
+            include_str!("../migrations/0014_sync_v2_apply_protocol.sql"),
         ),
     ]
 }
@@ -1709,7 +1713,7 @@ mod tests {
             .file_name()
             .unwrap()
             .to_string_lossy()
-            .starts_with("pre-migration-v9-to-v13-"));
+            .starts_with("pre-migration-v9-to-v14-"));
         let backup = Connection::open(&backup_paths[0]).unwrap();
         assert_eq!(super::current_migration_version(&backup).unwrap(), 9);
         assert_representative_version_nine_records(&backup, &ordinary_file);
@@ -1741,13 +1745,13 @@ mod tests {
         let path = root.join("workspace.sqlite3");
         {
             let db = Database::open(&path).unwrap();
-            db.connection.execute_batch("DROP TABLE sync_v2_relationship_bindings; DELETE FROM schema_migrations WHERE version=13; INSERT INTO sync_v2_local_streams(workspace_id,owner_id,device_id,pull_cursor) VALUES('fictional-workspace','fictional-owner','fictional-device',7); INSERT INTO sync_v2_record_snapshots(workspace_id,record_id,record_kind,server_version,envelope) VALUES('fictional-workspace','fictional-record',10,1,X'010203');").unwrap();
+            db.connection.execute_batch("DROP TABLE sync_v2_relationship_bindings; DROP TABLE sync_v2_committed_bases; DROP TABLE sync_v2_pull_history; DROP TABLE sync_v2_pull_parts; DROP TABLE sync_v2_pull_batches; DROP TABLE sync_v2_record_conflicts; DROP TABLE sync_v2_applied_receipts; DROP TABLE sync_v2_record_subtypes; DROP TABLE sync_v2_activity_bindings; DELETE FROM schema_migrations WHERE version>=13; INSERT INTO sync_v2_local_streams(workspace_id,owner_id,device_id,pull_cursor) VALUES('fictional-workspace','fictional-owner','fictional-device',7); INSERT INTO sync_v2_record_snapshots(workspace_id,record_id,record_kind,server_version,envelope) VALUES('fictional-workspace','fictional-record',10,1,X'010203');").unwrap();
         }
         {
             let db = Database::open(&path).unwrap();
             assert_eq!(
                 super::current_migration_version(&db.connection).unwrap(),
-                13
+                14
             );
             assert_eq!(
                 db.connection
@@ -1786,6 +1790,59 @@ mod tests {
             assert_eq!(paths.len(), 1);
             let backup = Connection::open(&paths[0]).unwrap();
             assert_eq!(super::current_migration_version(&backup).unwrap(), 12);
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn version_thirteen_upgrade_preserves_relationship_identity_and_verified_backup() {
+        let root =
+            std::env::temp_dir().join(format!("sitedatum-v14-upgrade-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let path = root.join("workspace.sqlite3");
+        {
+            let db = Database::open(&path).unwrap();
+            db.connection.execute_batch("DROP TABLE sync_v2_committed_bases; DROP TABLE sync_v2_pull_history; DROP TABLE sync_v2_pull_parts; DROP TABLE sync_v2_pull_batches; DROP TABLE sync_v2_record_conflicts; DROP TABLE sync_v2_applied_receipts; DROP TABLE sync_v2_record_subtypes; DROP TABLE sync_v2_activity_bindings; DELETE FROM schema_migrations WHERE version=14; INSERT INTO sync_v2_local_streams VALUES('fictional-workspace','fictional-owner','fictional-device',7); INSERT INTO sync_v2_relationship_bindings VALUES('fictional-workspace','fictional-record',5,'fictional-register','fictional-task');").unwrap();
+        }
+        {
+            let db = Database::open(&path).unwrap();
+            assert_eq!(
+                super::current_migration_version(&db.connection).unwrap(),
+                14
+            );
+            assert_eq!(
+                db.connection
+                    .query_row(
+                        "SELECT task_id FROM sync_v2_relationship_bindings",
+                        [],
+                        |r| r.get::<_, String>(0)
+                    )
+                    .unwrap(),
+                "fictional-task"
+            );
+            let backups = std::fs::read_dir(root.join("backups"))
+                .unwrap()
+                .map(|p| p.unwrap().path())
+                .collect::<Vec<_>>();
+            assert_eq!(backups.len(), 1);
+            let backup = Connection::open(&backups[0]).unwrap();
+            assert_eq!(super::current_migration_version(&backup).unwrap(), 13);
+            assert_eq!(
+                backup
+                    .query_row(
+                        "SELECT COUNT(*) FROM sync_v2_relationship_bindings",
+                        [],
+                        |r| r.get::<_, i64>(0)
+                    )
+                    .unwrap(),
+                1
+            );
+            assert_eq!(
+                backup
+                    .query_row("PRAGMA integrity_check", [], |r| r.get::<_, String>(0))
+                    .unwrap(),
+                "ok"
+            );
         }
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -1847,7 +1904,7 @@ mod tests {
             database
                 .connection
                 .execute(
-                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(14, '2026-10-02T00:00:00Z')",
+                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(15, '2026-10-02T00:00:00Z')",
                     [],
                 )
                 .unwrap();

@@ -341,7 +341,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(manifest["formatVersion"], 1);
-        assert_eq!(manifest["databaseSchemaVersion"], 13);
+        assert_eq!(manifest["databaseSchemaVersion"], 14);
         assert_eq!(manifest["includesDocumentBytes"], false);
         assert_eq!(manifest["files"].as_array().unwrap().len(), TABLES.len());
         assert_eq!(

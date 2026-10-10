@@ -20,6 +20,8 @@ mod submittal;
 mod sync_v2_approved_device_transfer;
 mod sync_v2_device_enrollment;
 mod sync_v2_local_queue;
+mod sync_v2_metadata_adapters;
+mod sync_v2_paging;
 mod sync_v2_project_paths;
 mod sync_v2_record_codec;
 mod sync_v2_record_protocol;

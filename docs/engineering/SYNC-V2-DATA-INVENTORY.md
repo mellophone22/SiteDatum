@@ -90,6 +90,14 @@ from replicated content and CSV portability. Later adapters must validate
 dependency relationships, local ID mapping, and safe filesystem rebasing before
 any live project application.
 
+C10-04C implements this inventory without new content categories. Schema-14
+committed baselines, encrypted batches/history, retained conflict choices,
+backup-bound applied receipts and subtype/activity mappings are local-only
+infrastructure, excluded from replicated content and CSV export. External
+references use an unresolved local marker; original filename tokens remain
+encrypted content only. Receipt output exposes opaque IDs/counters/digest, never
+a backup path. See `C10-04C-COMPLETION.md`.
+
 Adding an entity or field requires all of the following in the same work package:
 
 1. update this inventory and the user-facing consent categories;

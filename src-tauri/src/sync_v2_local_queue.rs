@@ -52,7 +52,7 @@ struct StoredEnvelope {
     tombstone: bool,
     ciphertext: Vec<u8>,
 }
-fn encode(record: &SealedRecord) -> AppResult<Vec<u8>> {
+pub(crate) fn encode(record: &SealedRecord) -> AppResult<Vec<u8>> {
     validate_header(&record.header)?;
     let h = &record.header;
     serde_json::to_vec(&StoredEnvelope {
@@ -107,7 +107,7 @@ fn blocked() -> AppError {
         "Scope, revision, pending work, receipt, or cursor did not match.",
     )
 }
-fn scope(transaction: &Transaction<'_>, s: StreamScope) -> AppResult<()> {
+pub(crate) fn scope(transaction: &Transaction<'_>, s: StreamScope) -> AppResult<()> {
     if [s.owner_id, s.workspace_id, s.device_id]
         .iter()
         .any(Uuid::is_nil)
@@ -143,6 +143,15 @@ impl Database {
         record: &SealedRecord,
         key: &[u8; 32],
     ) -> AppResult<()> {
+        self.stage_sync_v2_mutation_with_apply(s, record, key, |_| Ok(()))
+    }
+    pub(crate) fn stage_sync_v2_mutation_with_apply(
+        &mut self,
+        s: StreamScope,
+        record: &SealedRecord,
+        key: &[u8; 32],
+        apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
+    ) -> AppResult<()> {
         matches_scope(s, record)?;
         open_record(record, key)?;
         let bytes = encode(record)?;
@@ -161,7 +170,8 @@ impl Database {
             if queued != bytes {
                 return Err(blocked());
             }
-            return Ok(());
+            apply(&tx)?;
+            return tx.commit().map_err(storage);
         }
         let existing: Option<(u64,u8)> = tx.query_row("SELECT server_version,record_kind FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2", params![s.workspace_id.to_string(),h.record_id.to_string()], |row| Ok((row.get::<_, i64>(0)? as u64,row.get(1)?))).optional().map_err(storage)?;
         if existing
@@ -170,8 +180,15 @@ impl Database {
         {
             return Err(blocked());
         }
+        tx.execute("INSERT INTO sync_v2_committed_bases(workspace_id,record_id,server_version,envelope) SELECT ?1,?2,COALESCE((SELECT server_version FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2),0),(SELECT envelope FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2)",params![s.workspace_id.to_string(),h.record_id.to_string()]).map_err(storage)?;
         tx.execute("INSERT INTO sync_v2_outbox(workspace_id,mutation_id,record_id,envelope) VALUES(?1,?2,?3,?4)", params![s.workspace_id.to_string(),h.mutation_id.to_string(),h.record_id.to_string(),&bytes]).map_err(storage)?;
         tx.execute("INSERT INTO sync_v2_record_snapshots(workspace_id,record_id,record_kind,server_version,envelope) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(workspace_id,record_id) DO UPDATE SET envelope=excluded.envelope", params![s.workspace_id.to_string(),h.record_id.to_string(),h.record_kind,h.expected_server_version as i64,&bytes]).map_err(storage)?;
+        tx.execute(
+            "DELETE FROM sync_v2_applied_receipts WHERE workspace_id=?1",
+            [s.workspace_id.to_string()],
+        )
+        .map_err(storage)?;
+        apply(&tx)?;
         tx.commit().map_err(storage)
     }
 
@@ -221,6 +238,11 @@ impl Database {
                 return Err(blocked());
             }
             tx.execute("UPDATE sync_v2_record_snapshots SET server_version=?3 WHERE workspace_id=?1 AND record_id=?2", params![s.workspace_id.to_string(),receipt.record_id.to_string(),receipt.server_version as i64]).map_err(storage)?;
+            tx.execute(
+                "DELETE FROM sync_v2_committed_bases WHERE workspace_id=?1 AND record_id=?2",
+                params![s.workspace_id.to_string(), receipt.record_id.to_string()],
+            )
+            .map_err(storage)?;
         }
         tx.commit().map_err(storage)
     }
@@ -250,16 +272,26 @@ impl Database {
         key: &[u8; 32],
         apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
     ) -> AppResult<()> {
-        if changes.is_empty() || changes.len() > 100 || after > MAX_SAFE_INTEGER {
+        self.stage_sync_v2_pull_options(s, after, changes, checkpoint, key, false, apply)
+    }
+    pub(crate) fn stage_sync_v2_pull_options(
+        &mut self,
+        s: StreamScope,
+        after: u64,
+        changes: &[PulledRecord],
+        checkpoint: &SealedWorkspaceCheckpoint,
+        key: &[u8; 32],
+        allow_pending: bool,
+        apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
+    ) -> AppResult<()> {
+        if changes.is_empty() || changes.len() > 10_000 || after > MAX_SAFE_INTEGER {
             return Err(invalid());
         }
-        let mut ids = std::collections::HashSet::new();
         for (index, change) in changes.iter().enumerate() {
             validate_header(&change.record.header)?;
             if change.change_seq != after + index as u64 + 1
                 || change.change_seq > MAX_SAFE_INTEGER
                 || change.server_version != change.record.header.expected_server_version + 1
-                || !ids.insert(change.record.header.record_id)
             {
                 return Err(blocked());
             }
@@ -291,13 +323,51 @@ impl Database {
                 |row| row.get(0),
             )
             .map_err(storage)?;
-        if pending {
+        if pending && !allow_pending {
             return Err(blocked());
+        }
+        if !replay {
+            tx.execute(
+                "DELETE FROM sync_v2_applied_receipts WHERE workspace_id=?1",
+                [s.workspace_id.to_string()],
+            )
+            .map_err(storage)?;
         }
         for change in changes {
             let h = &change.record.header;
-            let existing: Option<(u64,u8,Vec<u8>)> = tx.query_row("SELECT server_version,record_kind,envelope FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),h.record_id.to_string()], |row| Ok((row.get::<_, i64>(0)? as u64,row.get(1)?,row.get(2)?))).optional().map_err(storage)?;
             let bytes = encode(&change.record)?;
+            let history:Option<(u64,Vec<u8>)>=tx.query_row("SELECT server_version,envelope FROM sync_v2_pull_history WHERE workspace_id=?1 AND change_seq=?2",params![s.workspace_id.to_string(),change.change_seq as i64],|r|Ok((r.get::<_,i64>(0)? as u64,r.get(1)?))).optional().map_err(storage)?;
+            if replay {
+                if history != Some((change.server_version, bytes)) {
+                    return Err(blocked());
+                }
+                continue;
+            }
+            // Pending encrypted candidates never become the committed baseline.
+            if allow_pending {
+                let base:Option<(u64,Option<Vec<u8>>) >=tx.query_row("SELECT server_version,envelope FROM sync_v2_committed_bases WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),h.record_id.to_string()],|r|Ok((r.get::<_,i64>(0)? as u64,r.get(1)?))).optional().map_err(storage)?;
+                if let Some((version, base)) = base {
+                    if let Some(base) = base {
+                        let committed = decode(&base)?;
+                        if version == 0
+                            || committed.header.owner_id != s.owner_id
+                            || committed.header.workspace_id != s.workspace_id
+                            || committed.header.record_id != h.record_id
+                            || committed.header.record_kind != h.record_kind
+                            || committed.header.expected_server_version.checked_add(1)
+                                != Some(version)
+                        {
+                            return Err(blocked());
+                        }
+                        open_record(&committed, key)?;
+                        tx.execute("UPDATE sync_v2_record_snapshots SET server_version=?3,envelope=?4 WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),h.record_id.to_string(),version as i64,base]).map_err(storage)?;
+                    } else {
+                        tx.execute("DELETE FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),h.record_id.to_string()]).map_err(storage)?;
+                    }
+                    tx.execute("DELETE FROM sync_v2_committed_bases WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),h.record_id.to_string()]).map_err(storage)?;
+                }
+            }
+            let existing: Option<(u64,u8,Vec<u8>)> = tx.query_row("SELECT server_version,record_kind,envelope FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),h.record_id.to_string()], |row| Ok((row.get::<_, i64>(0)? as u64,row.get(1)?,row.get(2)?))).optional().map_err(storage)?;
             if replay
                 && !existing.as_ref().is_some_and(|(version, kind, old)| {
                     *version == change.server_version && *kind == h.record_kind && *old == bytes
@@ -317,9 +387,10 @@ impl Database {
                 return Err(blocked());
             }
             tx.execute("INSERT INTO sync_v2_record_snapshots(workspace_id,record_id,record_kind,server_version,envelope) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(workspace_id,record_id) DO UPDATE SET server_version=excluded.server_version,envelope=excluded.envelope",params![s.workspace_id.to_string(),h.record_id.to_string(),h.record_kind,change.server_version as i64,bytes]).map_err(storage)?;
+            tx.execute("INSERT INTO sync_v2_pull_history(workspace_id,change_seq,server_version,envelope) VALUES(?1,?2,?3,?4)",params![s.workspace_id.to_string(),change.change_seq as i64,change.server_version as i64,encode(&change.record)?]).map_err(storage)?;
         }
         let manifest = {
-            let mut statement=tx.prepare("SELECT record_id,server_version,envelope FROM sync_v2_record_snapshots WHERE workspace_id=?1 ORDER BY record_id").map_err(storage)?;
+            let mut statement=tx.prepare("SELECT r.record_id,COALESCE(b.server_version,r.server_version),CASE WHEN b.record_id IS NOT NULL THEN b.envelope ELSE r.envelope END FROM sync_v2_record_snapshots r LEFT JOIN sync_v2_committed_bases b ON b.workspace_id=r.workspace_id AND b.record_id=r.record_id WHERE r.workspace_id=?1 AND COALESCE(b.server_version,r.server_version)>0 ORDER BY r.record_id").map_err(storage)?;
             let rows = statement
                 .query_map([s.workspace_id.to_string()], |row| {
                     Ok((
@@ -333,6 +404,14 @@ impl Database {
             for row in rows {
                 let (id, revision, bytes) = row.map_err(storage)?;
                 let record = decode(&bytes)?;
+                if record.header.owner_id != s.owner_id
+                    || record.header.workspace_id != s.workspace_id
+                    || record.header.record_id.to_string() != id
+                    || record.header.expected_server_version.checked_add(1) != Some(revision)
+                {
+                    return Err(blocked());
+                }
+                open_record(&record, key)?;
                 // Pending edits are still local; this page cannot authenticate the
                 // entire hosted set until they have been reconciled.
                 if revision == 0 {
@@ -477,7 +556,7 @@ mod tests {
                         0
                     ))
                     .unwrap(),
-                13
+                14
             );
             assert_eq!(
                 db.connection

@@ -55,7 +55,7 @@ pub(crate) fn selected_root(db: &Database) -> AppResult<PathBuf> {
         fs::canonicalize(original).map_err(|_| refused())
     }
 }
-fn component(value: &str) -> bool {
+pub(crate) fn component(value: &str) -> bool {
     if value.is_empty()
         || value.encode_utf16().count() > 255
         || value == "."
@@ -112,6 +112,42 @@ pub(crate) fn project_path(root: &Path, reference: &Value) -> AppResult<PathBuf>
     }
     verify_local_path(root, &path)?;
     Ok(path)
+}
+/// External references are deliberately non-filesystem tokens, never guessed
+/// destinations. Workspace-relative references inspect metadata, not file bytes.
+pub(crate) fn reference_path(root: &Path, reference: &Value, id: uuid::Uuid) -> AppResult<String> {
+    let parts = reference["components"].as_array().ok_or_else(refused)?;
+    if parts.is_empty() || parts.iter().any(|p| !p.as_str().is_some_and(component)) {
+        return Err(refused());
+    }
+    if reference["kind"] == "external_name" {
+        if parts.len() != 1 {
+            return Err(refused());
+        }
+        return Ok(format!("sitedatum-unresolved:{id}"));
+    }
+    if reference["kind"] != "workspace_relative" {
+        return Err(refused());
+    }
+    let mut path = root.to_path_buf();
+    for part in parts {
+        path.push(part.as_str().ok_or_else(refused)?);
+    }
+    verify_reference_path(root, &path)?;
+    path.to_str().map(str::to_owned).ok_or_else(refused)
+}
+pub(crate) fn verify_reference_path(root: &Path, path: &Path) -> AppResult<()> {
+    verify_local_path(root, path.parent().ok_or_else(refused)?)?;
+    if path.to_string_lossy().encode_utf16().count() > 240 {
+        return Err(refused());
+    }
+    match fs::symlink_metadata(&path) {
+        Ok(m) if reparse(&m) || !m.is_file() => return Err(refused()),
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => return Err(refused()),
+    }
+    Ok(())
 }
 pub(crate) fn verify_local_path(root: &Path, path: &Path) -> AppResult<()> {
     let metadata = fs::symlink_metadata(root).map_err(|_| refused())?;

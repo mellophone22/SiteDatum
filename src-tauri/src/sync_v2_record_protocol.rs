@@ -36,7 +36,8 @@ pub(crate) struct RecordManifestEntry {
     pub tombstone: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SealedWorkspaceCheckpoint {
     pub protocol_version: u16,
     pub checkpoint_counter: u64,

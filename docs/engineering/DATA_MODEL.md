@@ -26,6 +26,17 @@ An RFI can reference one task in the same project through `rfi_task_relationship
 
 The complete CSV export includes `projects`, `tasks`, `rfis`, RFI-task relationships, RFI attachment references, `submittals`, submittal-task relationships, submittal attachment references, `registered_files`, `notes`, `contacts`, `work_items`, `project_templates`, and `activity_events`. Stable IDs, timestamps, archived rows, parent relationships, path references, and constrained machine values are preserved. Text values that spreadsheet applications could interpret as formulas are neutralized on output.
 
-The export deliberately excludes `app_settings`, `schema_migrations`, and legacy `sync_*` implementation tables as user-interface or infrastructure state. The manifest records the schema version needed to interpret the files. Actual project-document bytes are not part of this metadata export and remain ordinary Windows files.
+The export deliberately excludes `app_settings`, `schema_migrations`, legacy `sync_*` and new `sync_v2_*` implementation tables as user-interface or infrastructure state. The manifest records the schema version needed to interpret the files (currently 14). Actual project-document bytes are not part of this metadata export and remain ordinary Windows files.
 
 Work-item imports validate every row before beginning the insertion transaction. Backup restore accepts a canonical `.sqlite3` file selected from the app-local inventory, configured external inventory, or native file picker; verifies integrity and SiteDatum schema identity; creates a safety backup; restores via SQLite's backup API; reapplies repository migrations; and re-enables foreign keys. Startup recovery builds and verifies a candidate before preserving the unavailable database and activating the replacement.
+
+## Dormant Sync v2 local state
+
+Schema 12 stores scoped encrypted snapshots/outbox, cursor and staging evidence;
+13 adds immutable composite-link IDs. Schema 14 adds committed baselines,
+encrypted page parts/checkpoints and exact history, encrypted retained conflict
+candidates/choices, applied receipts bound to a verified backup UUID, immutable
+work/template subtypes and legacy activity-to-envelope mappings. These contain
+no keys/document bytes, are never replicated as content, and are excluded from
+CSV portability. Ordinary commands do not use this boundary while Sync remains
+disabled. See `C10-04C-COMPLETION.md`.

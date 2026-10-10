@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, and disposable local C10-03A through C10-03H workspace-lifecycle slice complete; remaining C10-03 work pending; customer access remains disabled
+**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; remaining hosted, key/recovery and UX gates pending; customer access remains disabled
 
 ## Objective
 
@@ -187,3 +187,12 @@ local-only immutable identity bindings. Restart/retry-safe explicit unlinking
 permits dependent deletion without cascades; ambiguous, missing, cross-project
 or locally edited links fail closed. Sync remains disabled. See
 `C10-04C5-TASK-LINK-ADAPTERS.md`; attachment/file adapters are the next slice.
+
+C10-04C now completes the dormant local application boundary: all inventoried
+adapters, atomic live/outbox hooks, bounded durable paging/repeated revisions,
+encrypted conflict candidates and explicit idempotent choices, and backup-bound
+applied receipts. Schema 14 preserves prior state through verified migration
+backups. Historical C1–C5 limitations above describe earlier slices, not the
+current boundary. See `C10-04C-COMPLETION.md` for behavior, proofs and remaining
+gates. Customer Sync, ordinary-command integration, key rotation, recovery
+anchors, signed hosted compaction and C10-05 UI are not enabled by this closeout.

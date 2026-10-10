@@ -68,4 +68,6 @@ Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BO
 
 - **C10-04C5 — task-link adapters:** adds RFI-task/submittal-task envelopes, schema-13 immutable local identity bindings, dependency-ordered linking/explicit unlinking, restart/retry and conflict/cross-project refusal. Seven new scenarios bring safe-apply coverage to 35 tests. Sync remains disabled; attachment/file adapters are next. Evidence: `docs/engineering/C10-04C5-TASK-LINK-ADAPTERS.md`.
 
+- **C10-04C — local application boundary complete:** closes C1–C5 with all remaining metadata adapters, immutable activity/subtype identity, atomic live/outbox hooks, bounded restart-safe pages and multiple revisions, encrypted durable conflicts with explicit idempotent choices, and backed-up applied-device receipt proof. Schema 14 preserves prior state and verified backups. Native APIs remain dormant; no command/UI/transport, deployment or customer Sync activation occurs. Key rotation, recovery anchors and hosted compaction remain later gates. Evidence: `docs/engineering/C10-04C-COMPLETION.md`.
+
 No commercial work package authorizes production provider accounts, secrets, deployment, or telemetry for a later package. Resolve and record its required founder decisions before implementation.
