@@ -34,18 +34,36 @@ fn refused() -> AppError {
     )
 }
 fn sql(_: rusqlite::Error) -> AppError {
-    refused()
+    storage_unavailable()
+}
+fn storage_unavailable() -> AppError {
+    AppError::from_technical(
+        "SYNC_V2_RECOVERY_STORAGE_UNAVAILABLE",
+        "Sync recovery storage is unavailable.",
+        "Keep local work and the original recovery material. Retry when storage is available.",
+        "Recovery storage operation failed; raw error details are withheld.",
+    )
+}
+fn finish_recovery_write(result: std::io::Result<()>) -> AppResult<()> {
+    result.map_err(|_| AppError::from_technical(
+        "SYNC_V2_RECOVERY_FILE_INCOMPLETE",
+        "The newly created recovery file may be incomplete. It is not a confirmed recovery copy.",
+        "Keep your original recovery material. Retry with a different filename; inspect the failed new file before removing it yourself.",
+        "New recovery file write or durability check failed; raw error details are withheld.",
+    ))
 }
 
 pub(crate) trait WorkspaceKeys {
     fn select(&self, owner: Uuid, workspace: Uuid, version: u32) -> AppResult<&[u8; 32]>;
-    fn write_version(&self) -> Option<u32> {
-        None
-    }
+    fn write_version(&self) -> Option<u32>;
 }
 // Existing low-level single-key proof APIs remain compatible. Runtime lifecycle
 // callers must supply the scope-bound KeyRing, never this unscoped test adapter.
+#[cfg(test)]
 impl WorkspaceKeys for [u8; 32] {
+    fn write_version(&self) -> Option<u32> {
+        Some(1)
+    }
     fn select(&self, _: Uuid, _: Uuid, version: u32) -> AppResult<&[u8; 32]> {
         if version == 0 {
             Err(refused())
@@ -102,7 +120,7 @@ impl KeyRing {
         self.active
     }
     fn raw(&self) -> Zeroizing<Vec<u8>> {
-        let mut b = Zeroizing::new(Vec::new());
+        let mut b = Zeroizing::new(Vec::with_capacity(37 + self.keys.len() * 36));
         b.extend_from_slice(self.owner.as_bytes());
         b.extend_from_slice(self.workspace.as_bytes());
         b.extend_from_slice(&self.active.to_be_bytes());
@@ -219,12 +237,13 @@ impl RecoveryCode {
         hash.update(LABEL);
         hash.update(&*self.0);
         let checksum = hash.finalize();
-        let mut hex = Zeroizing::new(String::new());
+        let mut hex = Zeroizing::new(String::with_capacity(72));
         for b in self.0.iter().chain(checksum[..4].iter()) {
             use std::fmt::Write;
             write!(&mut *hex, "{b:02X}").expect("String formatting");
         }
-        let mut text = Zeroizing::new(String::from("SDR1"));
+        let mut text = Zeroizing::new(String::with_capacity(85));
+        text.push_str("SDR1");
         for group in hex.as_bytes().chunks(8) {
             text.push('-');
             text.push_str(std::str::from_utf8(group).expect("hex ASCII"));
@@ -344,7 +363,7 @@ pub(crate) fn create_recovery_file(
     header.extend_from_slice(ring.workspace.as_bytes());
     header.extend_from_slice(&salt);
     header.extend_from_slice(&nonce);
-    let mut body = Zeroizing::new(Vec::new());
+    let mut body = Zeroizing::new(Vec::with_capacity(56 + 37 + ring.keys.len() * 36));
     body.extend_from_slice(&created_at_unix.to_be_bytes());
     body.extend_from_slice(&minimum.counter.to_be_bytes());
     body.extend_from_slice(&minimum.through.to_be_bytes());
@@ -436,11 +455,8 @@ pub(crate) fn write_recovery_file(path: &Path, bytes: &[u8]) -> AppResult<()> {
         .write(true)
         .create_new(true)
         .open(path)
-        .map_err(|_| refused())?;
-    file.write_all(bytes)
-        .and_then(|_| file.sync_all())
-        .map_err(|_| refused())?;
-    Ok(())
+        .map_err(|_| storage_unavailable())?;
+    finish_recovery_write(file.write_all(bytes).and_then(|_| file.sync_all()))
 }
 
 impl Database {
@@ -736,6 +752,15 @@ mod tests {
     fn ring() -> KeyRing {
         KeyRing::initial(Uuid::new_v4(), Uuid::new_v4()).unwrap()
     }
+    struct ReadOnlyKeys<'a>(&'a KeyRing);
+    impl WorkspaceKeys for ReadOnlyKeys<'_> {
+        fn select(&self, owner: Uuid, workspace: Uuid, version: u32) -> AppResult<&[u8; 32]> {
+            self.0.select(owner, workspace, version)
+        }
+        fn write_version(&self) -> Option<u32> {
+            None
+        }
+    }
     fn anchor() -> Anchor {
         Anchor {
             counter: 5,
@@ -915,7 +940,7 @@ mod tests {
         assert!(open_record(&old, &recovered).is_ok());
     }
     #[test]
-    fn malformed_keyrings_fail_and_no_debug_or_serialization_exposes_private_material() {
+    fn malformed_keyring_lengths_and_version_metadata_fail() {
         let r = ring();
         let raw = r.raw();
         for size in 0..raw.len() {
@@ -940,6 +965,23 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
         assert!(write_recovery_file(&root.join("wrong.txt"), &bytes).is_err());
         std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn storage_and_partial_write_errors_are_content_free_and_actionable() {
+        let secret_marker = "Fictional-sensitive-path-and-content";
+        let sql_error = sql(rusqlite::Error::InvalidParameterName(secret_marker.into()));
+        assert_eq!(sql_error.code, "SYNC_V2_RECOVERY_STORAGE_UNAVAILABLE");
+        let io_error =
+            finish_recovery_write(Err(std::io::Error::other(secret_marker))).unwrap_err();
+        assert_eq!(io_error.code, "SYNC_V2_RECOVERY_FILE_INCOMPLETE");
+        assert!(io_error.message.contains("not a confirmed recovery copy"));
+        assert!(io_error.recovery.contains("different filename"));
+        for error in [sql_error, io_error] {
+            assert!(!error.to_string().contains(secret_marker));
+            assert!(!error.recovery.contains(secret_marker));
+            assert!(!error.technical_detail().contains(secret_marker));
+        }
+        assert!(finish_recovery_write(Ok(())).is_ok());
     }
     fn fixture(r: &KeyRing) -> (Database, StreamScope, std::path::PathBuf, Vec<SealedRecord>) {
         let root =
@@ -1018,6 +1060,115 @@ mod tests {
         let new = record(&r, false);
         db.stage_sync_v2_mutation(s, &new, &r).unwrap();
         assert_eq!(db.pending_sync_v2_mutations(s).unwrap().len(), 1);
+    }
+    #[test]
+    fn missing_write_authority_refuses_mutation_without_running_apply() {
+        let r = ring();
+        let sealed = record(&r, false);
+        let readonly = ReadOnlyKeys(&r);
+        assert!(open_record(&sealed, &readonly).is_ok());
+        let mut db = Database::open_in_memory().unwrap();
+        let s = StreamScope {
+            owner_id: r.owner,
+            workspace_id: r.workspace,
+            device_id: Uuid::new_v4(),
+        };
+        let mut called = false;
+        assert!(db
+            .stage_sync_v2_mutation_with_apply(s, &sealed, &readonly, |_| {
+                called = true;
+                Ok(())
+            })
+            .is_err());
+        assert!(!called);
+        assert!(db.pending_sync_v2_mutations(s).unwrap().is_empty());
+    }
+    #[test]
+    fn keep_local_requires_write_authority_and_uses_active_key_for_old_conflict() {
+        use crate::sync_v2_safe_apply::{ConflictChoice, PullOutcome};
+        let mut r = ring();
+        let (mut db, s, root, records) = fixture(&r);
+        db.connection
+            .execute("UPDATE notes SET body='Fictional offline candidate'", [])
+            .unwrap();
+        let mut h = records[0].header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let remote = seal_record(h.clone(), &r, &note(&h, "Fictional remote candidate")).unwrap();
+        let whole = vec![remote.clone(), records[1].clone()];
+        let cp = seal_workspace_checkpoint(r.owner, r.workspace, 1, &r, 2, 3, &manifest(&whole))
+            .unwrap();
+        let changes = vec![PulledRecord {
+            change_seq: 3,
+            server_version: 2,
+            record: remote.clone(),
+        }];
+        assert!(matches!(
+            db.apply_sync_v2_reviewed_records(s, 2, &changes, &cp, &r, &root)
+                .unwrap(),
+            PullOutcome::NeedsReview(_)
+        ));
+        assert!(db
+            .choose_sync_v2_conflict(
+                s,
+                h.record_id,
+                2,
+                ConflictChoice::KeepLocal,
+                &ReadOnlyKeys(&r)
+            )
+            .is_err());
+        let choice: Option<String> = db
+            .connection
+            .query_row("SELECT choice FROM sync_v2_record_conflicts", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert!(choice.is_none());
+        r.rotate().unwrap();
+        db.choose_sync_v2_conflict(s, h.record_id, 2, ConflictChoice::KeepLocal, &r)
+            .unwrap();
+        let bytes: Vec<u8> = db
+            .connection
+            .query_row(
+                "SELECT resolution_envelope FROM sync_v2_record_conflicts",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let resolution = decode(&bytes).unwrap();
+        assert_eq!(resolution.header.workspace_key_version, 2);
+        assert!(open_record(&resolution, &r).is_ok());
+        assert!(db
+            .apply_sync_v2_reviewed_records(s, 2, &changes, &cp, &ReadOnlyKeys(&r), &root)
+            .is_err());
+        assert!(db.pending_sync_v2_mutations(s).unwrap().is_empty());
+        assert_eq!(
+            db.connection
+                .query_row("SELECT pull_cursor FROM sync_v2_local_streams", [], |row| {
+                    row.get::<_, i64>(0)
+                })
+                .unwrap(),
+            2
+        );
+        let mut newer = KeyRing::from_raw(&r.raw()).unwrap();
+        newer.rotate().unwrap();
+        assert!(db
+            .apply_sync_v2_reviewed_records(s, 2, &changes, &cp, &newer, &root)
+            .is_err());
+        assert!(db.pending_sync_v2_mutations(s).unwrap().is_empty());
+        assert!(matches!(
+            db.apply_sync_v2_reviewed_records(s, 2, &changes, &cp, &r, &root)
+                .unwrap(),
+            PullOutcome::Applied(_)
+        ));
+        assert_eq!(
+            db.pending_sync_v2_mutations(s).unwrap()[0]
+                .header
+                .workspace_key_version,
+            2
+        );
+        drop(db);
+        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn rotation_is_atomic_retains_tombstones_and_exact_bytes_and_does_not_edit_live_rows() {

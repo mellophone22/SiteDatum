@@ -174,9 +174,11 @@ fn queue_resolution(
     s: StreamScope,
     remote: &crate::sync_v2_record_codec::SealedRecord,
     resolution: &crate::sync_v2_record_codec::SealedRecord,
+    key: &impl crate::sync_v2_key_recovery::WorkspaceKeys,
 ) -> AppResult<()> {
     let h = &resolution.header;
-    if h.expected_server_version != remote.header.expected_server_version + 1
+    if key.write_version() != Some(h.workspace_key_version)
+        || h.expected_server_version != remote.header.expected_server_version + 1
         || h.record_id != remote.header.record_id
         || h.record_kind != remote.header.record_kind
         || h.owner_id != s.owner_id
@@ -769,6 +771,8 @@ impl Database {
             .map(|row| {
                 let (version, bytes) = row.map_err(sql)?;
                 Ok(PulledRecord {
+                    // Equality rehearsal only, not a replayed provider page.
+                    // prepare must not infer delivery ordering from this sentinel.
                     change_seq: 1,
                     server_version: version as u64,
                     record: decode(&bytes)?,
@@ -878,7 +882,7 @@ impl Database {
                 tx.execute("UPDATE sync_v2_record_snapshots SET server_version=?3,envelope=?4 WHERE workspace_id=?1 AND record_id=?2",params![s.workspace_id.to_string(),p.id.to_string(),remote.header.expected_server_version as i64+1,crate::sync_v2_local_queue::encode(remote)?]).map_err(sql)?;
                 if let Some((choice, resolution)) = choices.get(&p.id) {
                     if choice == "keep_local" {
-                        queue_resolution(tx, s, remote, resolution)?;
+                        queue_resolution(tx, s, remote, resolution, key)?;
                     }
                     tx.execute("UPDATE sync_v2_record_conflicts SET resolved_counter=?3 WHERE workspace_id=?1 AND record_id=?2 AND checkpoint_counter<=?3 AND resolved_counter IS NULL",params![s.workspace_id.to_string(),p.id.to_string(),cp.checkpoint_counter as i64]).map_err(sql)?;
                 }
@@ -948,7 +952,7 @@ impl Database {
         open_record(&remote, key)?;
         let resolution = if choice == ConflictChoice::KeepLocal {
             let mut h = remote.header.clone();
-            h.workspace_key_version = key.write_version().unwrap_or(h.workspace_key_version);
+            h.workspace_key_version = key.write_version().ok_or_else(refused)?;
             h.expected_server_version += 1;
             h.mutation_id = Uuid::new_v4();
             h.tombstone = local.header.tombstone;

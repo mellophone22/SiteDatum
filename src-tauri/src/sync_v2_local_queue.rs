@@ -156,10 +156,7 @@ impl Database {
         open_record(record, key)?;
         let bytes = encode(record)?;
         let h = &record.header;
-        if key
-            .write_version()
-            .is_some_and(|active| active != h.workspace_key_version)
-        {
+        if key.write_version() != Some(h.workspace_key_version) {
             return Err(blocked());
         }
         let tx = self.connection.transaction().map_err(storage)?;

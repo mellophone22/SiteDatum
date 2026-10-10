@@ -56,3 +56,59 @@ fn legacy_release_sources_contain_no_live_provider_coordinates_or_raw_payload_lo
         assert!(source.contains("legacy-sync-disabled.invalid"));
     }
 }
+
+#[test]
+fn dormant_sync_v2_modules_have_no_command_or_external_lifecycle_caller() {
+    // Source-surface regression, not a general Rust call-graph proof. Paired with
+    // the behavioral all-access-mode MetadataSync denial test in enforcement.
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let lifecycle = [
+        "KeyRing::initial",
+        "KeyRing::load_protected",
+        ".save_protected(",
+        ".rotate_sync_v2_protected_keys(",
+        ".create_sync_v2_recovery_file(",
+        ".install_sync_v2_recovery_floor(",
+        ".stage_sync_v2_rotation(",
+        "open_recovery_file(",
+        "write_recovery_file(",
+        "RecoveryCode::generate",
+    ];
+    for entry in std::fs::read_dir(root).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+            continue;
+        }
+        let source = std::fs::read_to_string(&path)
+            .unwrap()
+            .replace("\r\n", "\n");
+        let production = source.split("#[cfg(test)]\nmod tests").next().unwrap();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        if name.starts_with("sync_v2_") {
+            assert!(
+                !production.contains("#[tauri::command]"),
+                "{name} cannot expose Sync commands"
+            );
+        } else {
+            for line in production.lines().filter(|line| {
+                let line = line.trim_start();
+                !line.starts_with("mod sync_v2_")
+                    && !(line.starts_with("include_str!(\"../migrations/")
+                        && line.ends_with(".sql\"),"))
+            }) {
+                assert!(
+                    !line.contains("sync_v2_"),
+                    "{name} cannot call dormant Sync modules"
+                );
+            }
+        }
+        if name != "sync_v2_key_recovery.rs" {
+            for call in lifecycle {
+                assert!(
+                    !production.contains(call),
+                    "{name} cannot call dormant key lifecycle"
+                );
+            }
+        }
+    }
+}

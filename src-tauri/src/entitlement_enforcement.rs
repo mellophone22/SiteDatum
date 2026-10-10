@@ -108,11 +108,21 @@ mod tests {
 
     #[test]
     fn metadata_sync_is_denied_for_every_access_mode() {
-        for access in [
-            CommercialAccess::Precommercial,
-            CommercialAccess::Enforced(EffectiveEntitlement::free()),
-            CommercialAccess::Enforced(pro()),
-        ] {
+        let mut modes = vec![CommercialAccess::Precommercial];
+        for plan in [Plan::Free, Plan::ProMonthly, Plan::ProAnnual] {
+            for freshness in [
+                EntitlementFreshness::Free,
+                EntitlementFreshness::Verified,
+                EntitlementFreshness::Grace,
+                EntitlementFreshness::Expired,
+            ] {
+                modes.push(CommercialAccess::Enforced(EffectiveEntitlement {
+                    plan,
+                    freshness,
+                }));
+            }
+        }
+        for access in modes {
             let error = require_feature(access, CommercialFeature::MetadataSync).unwrap_err();
             assert_eq!(error.code, "SYNC_DEFERRED");
         }

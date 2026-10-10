@@ -98,6 +98,8 @@ jobs:
         run: npm run test:release-manifest
       - name: Run native Windows tests
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Verify fictional Windows recovery-keyring protected storage
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml windows_workspace_keyring_protected_roundtrip -- --ignored
       - name: Build frontend
         run: npm run build
       - name: Confirm clean source before packaging

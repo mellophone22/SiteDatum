@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; C10-04D implemented locally awaiting independent review; hosted and UX gates pending; customer access remains disabled
+**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; C10-04D conditionally reviewed and remediated, capacity decision pending; hosted and UX gates pending; customer access remains disabled
 
 ## Objective
 
@@ -204,3 +204,9 @@ approved the direction on 2026-10-10. Independent format review is still require
 the saved minimum cannot prove latest state after total loss. No command, UI,
 transport, deployment or activation is added. See
 `C10-04D-KEY-ROTATION-RECOVERY.md` and its Claude review instructions.
+
+The 2026-10-10 independent review conditionally approved C10-04D with no
+High/Critical finding. Adapter/write-authority, secret-buffer and test-description
+fixes are locally verified; recovery-error and containment safeguards were added.
+The rotation-budget/compactable-format founder decision (M-2) remains required
+before slice acceptance. No recovery files are issued or Sync activated.
