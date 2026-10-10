@@ -154,3 +154,12 @@ prove staging only and cannot authorize tombstone compaction. Live project
 adapters/application with safety backups, conflict resolution, partial paging,
 key rotation, recovery anchors, and comprehensive two-computer scenarios remain
 pending in C10-04C and later slices. See `C10-04B-ENCRYPTED-LOCAL-QUEUE.md`.
+
+C10-04C1 now supplies the first backed-up live adapters, limited to notes and
+contacts. It rehearses a complete verified page in a private SQLite copy,
+requires a verified local safety backup, and commits live application with the
+staging cursor/anchor transaction. Divergent local edits and unsupported kinds
+fail closed. Full adapter coverage, a durable conflict inbox, partial paging,
+live outbox integration and applied-device receipts remain pending. It has no
+command/UI/transport and does not enable Sync. See
+`C10-04C1-BACKED-UP-RECORD-APPLY.md`.

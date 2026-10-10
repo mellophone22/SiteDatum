@@ -69,7 +69,7 @@ fn encode(record: &SealedRecord) -> AppResult<Vec<u8>> {
     })
     .map_err(|_| invalid())
 }
-fn decode(bytes: &[u8]) -> AppResult<SealedRecord> {
+pub(crate) fn decode(bytes: &[u8]) -> AppResult<SealedRecord> {
     let s: StoredEnvelope = serde_json::from_slice(bytes).map_err(|_| invalid())?;
     let id = |text: &str| Uuid::parse_str(text).map_err(|_| invalid());
     let record = SealedRecord {
@@ -236,6 +236,20 @@ impl Database {
         checkpoint: &SealedWorkspaceCheckpoint,
         key: &[u8; 32],
     ) -> AppResult<()> {
+        self.stage_sync_v2_pull_with_apply(s, after, changes, checkpoint, key, |_| Ok(()))
+    }
+
+    /// Internal transaction hook: live adapters must succeed before the staged
+    /// cursor/checkpoint acknowledgement commits. Never expose as a command.
+    pub(crate) fn stage_sync_v2_pull_with_apply(
+        &mut self,
+        s: StreamScope,
+        after: u64,
+        changes: &[PulledRecord],
+        checkpoint: &SealedWorkspaceCheckpoint,
+        key: &[u8; 32],
+        apply: impl FnOnce(&Transaction<'_>) -> AppResult<()>,
+    ) -> AppResult<()> {
         if changes.is_empty() || changes.len() > 100 || after > MAX_SAFE_INTEGER {
             return Err(invalid());
         }
@@ -345,6 +359,7 @@ impl Database {
         )
         .map_err(storage)?;
         tx.execute("INSERT INTO sync_v2_device_acknowledgements(workspace_id,device_id,checkpoint_counter,checkpoint_digest,through_change_seq) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(workspace_id) DO UPDATE SET checkpoint_counter=excluded.checkpoint_counter,checkpoint_digest=excluded.checkpoint_digest,through_change_seq=excluded.through_change_seq",params![s.workspace_id.to_string(),s.device_id.to_string(),verified.checkpoint_counter as i64,verified.manifest_digest.as_slice(),verified.through_change_seq as i64]).map_err(storage)?;
+        apply(&tx)?;
         tx.commit().map_err(storage)
     }
 }
