@@ -214,6 +214,7 @@ jobs:
           node supabase/tests/trusted_enrollment_bridge.integration.mjs
           node supabase/tests/authenticated_device_transfer.integration.mjs
           node supabase/tests/encrypted_record_operations.integration.mjs
+          node supabase/tests/retention_deletion.integration.mjs
       - name: Stop disposable Sync v2 stack
         if: always()
         run: npx --prefix ../.. supabase stop --no-backup

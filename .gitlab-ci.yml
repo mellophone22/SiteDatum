@@ -110,6 +110,7 @@ sync_v2_proof:
     - node supabase/tests/trusted_enrollment_bridge.integration.mjs
     - node supabase/tests/authenticated_device_transfer.integration.mjs
     - node supabase/tests/encrypted_record_operations.integration.mjs
+    - node supabase/tests/retention_deletion.integration.mjs
   after_script:
     - npx supabase stop --no-backup --workdir proofs/sync-v2-identity || true
 

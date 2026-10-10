@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, and disposable local C10-03A through C10-03G complete; remaining C10-03 work pending; customer access remains disabled
+**Status:** C10-01, C10-02, and disposable local C10-03A through C10-03H workspace-lifecycle slice complete; remaining C10-03 work pending; customer access remains disabled
 
 ## Objective
 
@@ -131,5 +131,10 @@ device-signed batches atomically commit opaque record envelopes, immutable
 changes, an encrypted checkpoint, idempotency state, and the workspace cursor.
 Expected-version conflicts reject the whole batch, exact retries are safe,
 cross-owner access fails, and the service never interprets ciphertext. The
-remaining C10-03 gates are retention/deletion, clean reconstruction and
-security-advisor evidence, and client/repository secret proof.
+The C10-03H workspace-lifecycle slice now adds signed disable/recovery,
+immediate hosted deletion, account-level Sync-data cleanup with device/session
+revocation, content-free receipts, and a daily 30-day retention sweep. Safe
+tombstone compaction remains blocked on C10-04's durable acknowledgement and
+replacement-checkpoint proof. Other remaining C10-03 gates are clean
+reconstruction and security-advisor evidence, and client/repository secret
+proof.

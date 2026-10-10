@@ -43,8 +43,10 @@ not enable Sync. The central `SYNC_DEFERRED` denial remains unchanged.
   wrong sessions/devices/owners, and disabled workspaces fail closed.
 - Validation precedes every write, so one stale record rejects the entire
   batch without advancing the checkpoint or cursor.
-- Tombstones are opaque versioned records with a server deletion timestamp;
-  retention and permanent hosted deletion remain C10-03H work.
+- Tombstones are opaque versioned records with a server deletion timestamp.
+  C10-03H now supplies workspace-level retention and permanent hosted deletion;
+  safe individual-tombstone compaction remains gated on C10-04 acknowledgement
+  and replacement-checkpoint proof.
 - Requests and responses are bounded, rate-limited, authenticated, and return
   content-free errors. HTTPS is mandatory outside the disposable loopback
   proof.
@@ -78,9 +80,10 @@ not enable Sync. The central `SYNC_DEFERRED` denial remains unchanged.
 
 ## Remaining gates
 
-C10-03 still requires the retention/deletion workflow, clean reconstruction
-and security-advisor evidence, and production-independent client/repository
-secret proof before it can close. C10-04 owns local codecs, encrypted outbox,
+C10-03H now supplies the workspace retention/deletion workflow. C10-03 still
+requires C10-04-backed tombstone compaction, clean reconstruction and
+security-advisor evidence, and production-independent client/repository secret
+proof before it can close. C10-04 owns local codecs, encrypted outbox,
 durable cursor/checkpoint state, conflict handling, and atomic local apply.
 C10-05 owns explicit consent, device management, deletion, and recovery UX.
 No customer Sync beta is authorized until the later C10 gates pass.

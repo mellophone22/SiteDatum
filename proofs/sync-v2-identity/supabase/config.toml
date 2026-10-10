@@ -82,3 +82,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/sync-records/deno.json"
 entrypoint = "./functions/sync-records/index.ts"
+
+[functions.sync-lifecycle]
+enabled = true
+verify_jwt = true
+import_map = "./functions/sync-lifecycle/deno.json"
+entrypoint = "./functions/sync-lifecycle/index.ts"
