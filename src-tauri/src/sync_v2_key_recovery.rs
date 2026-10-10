@@ -24,7 +24,11 @@ use zeroize::Zeroizing;
 
 const MAX_KEYS: usize = 8;
 const LABEL: &[u8] = b"sitedatum.sync-v2.recovery-file.v1";
-const MAGIC: &[u8; 8] = b"SDREC001";
+// SDR1's checksum label stays stable. File encryption has its own version domain.
+const RECOVERY_LABEL_V2: &[u8] = b"sitedatum.sync-v2.recovery-file.v2";
+const LEGACY_MAGIC: &[u8; 8] = b"SDREC001";
+const MAGIC: &[u8; 8] = b"SDREC002";
+const PROTECTED_MAGIC: &[u8; 8] = b"SDKR0002";
 fn refused() -> AppError {
     AppError::from_technical(
         "SYNC_V2_KEY_RECOVERY_REFUSED",
@@ -110,6 +114,9 @@ impl KeyRing {
             return Err(refused());
         }
         let next = self.active.checked_add(1).ok_or_else(refused)?;
+        if next > i32::MAX as u32 {
+            return Err(refused());
+        }
         let mut key = Zeroizing::new([0; 32]);
         getrandom::fill(&mut *key).map_err(|_| refused())?;
         self.keys.insert(next, key);
@@ -132,6 +139,12 @@ impl KeyRing {
         b
     }
     fn from_raw(b: &[u8]) -> AppResult<Self> {
+        Self::parse_raw(b, false)
+    }
+    fn from_legacy_raw(b: &[u8]) -> AppResult<Self> {
+        Self::parse_raw(b, true)
+    }
+    fn parse_raw(b: &[u8], legacy: bool) -> AppResult<Self> {
         if b.len() < 37 {
             return Err(refused());
         }
@@ -143,6 +156,8 @@ impl KeyRing {
             || workspace.is_nil()
             || count == 0
             || count > MAX_KEYS
+            || active == 0
+            || active > i32::MAX as u32
             || b.len() != 37 + count * 36
         {
             return Err(refused());
@@ -151,7 +166,7 @@ impl KeyRing {
         let mut previous = 0;
         for e in b[37..].chunks_exact(36) {
             let v = u32::from_be_bytes(e[..4].try_into().map_err(|_| refused())?);
-            if v != previous + 1 {
+            if v == 0 || v > i32::MAX as u32 || v <= previous || (legacy && v != previous + 1) {
                 return Err(refused());
             }
             previous = v;
@@ -167,12 +182,36 @@ impl KeyRing {
             keys,
         })
     }
+    fn protected_bytes(&self) -> Zeroizing<Vec<u8>> {
+        let raw = self.raw();
+        let mut b = Zeroizing::new(Vec::with_capacity(8 + raw.len()));
+        b.extend_from_slice(PROTECTED_MAGIC);
+        b.extend_from_slice(&raw);
+        b
+    }
+    fn from_protected_bytes(b: &[u8]) -> AppResult<Self> {
+        // Legacy owner UUID bytes may themselves start with the new magic.
+        // Exact bounded framing is disjoint; never fallback after a tagged error.
+        if (81..=333).contains(&b.len()) && (b.len() - 45) % 36 == 0 {
+            if !b.starts_with(PROTECTED_MAGIC) {
+                return Err(refused());
+            }
+            Self::from_raw(&b[8..])
+        } else if (73..=325).contains(&b.len()) && (b.len() - 37) % 36 == 0 {
+            // Compatibility only: an untagged old ring remains strict 1..active.
+            Self::from_legacy_raw(b)
+        } else {
+            Err(refused())
+        }
+    }
     pub(crate) fn save_protected(&self) -> AppResult<()> {
         #[cfg(windows)]
         {
             use base64::Engine;
             let raw = self.raw();
-            let encoded = Zeroizing::new(base64::engine::general_purpose::STANDARD.encode(&*raw));
+            let protected = self.protected_bytes();
+            let encoded =
+                Zeroizing::new(base64::engine::general_purpose::STANDARD.encode(&*protected));
             credential(self.owner, self.workspace)?
                 .set_password(&encoded)
                 .map_err(|_| refused())?;
@@ -204,7 +243,7 @@ impl KeyRing {
                     .decode(encoded.as_bytes())
                     .map_err(|_| refused())?,
             );
-            let ring = Self::from_raw(&raw)?;
+            let ring = Self::from_protected_bytes(&raw)?;
             ring.select(owner, workspace, ring.active)?;
             Ok(ring)
         }
@@ -334,8 +373,9 @@ fn recovery_key(
     salt: &[u8],
     owner: Uuid,
     workspace: Uuid,
+    legacy: bool,
 ) -> AppResult<Zeroizing<[u8; 32]>> {
-    let mut info = LABEL.to_vec();
+    let mut info = if legacy { LABEL } else { RECOVERY_LABEL_V2 }.to_vec();
     info.extend_from_slice(owner.as_bytes());
     info.extend_from_slice(workspace.as_bytes());
     let mut k = Zeroizing::new([0; 32]);
@@ -350,6 +390,19 @@ pub(crate) fn create_recovery_file(
     created_at_unix: u64,
     code: &RecoveryCode,
 ) -> AppResult<Vec<u8>> {
+    create_recovery_file_format(ring, minimum, created_at_unix, code, false)
+}
+fn create_recovery_file_format(
+    ring: &KeyRing,
+    minimum: Anchor,
+    created_at_unix: u64,
+    code: &RecoveryCode,
+    legacy: bool,
+) -> AppResult<Vec<u8>> {
+    let raw = ring.raw();
+    if legacy {
+        KeyRing::from_legacy_raw(&raw)?;
+    }
     minimum.validate()?;
     if created_at_unix == 0 {
         return Err(refused());
@@ -358,7 +411,7 @@ pub(crate) fn create_recovery_file(
     getrandom::fill(&mut salt).map_err(|_| refused())?;
     let mut nonce = [0; 24];
     getrandom::fill(&mut nonce).map_err(|_| refused())?;
-    let mut header = MAGIC.to_vec();
+    let mut header = if legacy { LEGACY_MAGIC } else { MAGIC }.to_vec();
     header.extend_from_slice(ring.owner.as_bytes());
     header.extend_from_slice(ring.workspace.as_bytes());
     header.extend_from_slice(&salt);
@@ -368,8 +421,8 @@ pub(crate) fn create_recovery_file(
     body.extend_from_slice(&minimum.counter.to_be_bytes());
     body.extend_from_slice(&minimum.through.to_be_bytes());
     body.extend_from_slice(&minimum.digest);
-    body.extend_from_slice(&ring.raw());
-    let key = recovery_key(code, &salt, ring.owner, ring.workspace)?;
+    body.extend_from_slice(&raw);
+    let key = recovery_key(code, &salt, ring.owner, ring.workspace, legacy)?;
     let encrypted = XChaCha20Poly1305::new((&*key).into())
         .encrypt(
             XNonce::from_slice(&nonce),
@@ -391,13 +444,14 @@ pub(crate) fn open_recovery_file(
     independent_floor: Option<Anchor>,
 ) -> AppResult<RecoveredKeys> {
     if !(241..=493).contains(&bytes.len())
-        || &bytes[..8] != MAGIC
+        || (&bytes[..8] != MAGIC && &bytes[..8] != LEGACY_MAGIC)
         || bytes[8..24] != *owner.as_bytes()
         || bytes[24..40] != *workspace.as_bytes()
     {
         return Err(refused());
     }
-    let key = recovery_key(code, &bytes[40..72], owner, workspace)?;
+    let legacy = &bytes[..8] == LEGACY_MAGIC;
+    let key = recovery_key(code, &bytes[40..72], owner, workspace, legacy)?;
     let body = Zeroizing::new(
         XChaCha20Poly1305::new((&*key).into())
             .decrypt(
@@ -434,7 +488,11 @@ pub(crate) fn open_recovery_file(
             manifest_digest: minimum.digest,
         })?;
     }
-    let ring = KeyRing::from_raw(&body[56..])?;
+    let ring = if legacy {
+        KeyRing::from_legacy_raw(&body[56..])
+    } else {
+        KeyRing::from_raw(&body[56..])
+    }?;
     ring.select(owner, workspace, ring.active)?;
     Ok(RecoveredKeys {
         ring,
@@ -447,7 +505,7 @@ pub(crate) fn open_recovery_file(
 pub(crate) fn write_recovery_file(path: &Path, bytes: &[u8]) -> AppResult<()> {
     if path.extension().and_then(|s| s.to_str()) != Some("sitedatum-recovery")
         || !(241..=493).contains(&bytes.len())
-        || !bytes.starts_with(MAGIC)
+        || (!bytes.starts_with(MAGIC) && !bytes.starts_with(LEGACY_MAGIC))
     {
         return Err(refused());
     }
@@ -814,6 +872,113 @@ mod tests {
             assert!(RecoveryCode::parse(bad).is_err());
         }
         assert!(RecoveryCode::parse(&text.to_ascii_lowercase()).is_err());
+    }
+    #[test]
+    fn compactable_wire_preserves_high_versions_without_renumbering() {
+        let mut r = ring();
+        for _ in 0..40 {
+            r.rotate().unwrap();
+            // Wire-only fixture: NOT an authorized retirement operation.
+            // Production has no key removal API; hosted/history gates are pending.
+            r.keys.retain(|version, _| *version == r.active);
+        }
+        assert_eq!(r.active, 41);
+        assert_eq!(r.keys.len(), 1);
+        let protected = r.protected_bytes();
+        assert!(protected.starts_with(PROTECTED_MAGIC));
+        let loaded = KeyRing::from_protected_bytes(&protected).unwrap();
+        assert_eq!(loaded.active, 41);
+        assert!(loaded.select(r.owner, r.workspace, 1).is_err());
+        assert!(loaded.select(r.owner, r.workspace, 41).is_ok());
+        assert!(KeyRing::from_legacy_raw(&r.raw()).is_err());
+        let code = RecoveryCode::generate().unwrap();
+        let file = create_recovery_file(&r, anchor(), 1000, &code).unwrap();
+        assert!(file.starts_with(MAGIC));
+        let recovered = open_recovery_file(&file, &code, r.owner, r.workspace, 1001, None).unwrap();
+        assert_eq!(recovered.ring.active, 41);
+        assert!(!recovered.proves_latest_state);
+        let mut downgraded = file;
+        downgraded[..8].copy_from_slice(LEGACY_MAGIC);
+        assert!(open_recovery_file(&downgraded, &code, r.owner, r.workspace, 1001, None).is_err());
+    }
+    #[test]
+    fn legacy_files_and_protected_rings_remain_strict_and_readable() {
+        let mut r = ring();
+        r.rotate().unwrap();
+        let loaded = KeyRing::from_protected_bytes(&r.raw()).unwrap();
+        assert!(loaded.raw().as_slice() == r.raw().as_slice());
+        let code = RecoveryCode::generate().unwrap();
+        let file = create_recovery_file_format(&r, anchor(), 1000, &code, true).unwrap();
+        assert!(file.starts_with(LEGACY_MAGIC));
+        let code = RecoveryCode::parse(&code.display()).unwrap();
+        let recovered = open_recovery_file(&file, &code, r.owner, r.workspace, 1001, None).unwrap();
+        assert!(recovered.ring.raw().as_slice() == r.raw().as_slice());
+        for i in 0..file.len() {
+            let mut bad = file.clone();
+            bad[i] ^= 1;
+            assert!(open_recovery_file(&bad, &code, r.owner, r.workspace, 1001, None).is_err());
+        }
+        let mut upgraded_magic = file;
+        upgraded_magic[..8].copy_from_slice(MAGIC);
+        assert!(
+            open_recovery_file(&upgraded_magic, &code, r.owner, r.workspace, 1001, None).is_err()
+        );
+        let mut old_sparse = r.raw();
+        old_sparse[37..41].copy_from_slice(&2u32.to_be_bytes());
+        assert!(KeyRing::from_legacy_raw(&old_sparse).is_err());
+    }
+    #[test]
+    fn legacy_owner_magic_collision_uses_exact_framing_without_tagged_fallback() {
+        let r = KeyRing::initial(
+            Uuid::parse_str("53444b52-3030-3032-8000-000000000001").unwrap(),
+            Uuid::new_v4(),
+        )
+        .unwrap();
+        let raw = r.raw();
+        assert!(raw.starts_with(PROTECTED_MAGIC));
+        assert!(KeyRing::from_legacy_raw(&raw).is_ok());
+        let loaded = KeyRing::from_protected_bytes(&raw).unwrap();
+        assert!(loaded.raw().as_slice() == raw.as_slice());
+        let tagged = r.protected_bytes();
+        assert!(KeyRing::from_protected_bytes(&tagged).is_ok());
+        let mut bad = Zeroizing::new(tagged.to_vec());
+        bad[0] ^= 1;
+        assert!(KeyRing::from_protected_bytes(&bad).is_err());
+        for length in 0..tagged.len() {
+            assert!(KeyRing::from_protected_bytes(&tagged[..length]).is_err());
+        }
+    }
+    #[test]
+    fn compactable_keyring_rejects_duplicate_descending_zero_and_missing_active_versions() {
+        let mut r = ring();
+        r.rotate().unwrap();
+        let raw = r.raw();
+        for (offset, value) in [
+            (37, 0u32),
+            (73, 1),
+            (37, 3),
+            (32, 3),
+            (32, 0),
+            (73, u32::MAX),
+        ] {
+            let mut bad = Zeroizing::new(raw.to_vec());
+            bad[offset..offset + 4].copy_from_slice(&value.to_be_bytes());
+            assert!(KeyRing::from_raw(&bad).is_err());
+        }
+        let mut sparse = Zeroizing::new(raw.to_vec());
+        sparse[32..36].copy_from_slice(&100u32.to_be_bytes());
+        sparse[73..77].copy_from_slice(&100u32.to_be_bytes());
+        let mut loaded = KeyRing::from_raw(&sparse).unwrap();
+        assert_eq!(loaded.active, 100);
+        assert!(loaded.select(r.owner, r.workspace, 2).is_err());
+        assert_eq!(loaded.rotate().unwrap(), 101);
+        let mut limit = ring();
+        let key = limit.keys.remove(&1).unwrap();
+        limit.active = i32::MAX as u32;
+        limit.keys.insert(limit.active, key);
+        let before = limit.raw();
+        assert!(limit.rotate().is_err());
+        assert!(limit.raw().as_slice() == before.as_slice());
     }
     #[test]
     fn recovery_file_restores_all_versions_and_authenticated_checkpoint_without_code_storage() {
@@ -1329,12 +1494,33 @@ mod tests {
             }
         }
         let _cleanup = Cleanup(r.owner, r.workspace);
+        // Untagged legacy protected storage is read without automatic rewrite.
+        use base64::Engine;
+        let legacy = Zeroizing::new(base64::engine::general_purpose::STANDARD.encode(&*r.raw()));
+        credential(r.owner, r.workspace)
+            .unwrap()
+            .set_password(&legacy)
+            .unwrap();
+        assert!(
+            KeyRing::load_protected(r.owner, r.workspace)
+                .unwrap()
+                .raw()
+                .as_slice()
+                == r.raw().as_slice()
+        );
         r.save_protected().unwrap();
         r.rotate().unwrap();
         r.save_protected().unwrap();
         let loaded = KeyRing::load_protected(r.owner, r.workspace).unwrap();
         assert!(loaded.raw().as_slice() == r.raw().as_slice());
         assert_eq!(loaded.active, 2);
+        // Format-only fictional compacted fixture, not a production retirement.
+        r.keys.remove(&1);
+        r.save_protected().unwrap();
+        let compacted = KeyRing::load_protected(r.owner, r.workspace).unwrap();
+        assert_eq!(compacted.active, 2);
+        assert!(compacted.select(r.owner, r.workspace, 1).is_err());
+        assert!(compacted.select(r.owner, r.workspace, 2).is_ok());
         credential(r.owner, r.workspace)
             .unwrap()
             .delete_credential()

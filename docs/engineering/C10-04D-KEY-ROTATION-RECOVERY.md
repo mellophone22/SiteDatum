@@ -1,7 +1,8 @@
 # C10-04D — Versioned keys and recovery proof
 
 Status: independently reviewed with conditional approval; remediation locally
-verified, founder key-capacity decision still pending. Not accepted or activated.
+verified; founder selected safe compaction, with format review and retirement
+protocol still pending. Not accepted or activated.
 Customer Sync remains disabled. No command, UI, transport, hosted deployment,
 release, activation or cost is introduced.
 
@@ -55,7 +56,10 @@ already retained by a previously authorized/compromised device. Full-keyring
 and anchor device transfer, signed hosted compaction and remaining C10 UX/
 operational integration are still required before activation.
 
-## Recovery code and wire format
+## Recovery code and original SDREC001 wire format
+
+This section records the independently reviewed original layout. The new writer
+and compactable semantics are specified in the SDREC002 section below.
 
 The code contains 256 OS-random bits, not a human password. Printable form:
 SDR1- plus nine uppercase eight-hex-digit groups (85 characters total).
@@ -139,7 +143,7 @@ Windows storage drill passed; 113 frontend tests, lint and build passed.
 The patch review identified a persisted-resolution queue bypass; its sink guard
 and negative tests were added and the entire Rust suite rerun successfully.
 
-M-2 is not resolved: eight retained keys permit seven rotations, and SDREC001
+Historical M-2 state: eight retained keys permitted seven rotations, and SDREC001
 requires versions contiguous from one. Do not issue customer recovery files
 or activate Sync before a founder capacity/compaction decision is documented
 and tested. Possible decisions are a larger explicit finite retention budget,
@@ -148,6 +152,95 @@ budget. None was selected implicitly by the remediation.
 I-1 structural recovered-vs-current state and I-2 code-entry normalization remain
 C10-05 consuming-UX requirements. Earlier hosted and operational gates remain.
 
-Acceptance is still blocked on M-2; see
+Acceptance is still blocked on the compaction gates below; see
 C10-04D-CLAUDE-REVIEW-INSTRUCTIONS.md. These proofs do not replace hosted restore,
 revocation, consent/deletion, final two-computer or operational drills.
+
+## Safe compaction decision and format foundation — 2026-10-10
+
+The founder selected safe compaction rather than merely raising the lifetime
+rotation budget. This authorizes compactable-format work, not automatic deletion
+of historical dependencies. The format-only native slice is implemented;
+the actual retirement protocol remains blocked on the gates below.
+
+SDREC002 uses the same 96-byte header, encrypted capture date/minimum and bounded
+keyring lengths (241–493 bytes), but a separate HKDF domain:
+`sitedatum.sync-v2.recovery-file.v2 || owner UUID || workspace UUID`.
+The keyring retains explicit version IDs in strictly increasing order;
+each is positive and at most i32::MAX, and active must equal the highest retained
+ID. Gaps and a first ID above one are representable, with at most eight keys
+resident at once. Versions are never renumbered or reused. The first retained
+version is the first encoded entry, not inferred from count. The numeric
+version maximum still refuses safely; this is not an infinite counter claim.
+
+The new writer emits only SDREC002. SDREC001 remains a strict read-compatible
+format with its original encryption label and contiguous 1..active parser;
+new sparse semantics are not retroactively applied to old files. SDR1 printable
+code/checksum semantics and checksum label remain unchanged. Magic is bound by
+both encryption-domain selection and whole-header authentication, so changing
+001 to 002 or vice versa does not migrate a file.
+
+Protected storage writes `SDKR0002 || canonical keyring`, with preallocated
+Zeroizing buffers and fresh-handle verification. The existing opaque credential
+account is preserved; untagged legacy rings are read strictly without automatic
+rewrite. An explicit save writes the tagged format. Older proof binaries cannot
+read tagged/compacted encodings; fail-closed client/version negotiation is required
+before eventual activation. This is not backwards write compatibility.
+Exact bounded frame lengths distinguish legacy and tagged protected payloads;
+an owner UUID beginning with SDKR0002 remains a valid legacy owner. A malformed
+tagged payload is never retried using legacy parsing.
+
+Tests exercise legacy-file byte tampering and read compatibility, both magic
+substitutions, high/sparse IDs, duplicates/descending/zero/missing-active IDs,
+the protocol integer ceiling, and protected legacy/tagged/sparse roundtrips.
+A wire-only fictional fixture cycles beyond seven rotations after manually
+removing dependencies inside the test. That proves representation, NOT safe
+retirement. Production still has no key-removal method. Eight resident keys
+still refuse additional rotation until a reviewed retirement operation exists.
+
+### Retirement protocol requirements (not implemented or approved as runtime policy)
+
+The current snapshot applied receipt is insufficient retirement authority.
+Before any production key removal, the implementation must prove:
+
+1. A complete ciphertext census covers snapshots, outbox, committed baselines,
+   all pull history, partial pages/checkpoints, every conflict candidate including
+   resolved rows, rotation journals, hosted changes/checkpoints and recovery
+   generations. No local live project record, activity or normal file is deleted.
+2. A replacement authenticated checkpoint covers current records/tombstones
+   under retained keys. Every active device signs a durable **applied** receipt
+   for that exact owner/workspace/counter/cursor/digest and retained-key floor.
+   Existing staging acknowledgements and provider assertions are insufficient.
+3. Hosted compaction commits an authenticated history/bootstrap floor, rejects
+   retired-version writes and cannot omit an active device acknowledgement.
+   A device absent from the barrier cannot be silently treated as acknowledged.
+4. Exact retry semantics are preserved. Current pull history compares original
+   envelope bytes; re-encrypting it in place is not compatible. An authenticated
+   floor and reviewed bootstrap/replay rules must precede history migration.
+   Any local-only retained history archive needs its own versioned authenticated
+   encoding and tested access path, not a silently altered record envelope.
+5. Historical backups/recovery generations remain usable under a documented
+   key-preservation or archive migration policy. Customer-held files cannot be
+   discovered, overwritten or deleted automatically. A freshly verified recovery
+   generation and explicit consequence review precede retirement.
+6. SQLite, protected storage, device acknowledgements and recovery generation
+   use a crash-safe ordered journal. Restart can never leave data requiring a
+   key that was already removed; failures retain the old ring and local work.
+
+Missing source boundaries: no hosted applied-device acknowledgement/compaction
+action exists; current device transfer carries one key, not a full ring and
+trusted floor; backups/conflicts/history keep old ciphertext. Completing them
+is a separate protocol vertical slice, not supplied by sparse encoding.
+Offline-device rebootstrap and historical-recovery retention consequences need
+founder approval and independent design review before implementation can remove
+keys. The default until then is no removal and fail-closed capacity refusal.
+
+Local format validation: production cargo check, focused native tests, complete
+Rust regression, formatting and the unique-fictional Windows storage drill.
+Final local results: 172 unit + 28 integration tests passed (200 total), the
+explicit protected-storage test passed, and 113 frontend tests, lint and build
+passed. The patch review's legacy UUID/tag collision was reproduced, fixed
+with exact framing, and covered by its own regression test before final checks.
+No customer artifact was issued, hosted service altered, credential migrated
+or key retired. Independent review of SDREC002 and the retirement plan is the
+next gate; see the updated review instructions.

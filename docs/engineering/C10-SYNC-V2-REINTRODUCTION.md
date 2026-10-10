@@ -1,6 +1,6 @@
 # C10 — Sync v2 reintroduction
 
-**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; C10-04D conditionally reviewed and remediated, capacity decision pending; hosted and UX gates pending; customer access remains disabled
+**Status:** C10-01, C10-02, disposable local C10-03A through C10-03H, and local C10-04A/B/C complete; C10-04D remediated with compactable format foundation, independent format/retirement review pending; hosted and UX gates pending; customer access remains disabled
 
 ## Objective
 
@@ -210,3 +210,11 @@ High/Critical finding. Adapter/write-authority, secret-buffer and test-descripti
 fixes are locally verified; recovery-error and containment safeguards were added.
 The rotation-budget/compactable-format founder decision (M-2) remains required
 before slice acceptance. No recovery files are issued or Sync activated.
+
+The founder selected safe compaction on 2026-10-10. SDREC002 and versioned
+protected-ring encoding now represent bounded sparse/high key IDs while strict
+legacy reads and code checksums remain compatible. Actual retirement is not
+implemented: historical ciphertext, exact replay, signed all-device applied
+acknowledgements, hosted bootstrap floors and backup/recovery consequences need
+a reviewed protocol and founder policy approval. See the format foundation and
+retirement requirements in `C10-04D-KEY-ROTATION-RECOVERY.md`. No keys are removed.
