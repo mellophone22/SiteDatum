@@ -318,6 +318,10 @@ mod tests {
         assert!(result
             .files
             .iter()
+            .all(|file| !file.entity.starts_with("sync_v2_")));
+        assert!(result
+            .files
+            .iter()
             .all(|file| Path::new(&result.path).join(&file.file_name).is_file()));
         assert!(Path::new(&result.path).join("manifest.json").is_file());
         assert!(!fs::read_dir(&parent).unwrap().any(|entry| entry
@@ -337,7 +341,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(manifest["formatVersion"], 1);
-        assert_eq!(manifest["databaseSchemaVersion"], 12);
+        assert_eq!(manifest["databaseSchemaVersion"], 13);
         assert_eq!(manifest["includesDocumentBytes"], false);
         assert_eq!(manifest["files"].as_array().unwrap().len(), TABLES.len());
         assert_eq!(

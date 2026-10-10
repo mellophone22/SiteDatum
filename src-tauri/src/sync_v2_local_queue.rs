@@ -477,7 +477,7 @@ mod tests {
                         0
                     ))
                     .unwrap(),
-                12
+                13
             );
             assert_eq!(
                 db.connection

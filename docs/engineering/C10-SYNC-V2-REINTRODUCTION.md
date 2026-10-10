@@ -181,3 +181,9 @@ existing link/parent checks, parent-cycle refusal and guards against cascading
 deletion of links or attachment references. New relationship/attachment envelopes
 remain unsupported. No document operation or customer activation is added. See
 `C10-04C4-RFI-SUBMITTAL-ADAPTERS.md` for evidence and remaining work.
+
+C10-04C5 adds RFI-task/submittal-task relationship envelopes with schema-13
+local-only immutable identity bindings. Restart/retry-safe explicit unlinking
+permits dependent deletion without cascades; ambiguous, missing, cross-project
+or locally edited links fail closed. Sync remains disabled. See
+`C10-04C5-TASK-LINK-ADAPTERS.md`; attachment/file adapters are the next slice.

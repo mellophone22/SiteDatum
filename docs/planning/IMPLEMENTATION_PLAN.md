@@ -66,4 +66,6 @@ Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BO
 
 - **C10-04C4 — RFI/submittal adapters:** adds exact allowlisted register metadata application, lifecycle validation, project/link/parent checks, cycle refusal and cascade-preserving tombstone guards. Eight focused scenarios extend safe-apply coverage to 28 tests. New relationship/attachment/file envelopes, other adapters and runtime activation remain pending. Evidence: `docs/engineering/C10-04C4-RFI-SUBMITTAL-ADAPTERS.md`.
 
+- **C10-04C5 — task-link adapters:** adds RFI-task/submittal-task envelopes, schema-13 immutable local identity bindings, dependency-ordered linking/explicit unlinking, restart/retry and conflict/cross-project refusal. Seven new scenarios bring safe-apply coverage to 35 tests. Sync remains disabled; attachment/file adapters are next. Evidence: `docs/engineering/C10-04C5-TASK-LINK-ADAPTERS.md`.
+
 No commercial work package authorizes production provider accounts, secrets, deployment, or telemetry for a later package. Resolve and record its required founder decisions before implementation.

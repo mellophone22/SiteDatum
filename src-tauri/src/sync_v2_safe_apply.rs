@@ -1,4 +1,4 @@
-//! C10-04C1-C4: dormant, fail-closed project/register/task/notes/contact adapters.
+//! C10-04C1-C5: dormant, fail-closed metadata and task-link adapters.
 //! No transport, document operations, or commands.
 #![allow(dead_code)]
 
@@ -62,6 +62,8 @@ struct Prepared {
     before: Option<Value>,
     after: Option<Value>,
     project_root: Option<std::path::PathBuf>,
+    relationship: Option<crate::sync_v2_relationship_adapters::Binding>,
+    workspace: Uuid,
 }
 fn project_fields(mut fields: Option<Value>, root: &Path) -> AppResult<Option<Value>> {
     if let Some(fields) = &mut fields {
@@ -106,7 +108,7 @@ fn prepare(
     };
     changes.iter().map(|change| {
         let h = &change.record.header;
-        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,1|2|3|4|10|11) {
+        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,1|2|3|4|5|6|10|11) {
             return Err(refused());
         }
         let mut after = open_record(&change.record,key)?.fields;
@@ -114,12 +116,13 @@ fn prepare(
         if let Some(fields) = &after {
             // Preserve exact identity rather than silently canonicalizing UUID
             // text during SQL application (SQLite text keys are case-sensitive).
-            for field in ["id","project_id","related_contact_id","parent_submittal_id"] {
+            for field in ["id","project_id","related_contact_id","parent_submittal_id","rfi_id","submittal_id","task_id"] {
                 if let Some(value)=fields.get(field).and_then(Value::as_str) {
                     if Uuid::parse_str(value).map_err(|_|invalid())?.to_string()!=value {return Err(refused());}
                 }
             }
             if matches!(h.record_kind,3|4) {crate::sync_v2_register_adapters::validate(h.record_kind,fields)?;}
+            if !matches!(h.record_kind,5|6) {
             let required = match h.record_kind {2=>"title",3=>"subject",10=>"body",_=>"name"};
             if fields[required].as_str().is_none_or(|s|s.trim().is_empty()) {
                 return Err(refused());
@@ -130,8 +133,21 @@ fn prepare(
             {
                 return Err(refused());
             }
+            }
         }
-        let before = live(&db.connection,h.record_kind,h.record_id)?;
+        let relationship = if matches!(h.record_kind,5|6) {
+            let stored=crate::sync_v2_relationship_adapters::stored(&db.connection,scope.workspace_id,h.record_id)?;
+            let binding=if let Some(fields)=&after {
+                let incoming=crate::sync_v2_relationship_adapters::from_fields(h.record_kind,fields)?;
+                if stored.as_ref().is_some_and(|b|b!=&incoming) {return Err(refused());}
+                // Do not silently claim a pre-existing unmanaged local link.
+                if stored.is_none() && crate::sync_v2_relationship_adapters::live(&db.connection,&incoming)?.is_some() {return Err(refused());}
+                incoming
+            } else {stored.ok_or_else(refused)?};
+            if binding.kind!=h.record_kind {return Err(refused());}
+            Some(binding)
+        } else {None};
+        let before = if let Some(binding)=&relationship {crate::sync_v2_relationship_adapters::live(&db.connection,binding)?} else {live(&db.connection,h.record_kind,h.record_id)?};
         let baseline: Option<(u8,Vec<u8>)> = db.connection.query_row(
             "SELECT record_kind,envelope FROM sync_v2_record_snapshots WHERE workspace_id=?1 AND record_id=?2",
             params![scope.workspace_id.to_string(),h.record_id.to_string()],
@@ -148,6 +164,9 @@ fn prepare(
             },
             None => None,
         };
+        if let (Some(binding),Some(fields))=(&relationship,&expected) {
+            if crate::sync_v2_relationship_adapters::from_fields(h.record_kind,fields)?!=*binding {return Err(refused());}
+        }
         // Exact remote redelivery is harmless; divergent local work is never
         // overwritten, even when the outbox was not populated by an adapter.
         if before != expected && before != after {
@@ -163,7 +182,7 @@ fn prepare(
                 }
             }
         }
-        Ok(Prepared {id:h.record_id,kind:h.record_kind,before,after,project_root:project_root.clone()})
+        Ok(Prepared {id:h.record_id,kind:h.record_kind,before,after,project_root:project_root.clone(),relationship,workspace:scope.workspace_id})
     }).collect()
 }
 fn text<'a>(fields: &'a Value, name: &str) -> AppResult<&'a str> {
@@ -183,7 +202,12 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
         .map_err(sql)?;
     // Check every baseline before any adapter changes dependency rows.
     for record in records {
-        if live(tx, record.kind, record.id)? != record.before {
+        let current = if let Some(binding) = &record.relationship {
+            crate::sync_v2_relationship_adapters::live(tx, binding)?
+        } else {
+            live(tx, record.kind, record.id)?
+        };
+        if current != record.before {
             return Err(refused());
         }
     }
@@ -191,21 +215,33 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
     // order. Stream cursor order is never changed by this local application sort.
     let mut ordered = records.iter().collect::<Vec<_>>();
     ordered.sort_by_key(|r| match (r.kind, r.after.is_some()) {
+        (5 | 6, false) => -2,
         (1, true) => -1,
         (11, true) => 0,
         (2, true) => 1,
         (3 | 4, true) => 2,
         (10, true) => 2,
-        (10, false) => 3,
-        (3 | 4, false) => 3,
-        (2, false) => 4,
-        (11, false) => 5,
-        (1, false) => 6,
-        _ => 7,
+        (5 | 6, true) => 3,
+        (10, false) => 4,
+        (3 | 4, false) => 5,
+        (2, false) => 6,
+        (11, false) => 7,
+        (1, false) => 8,
+        _ => 9,
     });
     for record in ordered {
         let id = record.id.to_string();
         match (record.kind, &record.after) {
+            (5 | 6, fields) => {
+                let binding = record.relationship.as_ref().ok_or_else(refused)?;
+                crate::sync_v2_relationship_adapters::bind(
+                    tx,
+                    record.workspace,
+                    record.id,
+                    binding,
+                )?;
+                crate::sync_v2_relationship_adapters::apply(tx, binding, fields.as_ref())?;
+            }
             (3 | 4, Some(f)) => crate::sync_v2_register_adapters::upsert(tx, record.kind, f)?,
             (3 | 4, None) => crate::sync_v2_register_adapters::delete(tx, record.kind, record.id)?,
             (1, Some(f)) => {
@@ -267,7 +303,7 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
             }
             (2, None) => {
                 // RESTRICT relationships prevent orphaning linked RFI/submittal
-                // work. Their explicit relationship adapters are a later slice.
+                // work unless an explicit link tombstone already removed it.
                 tx.execute("DELETE FROM tasks WHERE id=?1", [id])
                     .map_err(sql)?;
             }
@@ -292,7 +328,7 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
             _ => return Err(refused()),
         }
     }
-    if records.iter().any(|r| matches!(r.kind, 3 | 4)) {
+    if records.iter().any(|r| matches!(r.kind, 3 | 4 | 5 | 6)) {
         crate::sync_v2_register_adapters::validate_relationships(tx)?;
     }
     let violations: bool = tx
@@ -993,6 +1029,239 @@ mod tests {
             root.join("Fictional").to_str().unwrap()
         );
         assert_eq!(std::fs::read_dir(root).unwrap().count(), 0);
+    }
+    fn link_record(kind: u8, register: Uuid, task: Uuid) -> SealedRecord {
+        let field = if kind == 5 { "rfi_id" } else { "submittal_id" };
+        seal_record(header(kind),&KEY,&RecordContent {schema_version:1,fields:Some(json!({field:register.to_string(),"task_id":task.to_string(),"created_at_utc":"2026-10-10T00:00:00Z"}))}).unwrap()
+    }
+    fn link_live(f: &Fixture, link: &SealedRecord) -> Option<Value> {
+        let binding = crate::sync_v2_relationship_adapters::stored(
+            &f.db.connection,
+            f.scope.workspace_id,
+            link.header.record_id,
+        )
+        .unwrap()
+        .unwrap();
+        crate::sync_v2_relationship_adapters::live(&f.db.connection, &binding).unwrap()
+    }
+    #[test]
+    fn relationship_dependency_order_retry_and_durable_identity() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        let r = rfi_record(p);
+        let s = submittal_record(p, None, "0");
+        let a = link_record(5, r.header.record_id, t.header.record_id);
+        let b = link_record(6, s.header.record_id, t.header.record_id);
+        let page = vec![a.clone(), b.clone(), s, r, t];
+        let backup = f.run(0, &page, &page).unwrap();
+        let before = Database::open(Path::new(&backup.path)).unwrap();
+        assert_eq!(
+            before
+                .connection
+                .query_row(
+                    "SELECT COUNT(*) FROM sync_v2_relationship_bindings",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+            0
+        );
+        assert_eq!(link_live(&f, &a), open_record(&a, &KEY).unwrap().fields);
+        assert_eq!(link_live(&f, &b), open_record(&b, &KEY).unwrap().fields);
+        // Reopen an actual private database copy to prove mapping survives restart.
+        let path = f.root.join("restart.sqlite");
+        {
+            let mut copy = Connection::open(&path).unwrap();
+            Backup::new(&f.db.connection, &mut copy)
+                .unwrap()
+                .run_to_completion(64, Duration::from_millis(1), None)
+                .unwrap();
+        }
+        f.db = Database::open(&path).unwrap();
+        f.run(0, &page, &page).unwrap();
+        assert_eq!(cursor(&f), 5);
+        assert!(link_live(&f, &a).is_some());
+    }
+    #[test]
+    fn explicit_link_tombstones_allow_parent_and_task_deletion() {
+        for kind in [5, 6] {
+            let mut f = Fixture::new();
+            let p = project(&f);
+            let t = task_record(p, None);
+            let register = if kind == 5 {
+                rfi_record(p)
+            } else {
+                submittal_record(p, None, "0")
+            };
+            let link = link_record(kind, register.header.record_id, t.header.record_id);
+            let page = vec![link.clone(), register.clone(), t.clone()];
+            f.run(0, &page, &page).unwrap();
+            let dead = vec![tombstone(&t), tombstone(&register), tombstone(&link)];
+            let backup = f.run(3, &dead, &dead).unwrap();
+            assert!(link_live(&f, &link).is_none());
+            let old = Database::open(Path::new(&backup.path)).unwrap();
+            assert_eq!(
+                old.connection
+                    .query_row(
+                        "SELECT COUNT(*) FROM sync_v2_relationship_bindings",
+                        [],
+                        |r| r.get::<_, i64>(0)
+                    )
+                    .unwrap(),
+                1
+            );
+            f.run(3, &dead, &dead).unwrap();
+            assert_eq!(cursor(&f), 6);
+            assert_eq!(
+                f.db.connection
+                    .query_row(
+                        "SELECT COUNT(*) FROM sync_v2_relationship_bindings",
+                        [],
+                        |r| r.get::<_, i64>(0)
+                    )
+                    .unwrap(),
+                1
+            );
+        }
+    }
+    #[test]
+    fn relationship_identity_cannot_rebind_even_after_tombstone() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        let r = rfi_record(p);
+        let link = link_record(5, r.header.record_id, t.header.record_id);
+        let page = vec![r.clone(), t.clone(), link.clone()];
+        f.run(0, &page, &page).unwrap();
+        let changed = next_record(&link, |v| v["task_id"] = json!(Uuid::new_v4().to_string()));
+        assert!(f
+            .run(3, &[changed.clone()], &[r.clone(), t.clone(), changed])
+            .is_err());
+        assert_eq!(cursor(&f), 3);
+        let dead = tombstone(&link);
+        f.run(3, &[dead.clone()], &[r.clone(), t.clone(), dead.clone()])
+            .unwrap();
+        // Tombstones cannot be turned into another pair through an unauthenticated lookup.
+        let mut h = dead.header.clone();
+        h.expected_server_version += 1;
+        h.mutation_id = Uuid::new_v4();
+        h.tombstone = false;
+        let new = link_record(5, r.header.record_id, Uuid::new_v4());
+        let rebound = seal_record(h, &KEY, &open_record(&new, &KEY).unwrap()).unwrap();
+        assert!(f.run(4, &[rebound.clone()], &[r, t, rebound]).is_err());
+        assert_eq!(cursor(&f), 4);
+    }
+    #[test]
+    fn duplicate_relationship_envelopes_roll_back_the_whole_page() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        let r = rfi_record(p);
+        let a = link_record(5, r.header.record_id, t.header.record_id);
+        let b = link_record(5, r.header.record_id, t.header.record_id);
+        let page = vec![r, t, a, b];
+        assert!(f.run(0, &page, &page).is_err());
+        assert_eq!(cursor(&f), 0);
+        assert_eq!(
+            f.db.connection
+                .query_row(
+                    "SELECT COUNT(*) FROM sync_v2_relationship_bindings",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            f.db.connection
+                .query_row("SELECT COUNT(*) FROM rfis", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+    }
+    #[test]
+    fn missing_cross_project_and_unknown_tombstone_links_are_refused() {
+        for kind in [5, 6] {
+            let mut f = Fixture::new();
+            let p = project(&f);
+            let t = task_record(p, None);
+            let register = if kind == 5 {
+                rfi_record(Uuid::new_v4())
+            } else {
+                submittal_record(Uuid::new_v4(), None, "0")
+            };
+            let link = link_record(kind, register.header.record_id, t.header.record_id);
+            assert!(f.run(0, &[link.clone()], &[link.clone()]).is_err());
+            let dead = tombstone(&link);
+            assert!(f.run(0, &[dead.clone()], &[dead]).is_err());
+            let other = project_record("Other");
+            mapping_root(&f);
+            let register = next_record(&register, |v| {
+                v["project_id"] = json!(other.header.record_id.to_string())
+            });
+            // next_record has version 1; use a first-version envelope for a new register.
+            let mut h = register.header.clone();
+            h.expected_server_version = 0;
+            let register = seal_record(h, &KEY, &open_record(&register, &KEY).unwrap()).unwrap();
+            let page = vec![link, register, t, other];
+            assert!(f.run(0, &page, &page).is_err());
+            assert_eq!(cursor(&f), 0);
+        }
+    }
+    #[test]
+    fn local_relationship_edit_and_unmanaged_pair_are_preserved() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        let r = rfi_record(p);
+        let link = link_record(5, r.header.record_id, t.header.record_id);
+        let page = vec![r.clone(), t.clone(), link.clone()];
+        f.run(0, &page, &page).unwrap();
+        f.db.connection
+            .execute(
+                "UPDATE rfi_task_relationships SET created_at_utc='2026-10-10T00:00:01Z'",
+                [],
+            )
+            .unwrap();
+        let dead = tombstone(&link);
+        assert!(f
+            .run(3, &[dead.clone()], &[r.clone(), t.clone(), dead])
+            .is_err());
+        assert_eq!(cursor(&f), 3);
+        let new = link_record(5, r.header.record_id, t.header.record_id);
+        assert!(f
+            .run(3, &[new.clone()], &[r, t, link.clone(), new])
+            .is_err());
+        assert_eq!(
+            link_live(&f, &link).unwrap()["created_at_utc"],
+            "2026-10-10T00:00:01Z"
+        );
+    }
+    #[test]
+    fn relationship_updates_and_exact_deletion_preserve_other_links() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        let r = rfi_record(p);
+        let s = submittal_record(p, None, "0");
+        let a = link_record(5, r.header.record_id, t.header.record_id);
+        let b = link_record(6, s.header.record_id, t.header.record_id);
+        let page = vec![r.clone(), s.clone(), t.clone(), a.clone(), b.clone()];
+        f.run(0, &page, &page).unwrap();
+        let update = next_record(&a, |v| v["created_at_utc"] = json!("2026-10-10T00:00:01Z"));
+        let manifest = vec![r.clone(), s.clone(), t.clone(), update.clone(), b.clone()];
+        f.run(5, &[update.clone()], &manifest).unwrap();
+        assert_eq!(
+            link_live(&f, &a).unwrap()["created_at_utc"],
+            "2026-10-10T00:00:01Z"
+        );
+        let dead = tombstone(&update);
+        f.run(6, &[dead.clone()], &[r, s, t, dead, b.clone()])
+            .unwrap();
+        assert!(link_live(&f, &a).is_none());
+        assert!(link_live(&f, &b).is_some());
+        assert_eq!(cursor(&f), 7);
     }
     fn rfi_record(project: Uuid) -> SealedRecord {
         let h = header(3);

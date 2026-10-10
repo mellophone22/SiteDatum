@@ -23,11 +23,11 @@ pub struct Database {
     pub(crate) connection: Connection,
 }
 
-const LATEST_MIGRATION_VERSION: i64 = 12;
+const LATEST_MIGRATION_VERSION: i64 = 13;
 const LEGACY_CLOUD_SYNC_ACCESS_KEY: &str = "legacy_cloud_sync_access";
 const LEGACY_CLOUD_SYNC_DISABLED_KEY: &str = "legacy_cloud_sync_disabled";
 
-fn migrations() -> [(i64, &'static str); 12] {
+fn migrations() -> [(i64, &'static str); 13] {
     [
         (1_i64, include_str!("../migrations/0001_foundation.sql")),
         (2_i64, include_str!("../migrations/0002_projects.sql")),
@@ -46,6 +46,10 @@ fn migrations() -> [(i64, &'static str); 12] {
         (
             12_i64,
             include_str!("../migrations/0012_sync_v2_local_queue.sql"),
+        ),
+        (
+            13_i64,
+            include_str!("../migrations/0013_sync_v2_relationship_bindings.sql"),
         ),
     ]
 }
@@ -1705,7 +1709,7 @@ mod tests {
             .file_name()
             .unwrap()
             .to_string_lossy()
-            .starts_with("pre-migration-v9-to-v12-"));
+            .starts_with("pre-migration-v9-to-v13-"));
         let backup = Connection::open(&backup_paths[0]).unwrap();
         assert_eq!(super::current_migration_version(&backup).unwrap(), 9);
         assert_representative_version_nine_records(&backup, &ordinary_file);
@@ -1726,6 +1730,63 @@ mod tests {
         drop(Database::open(&path).unwrap());
         assert_eq!(std::fs::read_dir(root.join("backups")).unwrap().count(), 1);
         assert_eq!(std::fs::read(&ordinary_file).unwrap(), original_file_bytes);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn version_twelve_upgrade_preserves_encrypted_protocol_state_and_backup() {
+        let root =
+            std::env::temp_dir().join(format!("sitedatum-v13-upgrade-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let path = root.join("workspace.sqlite3");
+        {
+            let db = Database::open(&path).unwrap();
+            db.connection.execute_batch("DROP TABLE sync_v2_relationship_bindings; DELETE FROM schema_migrations WHERE version=13; INSERT INTO sync_v2_local_streams(workspace_id,owner_id,device_id,pull_cursor) VALUES('fictional-workspace','fictional-owner','fictional-device',7); INSERT INTO sync_v2_record_snapshots(workspace_id,record_id,record_kind,server_version,envelope) VALUES('fictional-workspace','fictional-record',10,1,X'010203');").unwrap();
+        }
+        {
+            let db = Database::open(&path).unwrap();
+            assert_eq!(
+                super::current_migration_version(&db.connection).unwrap(),
+                13
+            );
+            assert_eq!(
+                db.connection
+                    .query_row("SELECT envelope FROM sync_v2_record_snapshots", [], |r| r
+                        .get::<_, Vec<
+                        u8,
+                    >>(
+                        0
+                    ))
+                    .unwrap(),
+                vec![1, 2, 3]
+            );
+            assert_eq!(
+                db.connection
+                    .query_row("SELECT pull_cursor FROM sync_v2_local_streams", [], |r| r
+                        .get::<_, i64>(
+                        0
+                    ))
+                    .unwrap(),
+                7
+            );
+            assert_eq!(
+                db.connection
+                    .query_row(
+                        "SELECT COUNT(*) FROM sync_v2_relationship_bindings",
+                        [],
+                        |r| r.get::<_, i64>(0)
+                    )
+                    .unwrap(),
+                0
+            );
+            let paths = std::fs::read_dir(root.join("backups"))
+                .unwrap()
+                .map(|p| p.unwrap().path())
+                .collect::<Vec<_>>();
+            assert_eq!(paths.len(), 1);
+            let backup = Connection::open(&paths[0]).unwrap();
+            assert_eq!(super::current_migration_version(&backup).unwrap(), 12);
+        }
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -1786,7 +1847,7 @@ mod tests {
             database
                 .connection
                 .execute(
-                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(13, '2026-10-02T00:00:00Z')",
+                    "INSERT INTO schema_migrations(version, applied_at_utc) VALUES(14, '2026-10-02T00:00:00Z')",
                     [],
                 )
                 .unwrap();
