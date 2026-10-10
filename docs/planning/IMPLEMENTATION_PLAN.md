@@ -60,4 +60,6 @@ Commercial work is a post-MVP track governed by `ADR-006-COMMERCIAL-LICENSING-BO
 
 - **C10-04C1 — backed-up notes/contact apply:** the first partial C10-04C slice rehearses a complete verified page in a private SQLite candidate, creates a verified local safety backup, and atomically applies supported live rows with the staging cursor/anchor. Divergent local work and unsupported kinds are refused. No runtime Sync activation, applied-device receipt, full adapter coverage, or conflict inbox exists yet. Evidence: `docs/engineering/C10-04C1-BACKED-UP-RECORD-APPLY.md`.
 
+- **C10-04C2 — backed-up task adapter:** extends C1 with exact task application, existing-project/contact validation, safe local dependency ordering, and refusal of linked-task deletion or cross-project reassignment. Six new focused scenarios preserve local edits, backups, references and cursor state. Other adapters, conflict resolution and runtime activation remain pending. Evidence: `docs/engineering/C10-04C2-TASK-ADAPTER.md`.
+
 No commercial work package authorizes production provider accounts, secrets, deployment, or telemetry for a later package. Resolve and record its required founder decisions before implementation.

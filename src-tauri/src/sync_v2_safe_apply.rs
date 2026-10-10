@@ -1,4 +1,5 @@
-//! C10-04C1: dormant, fail-closed notes/contact adapters. No transport or commands.
+//! C10-04C1/C2: dormant, fail-closed task/notes/contact adapters.
+//! No transport, document operations, or commands.
 #![allow(dead_code)]
 
 use crate::{
@@ -35,6 +36,10 @@ fn timestamp_order(value: &str) -> (&str, String) {
 fn live(connection: &Connection, kind: u8, id: Uuid) -> AppResult<Option<Value>> {
     let id = id.to_string();
     match kind {
+        2 => connection.query_row(
+            "SELECT id,project_id,title,description,priority,status,category,due_date,follow_up_date,waiting_since_utc,waiting_on,related_contact_id,created_at_utc,updated_at_utc FROM tasks WHERE id=?1",
+            [id], |r| Ok(json!({"id":r.get::<_,String>(0)?,"project_id":r.get::<_,String>(1)?,"title":r.get::<_,String>(2)?,"description":r.get::<_,Option<String>>(3)?,"priority":r.get::<_,String>(4)?,"status":r.get::<_,String>(5)?,"category":r.get::<_,Option<String>>(6)?,"due_date":r.get::<_,Option<String>>(7)?,"follow_up_date":r.get::<_,Option<String>>(8)?,"waiting_since_utc":r.get::<_,Option<String>>(9)?,"waiting_on":r.get::<_,Option<String>>(10)?,"related_contact_id":r.get::<_,Option<String>>(11)?,"created_at_utc":r.get::<_,String>(12)?,"updated_at_utc":r.get::<_,String>(13)?})),
+        ).optional().map_err(sql),
         10 => connection.query_row(
             "SELECT id,project_id,body,created_at_utc,updated_at_utc FROM notes WHERE id=?1",
             [id], |r| Ok(json!({"id":r.get::<_,String>(0)?,"project_id":r.get::<_,Option<String>>(1)?,"body":r.get::<_,String>(2)?,"created_at_utc":r.get::<_,String>(3)?,"updated_at_utc":r.get::<_,String>(4)?})),
@@ -60,12 +65,19 @@ fn prepare(
 ) -> AppResult<Vec<Prepared>> {
     changes.iter().map(|change| {
         let h = &change.record.header;
-        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,10|11) {
+        if h.owner_id != scope.owner_id || h.workspace_id != scope.workspace_id || !matches!(h.record_kind,2|10|11) {
             return Err(refused());
         }
         let after = open_record(&change.record,key)?.fields;
         if let Some(fields) = &after {
-            let required = if h.record_kind == 10 { "body" } else { "name" };
+            // Preserve exact identity rather than silently canonicalizing UUID
+            // text during SQL application (SQLite text keys are case-sensitive).
+            for field in ["id","project_id","related_contact_id"] {
+                if let Some(value)=fields.get(field).and_then(Value::as_str) {
+                    if Uuid::parse_str(value).map_err(|_|invalid())?.to_string()!=value {return Err(refused());}
+                }
+            }
+            let required = match h.record_kind {2=>"title",10=>"body",_=>"name"};
             if fields[required].as_str().is_none_or(|s|s.trim().is_empty()) {
                 return Err(refused());
             }
@@ -111,12 +123,46 @@ fn nullable<'a>(fields: &'a Value, name: &str) -> AppResult<Option<&'a str>> {
     }
 }
 fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
+    // Check every baseline before any adapter changes dependency rows.
     for record in records {
         if live(tx, record.kind, record.id)? != record.before {
             return Err(refused());
         }
+    }
+    // Provider change order is verified by staging; SQL has a separate dependency
+    // order. Stream cursor order is never changed by this local application sort.
+    let mut ordered = records.iter().collect::<Vec<_>>();
+    ordered.sort_by_key(|r| match (r.kind, r.after.is_some()) {
+        (11, true) => 0,
+        (2, true) => 1,
+        (10, true) => 2,
+        (10, false) => 3,
+        (2, false) => 4,
+        (11, false) => 5,
+        _ => 6,
+    });
+    for record in ordered {
         let id = record.id.to_string();
         match (record.kind, &record.after) {
+            (2, Some(f)) => {
+                let cross_project:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM rfi_task_relationships l JOIN rfis r ON r.id=l.rfi_id WHERE l.task_id=?1 AND r.project_id<>?2) OR EXISTS(SELECT 1 FROM submittal_task_relationships l JOIN submittals s ON s.id=l.submittal_id WHERE l.task_id=?1 AND s.project_id<>?2)",params![id,text(f,"project_id")?],|r|r.get(0)).map_err(sql)?;
+                if cross_project {
+                    return Err(refused());
+                }
+                if let Some(contact) = nullable(f, "related_contact_id")? {
+                    let exists: bool = tx
+                        .query_row(
+                            "SELECT EXISTS(SELECT 1 FROM contacts WHERE id=?1)",
+                            [contact],
+                            |r| r.get(0),
+                        )
+                        .map_err(sql)?;
+                    if !exists {
+                        return Err(refused());
+                    }
+                }
+                tx.execute("INSERT INTO tasks(id,project_id,title,description,priority,status,category,due_date,follow_up_date,waiting_since_utc,waiting_on,related_contact_id,created_at_utc,updated_at_utc) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,title=excluded.title,description=excluded.description,priority=excluded.priority,status=excluded.status,category=excluded.category,due_date=excluded.due_date,follow_up_date=excluded.follow_up_date,waiting_since_utc=excluded.waiting_since_utc,waiting_on=excluded.waiting_on,related_contact_id=excluded.related_contact_id,created_at_utc=excluded.created_at_utc,updated_at_utc=excluded.updated_at_utc",params![id,text(f,"project_id")?,text(f,"title")?,nullable(f,"description")?,text(f,"priority")?,text(f,"status")?,nullable(f,"category")?,nullable(f,"due_date")?,nullable(f,"follow_up_date")?,nullable(f,"waiting_since_utc")?,nullable(f,"waiting_on")?,nullable(f,"related_contact_id")?,text(f,"created_at_utc")?,text(f,"updated_at_utc")?]).map_err(sql)?;
+            }
             (10, Some(f)) => {
                 tx.execute("INSERT INTO notes(id,project_id,body,created_at_utc,updated_at_utc) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,body=excluded.body,created_at_utc=excluded.created_at_utc,updated_at_utc=excluded.updated_at_utc",params![id,nullable(f,"project_id")?,text(f,"body")?,text(f,"created_at_utc")?,text(f,"updated_at_utc")?]).map_err(sql)?;
             }
@@ -125,6 +171,12 @@ fn apply(tx: &Transaction<'_>, records: &[Prepared]) -> AppResult<()> {
             }
             (10, None) => {
                 tx.execute("DELETE FROM notes WHERE id=?1", [id])
+                    .map_err(sql)?;
+            }
+            (2, None) => {
+                // RESTRICT relationships prevent orphaning linked RFI/submittal
+                // work. Their explicit relationship adapters are a later slice.
+                tx.execute("DELETE FROM tasks WHERE id=?1", [id])
                     .map_err(sql)?;
             }
             (11, None) => {
@@ -159,7 +211,7 @@ impl Database {
     /// Exclusive local DB access is required throughout preflight/backup/apply.
     /// Only a complete authenticated page is accepted. No applied-device receipt
     /// is issued, no file is touched, and no network/consent gate is enabled.
-    pub(crate) fn apply_sync_v2_notes_contacts(
+    pub(crate) fn apply_sync_v2_supported_records(
         &mut self,
         scope: StreamScope,
         after: u64,
@@ -264,7 +316,7 @@ mod tests {
                 })
                 .collect::<Vec<_>>();
             self.db
-                .apply_sync_v2_notes_contacts(self.scope, after, &changes, &cp, &KEY, &self.root)
+                .apply_sync_v2_supported_records(self.scope, after, &changes, &cp, &KEY, &self.root)
         }
     }
     impl Drop for Fixture {
@@ -477,5 +529,222 @@ mod tests {
         let r = seal_record(h, &KEY, &content).unwrap();
         assert!(f.run(0, &[r.clone()], &[r]).is_err());
         assert_eq!(cursor(&f), 0);
+    }
+    fn project(f: &Fixture) -> Uuid {
+        let id = Uuid::new_v4();
+        f.db.connection.execute("INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES(?1,'FICTIONAL','Fictional local project','C:\\Fictional\\Project','2026-10-10T00:00:00Z','2026-10-10T00:00:00Z')",[id.to_string()]).unwrap();
+        id
+    }
+    fn task_record(project: Uuid, contact: Option<Uuid>) -> SealedRecord {
+        let h = header(2);
+        let fields = json!({"id":h.record_id.to_string(),"project_id":project.to_string(),"title":"Fictional task","description":null,"priority":"high","status":"waiting","category":null,"due_date":"2026-10-15","follow_up_date":"2026-10-12","waiting_since_utc":"2026-10-10T00:00:00Z","waiting_on":"Fictional response","related_contact_id":contact.map(|c|c.to_string()),"created_at_utc":"2026-10-10T00:00:00Z","updated_at_utc":"2026-10-10T00:00:00Z"});
+        seal_record(
+            h,
+            &KEY,
+            &RecordContent {
+                schema_version: 1,
+                fields: Some(fields),
+            },
+        )
+        .unwrap()
+    }
+    fn contact_record() -> SealedRecord {
+        let h = header(11);
+        seal_record(h.clone(),&KEY,&RecordContent {schema_version:1,fields:Some(json!({"id":h.record_id.to_string(),"name":"Fictional contact","company":null,"email":null,"phone":null,"role":null,"created_at_utc":"2026-10-10T00:00:00Z","updated_at_utc":"2026-10-10T00:00:00Z"}))}).unwrap()
+    }
+    fn tombstone(record: &SealedRecord) -> SealedRecord {
+        let mut h = record.header.clone();
+        h.expected_server_version += 1;
+        h.mutation_id = Uuid::new_v4();
+        h.tombstone = true;
+        seal_record(
+            h,
+            &KEY,
+            &RecordContent {
+                schema_version: 1,
+                fields: None,
+            },
+        )
+        .unwrap()
+    }
+    #[test]
+    fn task_contact_dependency_order_preserves_authenticated_stream_order() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let c = contact_record();
+        let t = task_record(p, Some(c.header.record_id));
+        let backup = f
+            .run(0, &[t.clone(), c.clone()], &[t.clone(), c.clone()])
+            .unwrap();
+        assert_eq!(recovery::preview(Path::new(&backup.path)).unwrap().tasks, 0);
+        assert_eq!(
+            live(&f.db.connection, 2, t.header.record_id).unwrap(),
+            open_record(&t, &KEY).unwrap().fields
+        );
+        assert_eq!(cursor(&f), 2);
+        // Contact deletion is received first, but the dependent task is deleted
+        // first locally. Both encrypted tombstones remain in the manifest.
+        let cd = tombstone(&c);
+        let td = tombstone(&t);
+        let backup = f.run(2, &[cd.clone(), td.clone()], &[td, cd]).unwrap();
+        assert_eq!(recovery::preview(Path::new(&backup.path)).unwrap().tasks, 1);
+        assert!(live(&f.db.connection, 2, t.header.record_id)
+            .unwrap()
+            .is_none());
+        assert!(live(&f.db.connection, 11, c.header.record_id)
+            .unwrap()
+            .is_none());
+        assert_eq!(cursor(&f), 4);
+    }
+    #[test]
+    fn unknown_project_or_contact_refuses_entire_page() {
+        let mut f = Fixture::new();
+        let note = record("Must not partially apply");
+        let missing = task_record(Uuid::new_v4(), None);
+        assert!(f
+            .run(
+                0,
+                &[note.clone(), missing.clone()],
+                &[note.clone(), missing]
+            )
+            .is_err());
+        let p = project(&f);
+        let missing = task_record(p, Some(Uuid::new_v4()));
+        assert!(f
+            .run(
+                0,
+                &[note.clone(), missing.clone()],
+                &[note.clone(), missing]
+            )
+            .is_err());
+        assert_eq!(cursor(&f), 0);
+        assert!(live(&f.db.connection, 10, note.header.record_id)
+            .unwrap()
+            .is_none());
+        assert_eq!(std::fs::read_dir(&f.root).unwrap().count(), 0);
+    }
+    #[test]
+    fn local_task_edit_is_never_overwritten_by_remote_revision() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let first = task_record(p, None);
+        f.run(0, &[first.clone()], &[first.clone()]).unwrap();
+        f.db.connection
+            .execute("UPDATE tasks SET title='Local offline task'", [])
+            .unwrap();
+        let mut h = first.header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(&first, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["title"] = json!("Remote edit");
+        let remote = seal_record(h, &KEY, &content).unwrap();
+        assert!(f.run(1, &[remote.clone()], &[remote]).is_err());
+        assert_eq!(cursor(&f), 1);
+        assert_eq!(
+            live(&f.db.connection, 2, first.header.record_id)
+                .unwrap()
+                .unwrap()["title"],
+            "Local offline task"
+        );
+    }
+    #[test]
+    fn referenced_contact_cannot_be_tombstoned_without_detaching_task() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let c = contact_record();
+        let t = task_record(p, Some(c.header.record_id));
+        f.run(0, &[c.clone(), t.clone()], &[c.clone(), t.clone()])
+            .unwrap();
+        let cd = tombstone(&c);
+        assert!(f.run(2, &[cd.clone()], &[cd.clone(), t.clone()]).is_err());
+        assert_eq!(cursor(&f), 2);
+        let mut h = t.header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(&t, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["related_contact_id"] = Value::Null;
+        let detached = seal_record(h, &KEY, &content).unwrap();
+        f.run(2, &[cd.clone(), detached.clone()], &[cd, detached])
+            .unwrap();
+        assert!(live(&f.db.connection, 11, c.header.record_id)
+            .unwrap()
+            .is_none());
+        assert_eq!(cursor(&f), 4);
+    }
+    #[test]
+    fn task_tombstone_preserves_linked_rfi_and_refuses_orphaning() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        f.run(0, &[t.clone()], &[t.clone()]).unwrap();
+        let rfi = Uuid::new_v4().to_string();
+        f.db.connection.execute("INSERT INTO rfis(id,project_id,number,subject,question,created_date,created_at_utc,updated_at_utc) VALUES(?1,?2,'F-1','Fictional RFI','Fictional question','2026-10-10','2026-10-10T00:00:00Z','2026-10-10T00:00:00Z')",params![rfi,p.to_string()]).unwrap();
+        f.db.connection.execute("INSERT INTO rfi_task_relationships(rfi_id,task_id,created_at_utc) VALUES(?1,?2,'2026-10-10T00:00:00Z')",params![rfi,t.header.record_id.to_string()]).unwrap();
+        let td = tombstone(&t);
+        assert!(f.run(1, &[td.clone()], &[td]).is_err());
+        assert_eq!(cursor(&f), 1);
+        assert!(live(&f.db.connection, 2, t.header.record_id)
+            .unwrap()
+            .is_some());
+        assert_eq!(
+            f.db.connection
+                .query_row("SELECT COUNT(*) FROM rfi_task_relationships", [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let other = Uuid::new_v4();
+        f.db.connection.execute("INSERT INTO projects(id,number,name,project_path,created_at_utc,updated_at_utc) VALUES(?1,'FICTIONAL-2','Another fictional project','C:\\Fictional\\Other','2026-10-10T00:00:00Z','2026-10-10T00:00:00Z')",[other.to_string()]).unwrap();
+        let mut h = t.header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(&t, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["project_id"] = json!(other.to_string());
+        let moved = seal_record(h, &KEY, &content).unwrap();
+        assert!(f.run(1, &[moved.clone()], &[moved]).is_err());
+        assert_eq!(
+            live(&f.db.connection, 2, t.header.record_id)
+                .unwrap()
+                .unwrap()["project_id"],
+            p.to_string()
+        );
+        assert_eq!(cursor(&f), 1);
+    }
+    #[test]
+    fn blank_task_title_refused_and_valid_revisions_retry_exactly() {
+        let mut f = Fixture::new();
+        let p = project(&f);
+        let t = task_record(p, None);
+        let mut content = open_record(&t, &KEY).unwrap();
+        content.fields.as_mut().unwrap()["title"] = json!(" ");
+        let blank = seal_record(t.header.clone(), &KEY, &content).unwrap();
+        assert!(f.run(0, &[blank.clone()], &[blank]).is_err());
+        assert_eq!(cursor(&f), 0);
+        let mut identity = t.header.clone();
+        identity.record_id = Uuid::parse_str("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee").unwrap();
+        let mut noncanonical = open_record(&t, &KEY).unwrap();
+        noncanonical.fields.as_mut().unwrap()["id"] =
+            json!(identity.record_id.to_string().to_uppercase());
+        let noncanonical = seal_record(identity, &KEY, &noncanonical).unwrap();
+        assert!(f.run(0, &[noncanonical.clone()], &[noncanonical]).is_err());
+        assert_eq!(cursor(&f), 0);
+        f.run(0, &[t.clone()], &[t.clone()]).unwrap();
+        let mut h = t.header.clone();
+        h.expected_server_version = 1;
+        h.mutation_id = Uuid::new_v4();
+        let mut content = open_record(&t, &KEY).unwrap();
+        let fields = content.fields.as_mut().unwrap();
+        fields["title"] = json!("Updated fictional task");
+        fields["status"] = json!("completed");
+        fields["waiting_on"] = Value::Null;
+        fields["waiting_since_utc"] = Value::Null;
+        let updated = seal_record(h, &KEY, &content).unwrap();
+        f.run(1, &[updated.clone()], &[updated.clone()]).unwrap();
+        f.run(1, &[updated.clone()], &[updated.clone()]).unwrap();
+        assert_eq!(cursor(&f), 2);
+        assert_eq!(
+            live(&f.db.connection, 2, t.header.record_id).unwrap(),
+            open_record(&updated, &KEY).unwrap().fields
+        );
     }
 }

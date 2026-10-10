@@ -163,3 +163,9 @@ fail closed. Full adapter coverage, a durable conflict inbox, partial paging,
 live outbox integration and applied-device receipts remain pending. It has no
 command/UI/transport and does not enable Sync. See
 `C10-04C1-BACKED-UP-RECORD-APPLY.md`.
+
+C10-04C2 extends this boundary to tasks with project/contact reference checks,
+exact field preservation and safe local dependency ordering. Task deletion or
+project reassignment cannot orphan existing RFI/submittal relationships. No
+customer runtime or Sync transport is enabled. Full adapter coverage and other
+C10-04C gates remain pending; see `C10-04C2-TASK-ADAPTER.md`.
