@@ -30,6 +30,8 @@ mod sync_v2_register_adapters;
 mod sync_v2_relationship_adapters;
 #[cfg(test)]
 mod sync_v2_retirement_census_proof;
+#[cfg(test)]
+mod sync_v2_retirement_recovery_model;
 mod sync_v2_safe_apply;
 mod task;
 mod work_item;
