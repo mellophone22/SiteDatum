@@ -1,0 +1,11 @@
+flowchart LR
+  O["Owner using trusted local application"] --> R["Proposed separate offline owner signing root"]
+  R --> C["Proposed signed complete membership chain"]
+  D["Device proof and transfer keys"] --> C
+  H["Hosted enrollment and mutable active-device list"] --> C
+  P["Independent root fingerprint and latest roster pins"] --> V["Proposed chain and freshness verifier"]
+  C --> V
+  S["SQLite checkpoint and single-device receipts"] --> N["Never membership or retirement authority"]
+  V --> B["Future readiness - not retirement permission"]
+  B --> G["D3-D6 gates still required"]
+  F["No surviving current independent anchor"] --> X["Freshness unestablished - no removal"]

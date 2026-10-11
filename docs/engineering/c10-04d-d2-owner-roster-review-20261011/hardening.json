@@ -1,0 +1,387 @@
+{
+  "documentType": "codex-security.hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "c10-04d-d2-owner-roster-20261011",
+  "sourceEvidence": {
+    "kind": "document_collection",
+    "label": "Pinned enrollment/receipt source and preservation-first review context",
+    "targetRevision": "91973f57d9d4f9033dcf3455299046784ddf9742",
+    "collectionSha256": "7c71d7df19e8ae93b51fce435efecaab4172c67644e3c4b0c6dfcd3e8092204a",
+    "artifactCount": 10,
+    "sourceDrift": "none",
+    "limitations": [
+      "Conversation-supplied MP-2 review text is not included in the hashed ten-file source inventory."
+    ]
+  },
+  "assessment": {
+    "outcome": "opportunities_identified",
+    "summary": "D2 specification draft separates owner/device authority and blocks freshness-unestablished retirement; no implementation."
+  },
+  "constraints": {
+    "profile": "balanced",
+    "changeHorizons": [
+      "foundational"
+    ],
+    "nonNegotiables": [
+      "Single owner, local-first accountless ordinary work.",
+      "No schema, service changes, key removal or activation.",
+      "All active devices participate; no silent offline exclusion.",
+      "D6/D7 blocked."
+    ],
+    "assumptions": [
+      "No measured chain or root-custody budget.",
+      "Separate root artifact not yet selected/approved."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunityId": "owner-roster-trust",
+      "title": "Owner-root and independently anchored roster trust",
+      "summary": "Avoid device-only and provider-only retirement membership authority.",
+      "diagnosis": "Existing possession and list checks do not establish complete fresh owner-approved membership.",
+      "evidence": [
+        {
+          "evidenceId": "mp2-root-restore",
+          "claimType": "observed",
+          "sourceKind": "document",
+          "claim": "Supplied 2026-10-11 review requires first-device circularity and total-restore trust decisions."
+        },
+        {
+          "evidenceId": "device-possession",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "src-tauri/src/sync_v2_device_enrollment.rs",
+          "claim": "Distinct Windows-stored device seed proves initial possession, not independent owner-root authority."
+        },
+        {
+          "evidenceId": "receipt-shape",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "src-tauri/migrations/0014_sync_v2_apply_protocol.sql",
+          "claim": "Applied receipts are keyed by workspace, not full roster/event/device."
+        },
+        {
+          "evidenceId": "approved-transfer",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "src-tauri/src/sync_v2_approved_device_transfer.rs",
+          "claim": "Distinct target and source signatures bind exact enrollment and single-key transfer contexts."
+        },
+        {
+          "evidenceId": "hosted-enrollment",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "proofs/sync-v2-identity/supabase/migrations/20261009214234_c10_03e_approved_device_authorization.sql",
+          "claim": "Hosted active-source authorization and two-device checks exist; no D2 independently pinned chain."
+        },
+        {
+          "evidenceId": "founder-constraints",
+          "claimType": "observed",
+          "sourceKind": "document",
+          "path": "docs/engineering/c10-04d-retirement-review-20261011/proposals/safe-key-retirement.md",
+          "claim": "All-member preservation policies approved; independent root mechanism not selected."
+        }
+      ],
+      "desiredInvariants": [
+        "Independent root bound to owner and generation.",
+        "Complete exact-parent owner-authorized membership history.",
+        "No lowered pins or stale roster after SQLite restore.",
+        "Missing total independent anchor gives FreshnessUnestablished, never removal authority.",
+        "No snapshot/roster ack can construct retirement barrier."
+      ],
+      "proposalPath": "proposals/owner-roster-trust.md",
+      "options": [
+        {
+          "optionId": "no-removal",
+          "title": "Option 1: Keep retirement blocked",
+          "kind": "baseline",
+          "summary": "Retain established enrollment with no D2 removal authority.",
+          "diagramPaths": {
+            "before": "diagrams/owner-roster-trust-before.mmd",
+            "after": "diagrams/owner-roster-trust-no-removal-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "mp2-root-restore",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "No new authority; no-removal controls remain necessary."
+            },
+            {
+              "evidenceId": "device-possession",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "No new authority; no-removal controls remain necessary."
+            },
+            {
+              "evidenceId": "receipt-shape",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "No new authority; no-removal controls remain necessary."
+            },
+            {
+              "evidenceId": "approved-transfer",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "No new authority; no-removal controls remain necessary."
+            },
+            {
+              "evidenceId": "hosted-enrollment",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "No new authority; no-removal controls remain necessary."
+            },
+            {
+              "evidenceId": "founder-constraints",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "No new authority; no-removal controls remain necessary."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "performance",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "memory",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "operability",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "migration",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "developer_ergonomics",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            },
+            {
+              "dimension": "rollback",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No new D2 mechanism or trust state; capacity refusal remains.",
+              "validationPlan": "Preserve no-removal containment and accountless local work regression."
+            }
+          ],
+          "residualRisks": [
+            "No capacity reclamation; existing enrolled device is not an owner root."
+          ],
+          "implementationReadiness": {
+            "status": "operational_baseline",
+            "affectedComponents": [],
+            "workPackages": [],
+            "acceptanceCriteria": [
+              "No key removal."
+            ],
+            "migrationNotes": [],
+            "rollback": "No new state to reverse."
+          }
+        },
+        {
+          "optionId": "offline-owner-root",
+          "title": "Option 2: Separate offline owner root and independently pinned chain",
+          "kind": "foundational",
+          "summary": "Recommended specification candidate only; custody selection and independent review pending.",
+          "diagramPaths": {
+            "before": "diagrams/owner-roster-trust-before.mmd",
+            "after": "diagrams/owner-roster-trust-offline-root-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "mp2-root-restore",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Proposed semantic separation only; existing checks and no-removal baseline remain necessary until reviewed implementation."
+            },
+            {
+              "evidenceId": "device-possession",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Proposed semantic separation only; existing checks and no-removal baseline remain necessary until reviewed implementation."
+            },
+            {
+              "evidenceId": "receipt-shape",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Proposed semantic separation only; existing checks and no-removal baseline remain necessary until reviewed implementation."
+            },
+            {
+              "evidenceId": "approved-transfer",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Proposed semantic separation only; existing checks and no-removal baseline remain necessary until reviewed implementation."
+            },
+            {
+              "evidenceId": "hosted-enrollment",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Proposed semantic separation only; existing checks and no-removal baseline remain necessary until reviewed implementation."
+            },
+            {
+              "evidenceId": "founder-constraints",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Proposed semantic separation only; existing checks and no-removal baseline remain necessary until reviewed implementation."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "improves",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Independent owner authority and surviving pins resist device/provider-only omissions; root compromise remains.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "performance",
+              "direction": "regresses",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Chain validation adds work to membership and restore, not ordinary local editing.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "memory",
+              "direction": "regresses",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Chain, pins and signing intents require bounded retained state.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "unknown",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Artifact/fork/anchor loss can block membership and retirement.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "operability",
+              "direction": "regresses",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Separate owner artifact and anchor updates add a ceremony.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "migration",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "hypothetical",
+              "assessment": "Existing enrolled devices need explicit bootstrap and authorization.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "developer_ergonomics",
+              "direction": "unknown",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Central verified trust types narrow drift but add unsolved state transitions.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            },
+            {
+              "dimension": "rollback",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "hypothetical",
+              "assessment": "Highest epochs and roots must survive rollback; disable writes rather than lower pins.",
+              "validationPlan": "Run the corresponding adversarial and resource/usability cases in the proposal; no candidate behavior measured."
+            }
+          ],
+          "residualRisks": [
+            "Root theft or compromised trusted bootstrap.",
+            "Undetectable total environmental rewind.",
+            "Old root key/artifact does not prove latest roster.",
+            "Independent root-signing journal and publication ordering unproved."
+          ],
+          "implementationReadiness": {
+            "status": "specification_draft_not_accepted",
+            "affectedComponents": [
+              "Native device enrollment/transfer",
+              "Future independent pin store",
+              "Future roster verifier",
+              "D4 owner/workspace fencing",
+              "D5 signing/publication journal"
+            ],
+            "workPackages": [
+              "Founder root-custody decision",
+              "Independent specification review",
+              "Canonical format and fictional proof only after acceptance"
+            ],
+            "acceptanceCriteria": [
+              "No schema before accepted specification.",
+              "Total anchor loss grants no removal readiness.",
+              "Every active owner device participates."
+            ],
+            "migrationNotes": [
+              "No silent grandfathering of existing devices.",
+              "Preserve two-device limit and prior recovery files."
+            ],
+            "rollback": "Retain highest root/epoch pins and all keys; stop authority-bearing Sync writes."
+          }
+        }
+      ],
+      "recommendedOptionId": "offline-owner-root",
+      "recommendation": "Candidate for review and explicit founder custody choice, not accepted mechanism."
+    }
+  ],
+  "openQuestions": [
+    "Founder artifact custody selection.",
+    "Root artifact and canonical encoding independent review.",
+    "Root signing/publication crash ordering.",
+    "Practical independent latest-anchor recovery.",
+    "Resource/compatibility budgets."
+  ],
+  "validation": {
+    "phase": "specification_only",
+    "behavioralTestsExecuted": false,
+    "implementationApproved": false,
+    "servicesChanged": false,
+    "keysGenerated": false,
+    "D6": "blocked",
+    "D7": "blocked"
+  }
+}

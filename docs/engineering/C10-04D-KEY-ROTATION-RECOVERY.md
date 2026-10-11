@@ -458,3 +458,24 @@ These are draft future consent requirements, not a shipped retirement surface.
 No keys removed, protected credentials migrated, new recovery format assigned,
 service altered, main merge, release, deployment or Sync activation. D6 and D7 stay
 blocked. The no-removal, fail-closed capacity baseline remains operational.
+
+## D2 owner-root and roster trust specification draft — 2026-10-11
+
+The [D2 packet](c10-04d-d2-owner-roster-review-20261011/hardening.md) specifies
+separate owner/device authority, complete membership history, independent pins,
+ordinary-restore reconciliation and FreshnessUnestablished behavior after total
+anchor loss. This is a specification draft, not accepted D2 implementation.
+
+The recommended candidate is a separately held offline owner-signing artifact;
+its custody is a new mechanism decision requiring explicit founder selection
+and independent review. The five preservation policies remain unchanged.
+No root is issued, format assigned, schema or production/test source changed,
+service deployed or key removed. Old root/private recovery material alone does
+not establish latest roster freshness. Local work remains available when trust
+cannot be recovered. D4/D5 publication, fencing and ordered journal proofs remain
+open. D6 and D7 stay blocked; no-removal capacity refusal remains operational.
+
+D2 checks are document/source correspondence, ten pinned Git-blob hashes,
+structured-analysis/link/diagram consistency, managed readback and publication
+integrity. No new D2 behavioral, cryptographic, Windows restore or concurrency
+test ran. Prior D1 local/CI evidence is not validation of the proposed D2 protocol.

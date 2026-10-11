@@ -1,0 +1,8 @@
+flowchart LR
+  O["Owner using trusted local application"] --> D["Device proof and transfer keys"]
+  D --> H["Hosted enrollment and mutable active-device list"]
+  H --> D
+  S["SQLite checkpoint and single-device receipts"] --> B["Retirement barrier unavailable"]
+  D --> B
+  H --> B
+  B --> N["No removal - capacity refusal"]
