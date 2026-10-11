@@ -86,7 +86,7 @@ function parseMutation(value: unknown): RecordMutation {
   return {
     recordId: uuid(input.recordId),
     recordKind: integer(input.recordKind, 1, 13),
-    expectedServerVersion: integer(input.expectedServerVersion, 0, Number.MAX_SAFE_INTEGER),
+    expectedServerVersion: integer(input.expectedServerVersion, 0, Number.MAX_SAFE_INTEGER - 1),
     mutationId: uuid(input.mutationId),
     protocolVersion: integer(input.protocolVersion, 1, 1),
     workspaceKeyVersion: integer(input.workspaceKeyVersion, 1, 2_147_483_647),

@@ -42,6 +42,28 @@ function pushRequest() {
 }
 
 describe("sync-records protocol", () => {
+  it("preserves exact final counters and refuses exhausted or imprecise inputs", () => {
+    const request = pushRequest();
+    if (request.action !== "pushBatch") throw new Error("unexpected request");
+    const atLimit = {
+      ...request, checkpointCounter: Number.MAX_SAFE_INTEGER,
+      mutations: [{ ...request.mutations[0], expectedServerVersion: Number.MAX_SAFE_INTEGER - 1 }],
+    };
+    expect(parseRecordRequest(JSON.parse(JSON.stringify(atLimit)))).toEqual(atLimit);
+    for (const invalid of [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1, 1.5, -1, "1"]) {
+      expect(() => parseRecordRequest({
+        ...request, mutations: [{ ...request.mutations[0], expectedServerVersion: invalid }],
+      })).toThrow("INVALID_INTEGER");
+    }
+    const pull = { action: "pullChanges", deviceId: ids.deviceId,
+      workspaceId: ids.workspaceId, afterCursor: Number.MAX_SAFE_INTEGER, limit: 1 };
+    expect(parseRecordRequest(JSON.parse(JSON.stringify(pull)))).toEqual(pull);
+    for (const invalid of [Number.MAX_SAFE_INTEGER + 1, 1.5, -1, "1"]) {
+      expect(() => parseRecordRequest({ ...pull, afterCursor: invalid })).toThrow("INVALID_INTEGER");
+      expect(() => parseRecordRequest({ ...request, checkpointCounter: invalid })).toThrow("INVALID_INTEGER");
+    }
+  });
+
   it("accepts exact bounded request shapes and rejects ambiguous input", () => {
     expect(parseRecordRequest({
       action: "createWorkspace",
