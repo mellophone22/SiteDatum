@@ -3,7 +3,7 @@
 Repository: https://github.com/mellophone22/SiteDatum
 Branch: `codex/c10-02e-claude-review`
 Source base: `91973f57d9d4f9033dcf3455299046784ddf9742`
-Review the exact documentation commit supplied with this packet, not a moving head.
+Review the exact selection-record/handoff commit supplied with this packet, not a moving head. Previous D2 draft: `ce0bd4c92a9dea25b38582eecc947c54266189b8`; original production source base remains the one above.
 
 Read [proposal](proposals/owner-roster-trust.md), [portfolio](hardening.md), [context](context.md), [structured analysis](hardening.json), [prior policy context](prior-context.md), and [validation](validation.md). Treat the report as specification-only. No schema, root issuance, key removal, service mutation or activation is requested.
 
@@ -22,3 +22,7 @@ Try counterexamples: a hosted omitted device; both databases restored before rev
 Challenge whether any language implies a complete current roster can be proven when all independent latest anchors are lost. Verify that FreshnessUnestablished grants no retirement capability, preserves local work and does not erase captured keys. Verify no root key or serialized format has been assigned/created and no existing receipt is promoted into an all-device barrier.
 
 Report source facts separately from design contradictions and missing proofs. Recommend corrections and proposed acceptance tests. No blanket implementation approval. D6 and D7 remain blocked. Selecting a direction would still require separate approval and review before any format/schema/code.
+
+## Direction selected; technical review still required
+
+Read [the founder decision](founder-decision.md) and [conditional handoff](implementation/offline-owner-root.md). Separate offline owner-signing custody is selected as a direction, not an accepted construction. Do not ask to repeat that decision or the five preservation policies. Challenge exact custody, independent latest-anchor recovery, trusted bootstrap, stale duplicated artifacts, root succession, cancelled-intent/epoch semantics and loss/fork handling. Planned protocol tests remain unexecuted. Explain required specification corrections before any format/schema/production code. D6/D7 remain blocked.

@@ -30,7 +30,7 @@
     ],
     "assumptions": [
       "No measured chain or root-custody budget.",
-      "Separate root artifact not yet selected/approved."
+      "Separate offline owner-signing direction selected; exact artifact and technical recovery unapproved."
     ]
   },
   "opportunities": [
@@ -222,7 +222,7 @@
           "optionId": "offline-owner-root",
           "title": "Option 2: Separate offline owner root and independently pinned chain",
           "kind": "foundational",
-          "summary": "Recommended specification candidate only; custody selection and independent review pending.",
+          "summary": "Direction selected; independent technical review pending.",
           "diagramPaths": {
             "before": "diagrams/owner-roster-trust-before.mmd",
             "after": "diagrams/owner-roster-trust-offline-root-after.mmd"
@@ -338,7 +338,7 @@
             "Independent root-signing journal and publication ordering unproved."
           ],
           "implementationReadiness": {
-            "status": "specification_draft_not_accepted",
+            "status": "direction_selected_independent_review_pending",
             "affectedComponents": [
               "Native device enrollment/transfer",
               "Future independent pin store",
@@ -365,11 +365,11 @@
         }
       ],
       "recommendedOptionId": "offline-owner-root",
-      "recommendation": "Candidate for review and explicit founder custody choice, not accepted mechanism."
+      "recommendation": "Founder-selected direction for independent review; technical acceptance and implementation pending.",
+      "selectedOptionId": "offline-owner-root"
     }
   ],
   "openQuestions": [
-    "Founder artifact custody selection.",
     "Root artifact and canonical encoding independent review.",
     "Root signing/publication crash ordering.",
     "Practical independent latest-anchor recovery.",
@@ -383,5 +383,13 @@
     "keysGenerated": false,
     "D6": "blocked",
     "D7": "blocked"
+  },
+  "founderDecision": {
+    "date": "2026-10-11",
+    "selectedOptionId": "offline-owner-root",
+    "scope": "Design direction for independent review only",
+    "decisionPath": "founder-decision.md",
+    "technicalAcceptance": false,
+    "artifactIssuance": false
   }
 }

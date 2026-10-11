@@ -13,3 +13,7 @@ No D2 source, parser, root, schema, recovery format or capability implemented. N
 D1 results are prior evidence only. D2 specification completion is not acceptance; root-custody selection and independent review remain open. D6 and D7 remain blocked. No service changed or Sync activated.
 
 Prior D1 GitHub Actions run 38146675657 was separately read and completed successfully. That is not D2 protocol testing. The prior GitLab run was blocked by quota; new publication CI must be read separately.
+
+## Selection-record follow-up
+
+Only derived documents record direction selection and future ordering. Inventory remains pinned to its original source base. Links, JSON, diagram agreement and managed readback are rechecked. No new behavioral test or independent reviewer verdict is available for this selected packet.

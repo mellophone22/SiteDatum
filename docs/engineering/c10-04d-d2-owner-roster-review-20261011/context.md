@@ -30,3 +30,7 @@ Native device identity is an OS-random Ed25519 seed in Windows Credential Manage
 No D2 owner-root format, complete chain, independent pin, schema or capability is implemented here. Source inspection is not a simulated-attack result. No Windows credential, root material, real customer data or live Supabase database was read. D2 validation is document/source correspondence and publication integrity only.
 
 Prior local D1 regression belongs to its commit: 12 focused tests, full Rust 214 passed/five ignored, frontend 113, lint/build/check/format pass. Those results do not test D2. No new behavioral tests or cryptographic construction is claimed.
+
+## Direction selection follow-up
+
+After draft commit `ce0bd4c92a9dea25b38582eecc947c54266189b8`, the founder selected the separate owner-signing artifact direction for independent review and clarified the trailing “and” was accidental. Recording that decision authorizes review preparation, not keys/schema/activation. The refreshed checkout matches that documentation packet; production/test source is unchanged from the inventoried base. The ten-file inventory continues to bind `91973f57d9d4f9033dcf3455299046784ddf9742`, not the revised derived text. No new runtime experiment was performed.

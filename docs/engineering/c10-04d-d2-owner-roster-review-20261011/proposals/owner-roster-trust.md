@@ -2,15 +2,15 @@
 
 ## Decision
 
-This is a design-only D2 specification at source base `91973f57d9d4f9033dcf3455299046784ddf9742`. We have not selected, created or deployed an owner root. We have not added schema, changed enrollment, generated a recovery artifact or authorized retirement. The five founder policies are unchanged. Selecting root custody is a new mechanism decision, not implied by those policies.
+This is a design-only D2 specification at source base `91973f57d9d4f9033dcf3455299046784ddf9742`. The founder selected the separate offline owner-signing artifact design direction for independent review. No actual owner root has been created or deployed. We have not added schema, changed enrollment, generated a recovery artifact or authorized retirement. The five founder policies are unchanged. Root custody is a new mechanism decision; the founder explicitly selected the direction, not a serialized construction or implementation.
 
-We can complete the D2 specification packet while leaving its acceptance gate open for founder mechanism selection and independent review. D6 and D7 remain blocked; the existing no-removal baseline remains operational.
+We can complete the D2 specification packet while leaving its technical acceptance gate open for independent review. Direction selection is recorded in [the founder decision](../founder-decision.md). D6 and D7 remain blocked; the existing no-removal baseline remains operational.
 
 ## Executive Recommendation
 
 We compare **Option 1: keep retirement blocked with existing device identity**, and **Option 2: separately held offline owner authority with independently pinned membership history**. Option numbers here refer only to the D2 root choice, not to the earlier hot-ring/vault options.
 
-I recommend Option 2 as a candidate for design review, conditional on explicit founder approval of the additional customer-held signing artifact and its recovery burden. We would use the existing mature signature family in a separately reviewed domain; no new cryptographic construction or wire format is assigned in this packet. If customers cannot safely keep and update the independent anchor, Option 1 is the safer outcome. We must not turn email recovery or the first computer's self-assertion into owner authority by convenience.
+I recommend Option 2 as a candidate for design review, with that customer-held artifact direction now explicitly selected. Independent assessment of its recovery and update burden remains required. We would use the existing mature signature family in a separately reviewed domain; no new cryptographic construction or wire format is assigned in this packet. If customers cannot safely keep and update the independent anchor, Option 1 is the safer outcome. We must not turn email recovery or the first computer's self-assertion into owner authority by convenience.
 
 ## Evidence
 
@@ -172,7 +172,7 @@ We would prefer Option 1 whenever the recovery ceremony or independent freshness
 
 ## Recommendation
 
-I recommend circulating Option 2's semantic specification for independent review, then obtaining the founder's explicit mechanism decision before a root format or schema is built. We can continue D3 specification independently, but cannot claim D2 accepted or cross D6 while root choice, custody, freshness limits and signing-journal protocol remain open.
+I recommend circulating Option 2's semantic specification for independent review, with the founder's direction selection recorded, before a root format or schema is built. We can continue D3 specification independently, but cannot claim D2 accepted or cross D6 while technical custody/recovery, freshness limits and signing-journal protocol remain unreviewed.
 
 ## Evidence Coverage And Residual Risk
 
@@ -211,7 +211,7 @@ All cases below are **proposed, not executed**:
 
 | Package | Scope | Acceptance boundary |
 | --- | --- | --- |
-| D2 root-choice decision | Founder accepts separate artifact/custody and residual freshness limits, after independent review | Design decision only, not artifact issuance |
+| D2 root-choice decision | Founder selected separate offline artifact direction for review | Complete as direction selection only, not technical acceptance or artifact issuance |
 | D2 canonical specification | Reviewed purpose domains, exact framing, bounded parser, transitions and pin semantics | No production schema before spec acceptance |
 | D2 fictional proof | Chain/restore/omission/fork and capability fixtures | Separate permission after accepted spec; none executed here |
 | D3/D4/D5 integration | Reviewed root artifact/recovery, epoch fence and ordered signing/publication journal | Their own reviews and total-loss drills |
@@ -219,7 +219,7 @@ All cases below are **proposed, not executed**:
 
 ## Open Questions
 
-- Does the founder approve the new separate customer-held owner-signing artifact and membership-change ceremony, rather than a first-device root or provider recovery?
+- Separate offline owner-signing direction is selected. Exact ceremony, artifact construction and recovery semantics still need independent review; no first-device/provider-recovery substitution is authorized.
 - What reviewed artifact format and root custody protects against copying/stale signing while preserving recoverability? D3 has not supplied this format.
 - What independent latest-anchor update/backup procedure is practical for one owner and two computers? Total loss cannot be reframed as cryptographic freshness.
 - What signed-intent and publication ordering handles crashes/forks without lowering epochs? D5 must model this before any API.

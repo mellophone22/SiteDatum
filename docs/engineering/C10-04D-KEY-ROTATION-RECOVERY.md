@@ -479,3 +479,12 @@ D2 checks are document/source correspondence, ten pinned Git-blob hashes,
 structured-analysis/link/diagram consistency, managed readback and publication
 integrity. No new D2 behavioral, cryptographic, Windows restore or concurrency
 test ran. Prior D1 local/CI evidence is not validation of the proposed D2 protocol.
+
+### D2 direction selection recorded
+
+The founder selected the separate offline owner-signing artifact design direction
+for independent review after the D2 draft at ce0bd4c. The [decision record](c10-04d-d2-owner-roster-review-20261011/founder-decision.md)
+and [conditional handoff](c10-04d-d2-owner-roster-review-20261011/implementation/offline-owner-root.md)
+record the scope. This does not waive technical review or authorize artifact issuance,
+keys, schema, service changes or activation. The five policies are unchanged.
+The next gate is the pinned independent D2 review; D6/D7 remain blocked.
