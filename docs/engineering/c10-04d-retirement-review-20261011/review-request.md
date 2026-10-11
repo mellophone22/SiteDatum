@@ -1,8 +1,8 @@
 # Independent follow-up review request: C10-04D D1 and design corrections
 
-Repository: https://github.com/mellophone22/SiteDatum  
-Branch: `codex/c10-02e-claude-review`  
-Prior reviewed packet: `8be1f5e8b415b62f9b696adb66a96d7d5e758b7c`  
+Repository: https://github.com/mellophone22/SiteDatum
+Branch: `codex/c10-02e-claude-review`
+Prior reviewed packet: `8be1f5e8b415b62f9b696adb66a96d7d5e758b7c`
 Original production source base: `097e8daa4459c03655dc5046372aefca0c138d97`
 
 Review the exact follow-up commit supplied in the accompanying message, not a moving branch head. Read [remediation](review-remediation.md), [D1 evidence](d1-proof.md), [proposal](proposals/safe-key-retirement.md), [portfolio](hardening.md), [structured analysis](hardening.json), [context](context.md) and [validation](validation.md).

@@ -176,4 +176,3 @@ Sync v2 remains unavailable until every item is evidenced:
 ## Consequences
 
 Sync v2 is a substantial feature, not a settings toggle. It requires a new protocol, local migrations, a reviewed cloud schema, cryptographic key management, consent and deletion surfaces, and operations evidence. The additional work is intentional: it prevents a cloud convenience feature from weakening SiteDatum's local-first privacy and recovery guarantees.
-
