@@ -29,6 +29,23 @@ const RECOVERY_LABEL_V2: &[u8] = b"sitedatum.sync-v2.recovery-file.v2";
 const LEGACY_MAGIC: &[u8; 8] = b"SDREC001";
 const MAGIC: &[u8; 8] = b"SDREC002";
 const PROTECTED_MAGIC: &[u8; 8] = b"SDKR0002";
+fn newer_format() -> AppError {
+    AppError::from_technical(
+        "SYNC_V2_RECOVERY_NEWER_FORMAT",
+        "This material appears to use a newer Sync recovery format and has not been verified.",
+        "Use a SiteDatum version that supports this format. Keep local work, the original file and separate code; do not replace or recreate the keyring.",
+        "An unsupported newer format marker was detected; no material was authenticated or imported.",
+    )
+}
+// A marker is only a diagnostic hint, never authority or authenticated content.
+fn newer_marker(marker: &[u8], prefix: &[u8], current: u32) -> bool {
+    marker.len() == 8
+        && marker.starts_with(prefix)
+        && marker[prefix.len()..].iter().all(u8::is_ascii_digit)
+        && marker[prefix.len()..].iter().fold(0u32, |version, digit| {
+            version * 10 + u32::from(digit - b'0')
+        }) > current
+}
 fn refused() -> AppError {
     AppError::from_technical(
         "SYNC_V2_KEY_RECOVERY_REFUSED",
@@ -194,6 +211,9 @@ impl KeyRing {
         // Exact bounded framing is disjoint; never fallback after a tagged error.
         if (81..=333).contains(&b.len()) && (b.len() - 45) % 36 == 0 {
             if !b.starts_with(PROTECTED_MAGIC) {
+                if newer_marker(&b[..8], b"SDKR", 2) {
+                    return Err(newer_format());
+                }
                 return Err(refused());
             }
             Self::from_raw(&b[8..])
@@ -390,16 +410,34 @@ pub(crate) fn create_recovery_file(
     created_at_unix: u64,
     code: &RecoveryCode,
 ) -> AppResult<Vec<u8>> {
-    create_recovery_file_format(ring, minimum, created_at_unix, code, false)
+    create_recovery_file_format(
+        ring,
+        minimum,
+        created_at_unix,
+        code,
+        RecoveryFileFormat::Current,
+    )
+}
+enum RecoveryFileFormat {
+    Current,
+    // Legacy emission exists solely to exercise strict read compatibility.
+    #[cfg(test)]
+    Legacy,
 }
 fn create_recovery_file_format(
     ring: &KeyRing,
     minimum: Anchor,
     created_at_unix: u64,
     code: &RecoveryCode,
-    legacy: bool,
+    format: RecoveryFileFormat,
 ) -> AppResult<Vec<u8>> {
+    let (magic, legacy) = match format {
+        RecoveryFileFormat::Current => (MAGIC, false),
+        #[cfg(test)]
+        RecoveryFileFormat::Legacy => (LEGACY_MAGIC, true),
+    };
     let raw = ring.raw();
+    #[cfg(test)]
     if legacy {
         KeyRing::from_legacy_raw(&raw)?;
     }
@@ -411,7 +449,7 @@ fn create_recovery_file_format(
     getrandom::fill(&mut salt).map_err(|_| refused())?;
     let mut nonce = [0; 24];
     getrandom::fill(&mut nonce).map_err(|_| refused())?;
-    let mut header = if legacy { LEGACY_MAGIC } else { MAGIC }.to_vec();
+    let mut header = magic.to_vec();
     header.extend_from_slice(ring.owner.as_bytes());
     header.extend_from_slice(ring.workspace.as_bytes());
     header.extend_from_slice(&salt);
@@ -444,10 +482,15 @@ pub(crate) fn open_recovery_file(
     independent_floor: Option<Anchor>,
 ) -> AppResult<RecoveredKeys> {
     if !(241..=493).contains(&bytes.len())
-        || (&bytes[..8] != MAGIC && &bytes[..8] != LEGACY_MAGIC)
         || bytes[8..24] != *owner.as_bytes()
         || bytes[24..40] != *workspace.as_bytes()
     {
+        return Err(refused());
+    }
+    if &bytes[..8] != MAGIC && &bytes[..8] != LEGACY_MAGIC {
+        if (bytes.len() - 241) % 36 == 0 && newer_marker(&bytes[..8], b"SDREC", 2) {
+            return Err(newer_format());
+        }
         return Err(refused());
     }
     let legacy = &bytes[..8] == LEGACY_MAGIC;
@@ -826,6 +869,83 @@ mod tests {
             digest: [0x45; 32],
         }
     }
+    #[test]
+    fn production_recovery_export_never_emits_legacy_format() {
+        let mut r = ring();
+        let code = RecoveryCode::generate().unwrap();
+        for count in 1..=MAX_KEYS {
+            let bytes = create_recovery_file(&r, anchor(), 1000, &code).unwrap();
+            assert_eq!(&bytes[..8], MAGIC);
+            assert_ne!(&bytes[..8], LEGACY_MAGIC);
+            assert!(open_recovery_file(&bytes, &code, r.owner, r.workspace, 1001, None).is_ok());
+            if count < MAX_KEYS {
+                r.rotate().unwrap();
+            }
+        }
+    }
+    #[test]
+    fn newer_format_diagnostics_never_authenticate_import_or_reinterpret_material() {
+        let r = ring();
+        let original = r.raw();
+        let mut protected = r.protected_bytes();
+        protected[..8].copy_from_slice(b"SDKR0003");
+        let error = KeyRing::from_protected_bytes(&protected).err().unwrap();
+        assert_eq!(error.code, "SYNC_V2_RECOVERY_NEWER_FORMAT");
+        assert!(error.message.contains("has not been verified"));
+        assert!(error.recovery.contains("do not replace or recreate"));
+        assert!(!error.technical_detail().contains(&r.owner.to_string()));
+        for marker in [b"SDKR0000", b"SDKR0001", b"SDKR00x3", b"UNKNOWN3"] {
+            protected[..8].copy_from_slice(marker);
+            assert_eq!(
+                KeyRing::from_protected_bytes(&protected)
+                    .err()
+                    .unwrap()
+                    .code,
+                "SYNC_V2_KEY_RECOVERY_REFUSED"
+            );
+        }
+        protected[..8].copy_from_slice(b"SDKR0003");
+        assert_eq!(
+            KeyRing::from_protected_bytes(&protected[..protected.len() - 1])
+                .err()
+                .unwrap()
+                .code,
+            "SYNC_V2_KEY_RECOVERY_REFUSED"
+        );
+        // Even a future-looking prefix may be a perfectly valid legacy owner UUID.
+        let legacy = KeyRing::initial(
+            Uuid::parse_str("53444b52-3030-3033-8000-000000000001").unwrap(),
+            r.workspace,
+        )
+        .unwrap();
+        assert!(KeyRing::from_protected_bytes(&legacy.raw()).is_ok());
+        let code = RecoveryCode::generate().unwrap();
+        let mut file = create_recovery_file(&r, anchor(), 1000, &code).unwrap();
+        file[..8].copy_from_slice(b"SDREC003");
+        assert_eq!(
+            open_recovery_file(&file, &code, r.owner, r.workspace, 1001, None)
+                .err()
+                .unwrap()
+                .code,
+            "SYNC_V2_RECOVERY_NEWER_FORMAT"
+        );
+        assert_eq!(
+            open_recovery_file(&file, &code, Uuid::new_v4(), r.workspace, 1001, None)
+                .err()
+                .unwrap()
+                .code,
+            "SYNC_V2_KEY_RECOVERY_REFUSED"
+        );
+        file.push(0);
+        assert_eq!(
+            open_recovery_file(&file, &code, r.owner, r.workspace, 1001, None)
+                .err()
+                .unwrap()
+                .code,
+            "SYNC_V2_KEY_RECOVERY_REFUSED"
+        );
+        assert!(r.raw().as_slice() == original.as_slice());
+    }
     fn record(r: &KeyRing, tombstone: bool) -> SealedRecord {
         let mut h = header(10);
         h.owner_id = r.owner;
@@ -908,7 +1028,9 @@ mod tests {
         let loaded = KeyRing::from_protected_bytes(&r.raw()).unwrap();
         assert!(loaded.raw().as_slice() == r.raw().as_slice());
         let code = RecoveryCode::generate().unwrap();
-        let file = create_recovery_file_format(&r, anchor(), 1000, &code, true).unwrap();
+        let file =
+            create_recovery_file_format(&r, anchor(), 1000, &code, RecoveryFileFormat::Legacy)
+                .unwrap();
         assert!(file.starts_with(LEGACY_MAGIC));
         let code = RecoveryCode::parse(&code.display()).unwrap();
         let recovered = open_recovery_file(&file, &code, r.owner, r.workspace, 1001, None).unwrap();

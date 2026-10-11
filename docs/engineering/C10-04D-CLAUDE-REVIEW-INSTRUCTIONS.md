@@ -73,3 +73,34 @@ only their uniquely scoped fictional credential and must never print secrets.
 Send the report back to the founder for remediation and explicit acceptance.
 No main merge, release, production deployment or Sync activation follows
 automatically from this review.
+
+## Format-condition follow-up — 2026-10-11
+
+The 2026-10-10 review of 579cfed approved the format with conditions and did NOT
+approve retirement implementation. Review the supplied exact follow-up commit
+against `579cfedc2c5f670db22ce440a15e03f8b44f4c03`, not a moving branch tip.
+
+Verify the new content-free `SYNC_V2_RECOVERY_NEWER_FORMAT` refusal is an
+unauthenticated diagnostic only. Known-format corruption/authentication failure,
+wrong recovery scope, malformed lengths and unknown tags must still refuse;
+exact legacy frames with SDKR0002/0003 UUID prefixes must remain readable.
+No older installed binary can be retrospectively fixed. The published supporting
+application version and release/transfer negotiation remain activation gates.
+Verify legacy emission is structurally cfg(test)-only, production export emits
+SDREC002 for all resident counts, and strict legacy reads still pass. The
+create-new persistence helper may copy existing bounded legacy ciphertext; this
+does not generate, re-encrypt or downgrade a recovery file.
+
+Check the explicit twelve-column census against migrations 0012/0014/0015,
+including nullable baselines/pending/resolution and resolved conflict rows.
+Review the plan's separate owner/workspace/epoch/device barrier state as an
+alternative to changing the existing single-local-device receipt tables. No
+migration or runtime barrier/removal implementation is included. Assess roster
+trust, sparse retained-set binding, typed retirement authority and the durable
+quiesce-and-fence epoch spanning enrollment, restore, writes/conflicts and
+recovery generation. Five founder policy decisions remain unresolved; do not
+construe this plan as their acceptance or approval to destroy keys.
+
+Return separate verdicts for condition remediation and plan prerequisites.
+Run native/frontend checks and adversarial format cases; clearly distinguish
+local checks from CI and Windows from Linux evidence. Nothing may activate Sync.

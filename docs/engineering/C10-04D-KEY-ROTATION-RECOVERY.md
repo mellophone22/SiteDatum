@@ -1,8 +1,10 @@
 # C10-04D — Versioned keys and recovery proof
 
-Status: independently reviewed with conditional approval; remediation locally
-verified; founder selected safe compaction, with format review and retirement
-protocol still pending. Not accepted or activated.
+Status: format foundation independently approved with conditions on 2026-10-10;
+source/test condition remediation locally verified on 2026-10-11; release/version
+negotiation remains an activation gate. Retirement design NOT approved for
+implementation; founder policies and protocol proofs remain pending.
+Not accepted or activated.
 Customer Sync remains disabled. No command, UI, transport, hosted deployment,
 release, activation or cost is introduced.
 
@@ -14,8 +16,9 @@ An authentic older file cannot prove the latest cloud state after total device
 loss. The new printable encoding and wire format require independent review.
 
 KeyRing binds owner/workspace UUIDs and selects the exact authenticated record
-or checkpoint version. Fresh keys come from the OS CSPRNG. Versions are contiguous,
-with at most eight retained keys; capacity refuses rotation, never silently
+or checkpoint version. Fresh keys come from the OS CSPRNG. New rotations increase
+the version; SDREC002 can represent gaps, with at most eight retained keys.
+Capacity refuses rotation, never silently
 retires history keys. Mixed-version queue, paging, conflicts and safe apply retain
 old-key reads; new edits and fresh KeepLocal resolutions use the active version.
 The single-array WorkspaceKeys adapter is legacy low-level proof compatibility,
@@ -190,6 +193,35 @@ Exact bounded frame lengths distinguish legacy and tagged protected payloads;
 an owner UUID beginning with SDKR0002 remains a valid legacy owner. A malformed
 tagged payload is never retried using legacy parsing.
 
+### Format support and version-mismatch handling — 2026-10-11
+
+The minimum format-capable application **build** is the reviewed
+`579cfedc2c5f670db22ce440a15e03f8b44f4c03` implementation or a validated successor:
+it reads SDREC001 and SDREC002, and untagged legacy or SDKR0002 protected rings.
+This is not a claim that the published 1.4.4 installer contains that build.
+No customer application release supporting these formats has been assigned.
+Before activation, bind this minimum build and the diagnostic remediation to an
+exact published application version and enforce that floor in client/transfer
+negotiation; do not infer support from the current unchanged 1.4.4 source label.
+That release/negotiation prerequisite remains open, not closed by this patch.
+
+Exact bounded tagged frames with a decimal version above 0002, and matching-scope
+recovery-file frames with a decimal version above 002, now refuse with
+`SYNC_V2_RECOVERY_NEWER_FORMAT`. The message explicitly says the material only
+**appears** newer and has not been verified: markers are unauthenticated hints,
+never import, migration, freshness or key-removal authority. Guidance says to
+use a supporting version, keep originals/local work and not recreate the ring.
+Malformed known formats and supported-format authentication failures remain
+generic refusals. Legacy UUID/tag collisions still dispatch by exact length.
+An already-installed older binary cannot be retroactively given this diagnostic;
+downgrades must be blocked by future release/format negotiation before activation.
+
+Legacy file generation is now structurally test-only (`RecoveryFileFormat::Legacy`
+is cfg(test)); the production export chooses Current. A regression exercises all
+eight resident-key counts and verifies exports are SDREC002 and still readable.
+The create-new byte-file persistence helper is not a legacy encryptor: it can
+preserve existing legacy ciphertext without decrypting or changing its format.
+
 Tests exercise legacy-file byte tampering and read compatibility, both magic
 substitutions, high/sparse IDs, duplicates/descending/zero/missing-active IDs,
 the protocol integer ceiling, and protected legacy/tagged/sparse roundtrips.
@@ -207,6 +239,25 @@ Before any production key removal, the implementation must prove:
    all pull history, partial pages/checkpoints, every conflict candidate including
    resolved rows, rotation journals, hosted changes/checkpoints and recovery
    generations. No local live project record, activity or normal file is deleted.
+   The local schema census must explicitly visit every non-null value in all
+   twelve columns below, including resolved conflict rows. NULL is absence,
+   not permission to skip a populated optional branch:
+
+   | Local table | Ciphertext columns |
+   | --- | --- |
+   | `sync_v2_record_snapshots` | `envelope` |
+   | `sync_v2_outbox` | `envelope` |
+   | `sync_v2_committed_bases` | `envelope` (nullable) |
+   | `sync_v2_pull_history` | `envelope` |
+   | `sync_v2_pull_parts` | `envelope` |
+   | `sync_v2_pull_batches` | `checkpoint` |
+   | `sync_v2_rotation_batches` | `checkpoint` |
+   | `sync_v2_record_conflicts` | `local_envelope`, `remote_envelope`, `baseline_envelope` (nullable), `pending_envelope` (nullable), `resolution_envelope` (nullable) |
+
+   `checkpoint_digest` in anchors/receipts/acknowledgements is a hash, not
+   ciphertext. SQLite safety backups, customer-held recovery files, hosted
+   history/checkpoints and any future archives are additional dependencies,
+   not accounted for merely by querying these twelve live columns.
 2. A replacement authenticated checkpoint covers current records/tombstones
    under retained keys. Every active device signs a durable **applied** receipt
    for that exact owner/workspace/counter/cursor/digest and retained-key floor.
@@ -226,6 +277,83 @@ Before any production key removal, the implementation must prove:
 6. SQLite, protected storage, device acknowledgements and recovery generation
    use a crash-safe ordered journal. Restart can never leave data requiring a
    key that was already removed; failures retain the old ring and local work.
+7. A durable quiesce-and-fence epoch joins the census/barrier to retirement.
+   Concurrent enrollment, device-roster changes/revocation, restore, Sync writes,
+   new conflict candidates and recovery-generation changes must either be fenced
+   or invalidate the barrier and restart preparation. The hosted and local
+   compare-and-commit checks bind the same epoch, roster digest, checkpoint and
+   key floor. A census completed before an unfenced mutation is not evidence.
+   Restarts fail closed before any key removal, revalidate dependency versions
+   and retain the old ring on uncertainty. Ordinary local work remains usable:
+   this is not permission to lock project editing indefinitely; edits must
+   safely abort/postpone retirement rather than silently be lost.
+
+### Separate barrier state and trust model (plan only; no migration)
+
+R-1 is confirmed: `sync_v2_device_acknowledgements` (migration 0012) and
+`sync_v2_applied_receipts` (0014) each have PRIMARY KEY(workspace_id). They
+represent this local stream/device only. `applied_sync_v2_receipt` checks the
+receipt device against the bound stream; its backup/live proof is not an
+all-device certificate. Writing another device into these tables would overwrite
+or misbind local evidence. Neither is an all-active-device barrier today.
+
+Preserve these existing semantics. The proposed next reviewed protocol slice
+needs **separate** retirement-epoch, roster and signed per-device receipt tables,
+plus the corresponding hosted boundary. A receipt identity must include at
+least (owner, workspace, retirement_epoch, device), not only workspace; a future
+SQLite migration must enforce this without treating migrated staging/applied
+rows as signatures. Historical epochs cannot overwrite current evidence, and
+signatures bind the exact checkpoint, roster epoch/digest, proposed retirement
+set and canonical retained-key version set/digest, as well as the key floor.
+A scalar floor alone cannot describe sparse retained IDs. Signed proof issuance
+must preserve the exclusive local database authority already required by safe
+apply and recheck census/checkpoint/epoch in the locked snapshot. Hosted
+finalization must serialize with current record writers and membership changes,
+not merely count acknowledgement rows observed earlier.
+This is a source-backed alternative to changing the current tables' primary
+keys; the independent reviewer must review that choice before implementation.
+
+The active-device set must derive from verified owner-authorized enrollment and
+revocation history and device signing identities, not an unverified provider
+list. Provider omission, roster rollback, unknown/duplicate devices or a missing
+signature fail closed. How total-loss recovery re-establishes roster trust is
+also a required proof, not supplied by a recovery-file capture minimum.
+The precise roster authority/revocation policy requires founder approval.
+
+Future removal must consume a private validated `RetirementBarrier` capability
+(name provisional), constructible only after roster, signed durable applied
+evidence, full census, hosted floor, preservation policy and epoch fence verify.
+There must be no constructor from an ordinary applied receipt, staging row,
+provider assertion or recovery file. No such type or removal API exists now.
+
+### Remaining protocol proofs and founder decisions
+
+Before implementation of removal, review a standalone protocol slice specifying:
+the census and adversarial nullable/resolved-row tests; separate signed barrier
+and roster storage/migrations; hosted bootstrap floor and retired-write denial;
+exact-retry-compatible archive encoding; full-ring-plus-floor device transfer;
+historical backup/recovery dependency preservation; and multi-store ordered
+journal with crash and concurrent-fence tests. Existing local rotation staging
+and single-device backup-bound receipts do not provide these mechanisms.
+The hosted record/lifecycle proof exists under `proofs/sync-v2-identity`; the
+missing boundary is retirement/compaction, not all hosted schema or endpoints.
+
+The founder must decide five policies before that protocol is finalized:
+
+1. Offline device: block retirement until every active device applies, or an
+   explicitly reviewed rebootstrap/exclusion flow that preserves unsynced work.
+2. Historical recovery generations: preserve old generations or explicitly
+   supersede them under a disclosed, independently reviewed migration policy.
+3. Backups: retain required keys or offer verified explicit migration/preservation
+   without silently changing/deleting customer-held backups.
+4. Cadence/consent: whether retirement is manual per event or may ever be automatic,
+   and the exact consequence confirmation required.
+5. Roster authority: who may enroll/revoke/exclude a device and how clients verify
+   a complete current roster, including total-device-loss recovery.
+
+No default policy is accepted on the founder's behalf. The eight-key capacity
+still refuses further rotation; no key removal, local schema change, hosted
+deployment, main merge, release or Sync activation is authorized by this plan.
 
 Missing source boundaries: no hosted applied-device acknowledgement/compaction
 action exists; current device transfer carries one key, not a full ring and
@@ -243,4 +371,18 @@ passed. The patch review's legacy UUID/tag collision was reproduced, fixed
 with exact framing, and covered by its own regression test before final checks.
 No customer artifact was issued, hosted service altered, credential migrated
 or key retired. Independent review of SDREC002 and the retirement plan is the
-next gate; see the updated review instructions.
+next gate at that point; see the updated review instructions. The subsequent
+2026-10-10 report conditionally approved the format only and rejected retirement
+implementation. Its conditions and the 2026-10-11 follow-up are recorded above.
+
+Follow-up local verification on 2026-10-11: production `cargo check --locked`,
+`cargo fmt --check`, focused key-recovery tests (23 passed, one ignored), full
+`cargo test --locked` (174 unit + 28 integration = 202 passed; four unit and
+one integration ignored), and the separately invoked fictional Windows protected
+keyring roundtrip (one passed). `npm test -- --run` passed 113 tests across 35
+files; lint and TypeScript/Vite build passed. No UI surface changed, so visual
+review is not applicable. Existing tamper, legacy reader, collision, scope and
+rotation-capacity tests remain intact alongside the two added regressions.
+Remote CI for the exact follow-up commit must be reported separately, not inferred
+from these local results. The reviewed 579cfed GitHub run 38067599031 completed
+successfully; its GitLab pipeline 2933840958 failed due to CI quota exhaustion.

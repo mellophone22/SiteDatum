@@ -218,3 +218,13 @@ implemented: historical ciphertext, exact replay, signed all-device applied
 acknowledgements, hosted bootstrap floors and backup/recovery consequences need
 a reviewed protocol and founder policy approval. See the format foundation and
 retirement requirements in `C10-04D-KEY-ROTATION-RECOVERY.md`. No keys are removed.
+
+The subsequent review of 579cfed conditionally approved the format foundation
+but did NOT approve implementing retirement. The 2026-10-11 follow-up addresses
+newer-format diagnostic hints and test-only legacy emission, names all twelve
+local ciphertext columns, and records a separate multi-device/epoch barrier
+plan preserving the current single-local-device receipt tables. A concurrency
+fence, trusted roster, sparse retained-set proofs, hosted retirement/replay and
+backup/recovery ordering remain unimplemented. The exact supported application
+release/negotiation floor and five founder policies are explicit open gates.
+No schema migration, key removal, deployment or customer activation is added.
