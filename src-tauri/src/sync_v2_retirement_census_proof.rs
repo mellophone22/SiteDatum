@@ -145,7 +145,7 @@ mod tests {
     fn census(
         c: &Connection,
         scope: StreamScope,
-        keys: &HistoricalReader<RingRead<'_>>,
+        keys: &impl WorkspaceKeys,
         known_manifest: &[RecordManifestEntry],
     ) -> AppResult<Census> {
         // Require a caller-created query-only fixture. This is not a database opener.
@@ -370,6 +370,109 @@ mod tests {
     }
 
     #[test]
+    fn file_vault_total_loss_recovery_reads_all_twelve_columns_at_every_retained_version() {
+        use crate::sync_v2_vault_file_prototype::{read_bounded, write_new, Archive, Secret};
+        use zeroize::Zeroizing;
+        for count in [1, 8, 100, 1000] {
+            let f = Fixture::new();
+            let scope = f.scope;
+            let archive = Archive::new(
+                scope.owner_id,
+                scope.workspace_id,
+                1,
+                (1..=count)
+                    .map(|v| (v, Zeroizing::new([((v % 251) + 1) as u8; 32])))
+                    .collect(),
+            )
+            .unwrap();
+            // Public fictional keys are deliberate. No real keyring or credentials.
+            // Seal before losing the archive, so recovery is not its own oracle.
+            let mut captured = Vec::with_capacity(count as usize);
+            for version in 1..=count {
+                let header = RecordHeader {
+                    owner_id: scope.owner_id,
+                    workspace_id: scope.workspace_id,
+                    record_id: Uuid::new_v4(),
+                    record_kind: 10,
+                    mutation_id: Uuid::new_v4(),
+                    expected_server_version: 0,
+                    workspace_key_version: version,
+                    protocol_version: 1,
+                    tombstone: true,
+                };
+                let record = encode(
+                    &seal_record(
+                        header,
+                        &archive,
+                        &RecordContent {
+                            schema_version: 1,
+                            fields: None,
+                        },
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+                let checkpoint = serde_json::to_vec(
+                    &seal_workspace_checkpoint(
+                        scope.owner_id,
+                        scope.workspace_id,
+                        version,
+                        &archive,
+                        version as u64,
+                        version as u64,
+                        &[],
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+                captured.push((record, checkpoint));
+            }
+            let recovery = Secret::random().unwrap();
+            let local = Secret::random().unwrap();
+            let (local_file, _) = archive.seal(&local, false).unwrap();
+            let (copy, pin) = archive.seal(&recovery, true).unwrap();
+            let path = std::env::temp_dir()
+                .join(format!("sitedatum-d3-recovery-{}.fixture", Uuid::new_v4()));
+            write_new(&path, &copy).unwrap();
+            // Destructure to discard even the original unrelated two-key fixture ring.
+            let Fixture { c, ring, .. } = f;
+            drop(ring);
+            drop(archive);
+            drop(local);
+            drop(local_file);
+            drop(copy);
+            let restored = Archive::open(
+                &read_bounded(&path).unwrap(),
+                &recovery,
+                true,
+                scope.owner_id,
+                scope.workspace_id,
+                pin,
+            )
+            .unwrap();
+            assert_eq!(restored.write_version(), None);
+            for (index, (record, checkpoint)) in captured.iter().enumerate() {
+                c.execute_batch("PRAGMA query_only=OFF").unwrap();
+                for (table, column, _, is_checkpoint) in COLUMNS {
+                    c.execute(
+                        &format!("UPDATE {table} SET {column}=?1"),
+                        [if is_checkpoint { checkpoint } else { record }],
+                    )
+                    .unwrap();
+                }
+                c.execute_batch("PRAGMA query_only=ON").unwrap();
+                let before = c.total_changes();
+                let result = census(&c, scope, &restored, &[]).unwrap();
+                assert_eq!(result.counts, [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
+                assert_eq!(result.versions.get(&(index as u32 + 1)), Some(&17));
+                assert_eq!(c.total_changes(), before);
+            }
+            // Cleanup only the unique fictional file explicitly created by this drill.
+            std::fs::remove_file(&path).unwrap();
+        }
+    }
+
+    #[test]
     fn all_four_nullable_columns_are_counted_not_omitted() {
         let f = Fixture::new();
         f.c.execute_batch("PRAGMA query_only=OFF; UPDATE sync_v2_committed_bases SET envelope=NULL; UPDATE sync_v2_record_conflicts SET baseline_envelope=NULL,pending_envelope=NULL,resolution_envelope=NULL; PRAGMA query_only=ON;").unwrap();
@@ -576,6 +679,52 @@ mod tests {
             .stage_sync_v2_mutation(f.scope, &decode(&f.record).unwrap(), &reader)
             .is_err());
         assert_eq!(db.connection.total_changes(), changes);
+    }
+
+    #[test]
+    fn restored_file_archive_has_no_queue_write_authority() {
+        use crate::sync_v2_vault_file_prototype::{Archive, Secret};
+        use zeroize::Zeroizing;
+        let f = Fixture::new();
+        let a = Archive::new(
+            f.scope.owner_id,
+            f.scope.workspace_id,
+            1,
+            vec![(
+                1,
+                Zeroizing::new(
+                    *f.ring
+                        .select(f.scope.owner_id, f.scope.workspace_id, 1)
+                        .unwrap(),
+                ),
+            )],
+        )
+        .unwrap();
+        let secret = Secret::random().unwrap();
+        let (bytes, pin) = a.seal(&secret, true).unwrap();
+        drop(a);
+        let restored = Archive::open(
+            &bytes,
+            &secret,
+            true,
+            f.scope.owner_id,
+            f.scope.workspace_id,
+            pin,
+        )
+        .unwrap();
+        assert!(open_record(&decode(&f.record).unwrap(), &restored).is_ok());
+        let mut c = Connection::open_in_memory().unwrap();
+        apply_migrations(&mut c).unwrap();
+        let mut db = Database { connection: c };
+        let before = db.connection.total_changes();
+        assert!(db
+            .stage_sync_v2_mutation(f.scope, &decode(&f.record).unwrap(), &restored)
+            .is_err());
+        assert_eq!(db.connection.total_changes(), before);
+        assert!(f
+            .ring
+            .select(f.scope.owner_id, f.scope.workspace_id, 1)
+            .is_ok());
     }
 
     #[test]
