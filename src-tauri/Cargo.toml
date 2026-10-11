@@ -19,6 +19,8 @@ default = []
 # Production commerce builds deliberately fail at compile time unless the public
 # production licensing coordinates are supplied by the release environment.
 commercial-production = []
+# Review build only. Does not enable Sync, commands, migration or customer use.
+sync-v2-vault-review = ["dep:windows-sys"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -49,6 +51,9 @@ chacha20poly1305 = { version = "0.10.1", features = ["std"] }
 hkdf = "0.12.4"
 
 [dev-dependencies]
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", optional = true, features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }

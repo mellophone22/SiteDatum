@@ -33,8 +33,10 @@ mod sync_v2_retirement_census_proof;
 #[cfg(test)]
 mod sync_v2_retirement_recovery_model;
 mod sync_v2_safe_apply;
-#[cfg(test)]
+#[cfg(any(test, feature = "sync-v2-vault-review"))]
 mod sync_v2_vault_file_prototype;
+#[cfg(all(windows, any(test, feature = "sync-v2-vault-review")))]
+mod sync_v2_vault_storage;
 mod task;
 mod work_item;
 

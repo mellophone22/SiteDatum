@@ -1,6 +1,7 @@
-//! D3 experimental file vault; compiled ONLY for tests. No shipping format.
+//! D3 experimental file vault; tests or explicit dormant review feature only.
 //! No commands, transport, existing credentials, hot-ring mutation or pruning.
 //! Pins are independently supplied fixture expectations, NOT freshness discovery.
+#![allow(dead_code)] // Deliberately unreachable from the application.
 
 use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
@@ -63,11 +64,14 @@ pub(super) struct Archive {
 }
 #[derive(Clone, Copy)]
 pub(super) struct Pin {
-    generation: u64,
-    digest: [u8; 32],
+    pub(super) generation: u64,
+    pub(super) digest: [u8; 32],
 }
 
 impl Archive {
+    pub(super) fn context(&self) -> (Uuid, Uuid, u64) {
+        (self.owner, self.workspace, self.generation)
+    }
     pub(super) fn new(
         owner: Uuid,
         workspace: Uuid,
@@ -300,6 +304,22 @@ fn dpapi(input: &[u8], protect: bool) -> Result<Zeroizing<Vec<u8>>> {
         slice.zeroize();
         LocalFree(output.pbData as _);
         Ok(copied)
+    }
+}
+
+#[cfg(windows)]
+impl Secret {
+    pub(super) fn wrap_local(&self) -> Result<Zeroizing<Vec<u8>>> {
+        dpapi(self.0.as_ref(), true)
+    }
+    pub(super) fn unwrap_local(wrapped: &[u8]) -> Result<Self> {
+        let plain = dpapi(wrapped, false)?;
+        if plain.len() != 32 {
+            return Err(Refusal::Invalid);
+        }
+        let mut secret = Zeroizing::new([0; 32]);
+        secret.copy_from_slice(&plain);
+        Ok(Self(secret))
     }
 }
 
