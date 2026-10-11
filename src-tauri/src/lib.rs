@@ -26,6 +26,8 @@ mod sync_v2_paging;
 mod sync_v2_project_paths;
 mod sync_v2_record_codec;
 mod sync_v2_record_protocol;
+#[cfg(all(windows, any(test, feature = "sync-v2-vault-review")))]
+mod sync_v2_recovery_confirmation;
 mod sync_v2_register_adapters;
 mod sync_v2_relationship_adapters;
 #[cfg(test)]
@@ -33,6 +35,8 @@ mod sync_v2_retirement_census_proof;
 #[cfg(test)]
 mod sync_v2_retirement_recovery_model;
 mod sync_v2_safe_apply;
+#[cfg(all(windows, any(test, feature = "sync-v2-vault-review")))]
+mod sync_v2_vault_directory;
 #[cfg(any(test, feature = "sync-v2-vault-review"))]
 mod sync_v2_vault_file_prototype;
 #[cfg(all(windows, any(test, feature = "sync-v2-vault-review")))]

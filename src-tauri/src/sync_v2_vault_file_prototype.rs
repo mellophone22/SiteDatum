@@ -50,6 +50,31 @@ impl crate::sync_v2_key_recovery::WorkspaceKeys for Archive {
 // Neither secret nor archive implements Debug, Serialize, Clone or write authority.
 pub(super) struct Secret(Zeroizing<[u8; 32]>);
 impl Secret {
+    pub(super) fn recovery_text(&self) -> Zeroizing<String> {
+        use base64::Engine;
+        Zeroizing::new(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(self.0.as_ref()))
+    }
+    pub(super) fn from_recovery_text(text: &str) -> Result<Self> {
+        use base64::Engine;
+        if text.len() != 43 || !text.is_ascii() {
+            return Err(Refusal::Invalid);
+        }
+        let raw = Zeroizing::new(
+            base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .decode(text)
+                .map_err(|_| Refusal::Invalid)?,
+        );
+        if raw.len() != 32 {
+            return Err(Refusal::Invalid);
+        }
+        let mut value = Zeroizing::new([0; 32]);
+        value.copy_from_slice(&raw);
+        let secret = Self(value);
+        if secret.recovery_text().as_str() != text {
+            return Err(Refusal::Invalid);
+        }
+        Ok(secret)
+    }
     pub(super) fn random() -> Result<Self> {
         let mut bytes = Zeroizing::new([0; 32]);
         getrandom::fill(bytes.as_mut()).map_err(|_| Refusal::Storage)?;
@@ -69,6 +94,20 @@ pub(super) struct Pin {
 }
 
 impl Archive {
+    pub(super) fn retained_manifest(&self) -> [u8; 32] {
+        // In-process full-set comparison only; never logged/published as authority.
+        let mut h = Sha256::new();
+        h.update(b"sitedatum.prototype.d3.retained-manifest.v1");
+        h.update(self.owner.as_bytes());
+        h.update(self.workspace.as_bytes());
+        h.update(self.generation.to_be_bytes());
+        h.update((self.keys.len() as u32).to_be_bytes());
+        for (v, key) in &self.keys {
+            h.update(v.to_be_bytes());
+            h.update(key.as_ref());
+        }
+        h.finalize().into()
+    }
     pub(super) fn context(&self) -> (Uuid, Uuid, u64) {
         (self.owner, self.workspace, self.generation)
     }
