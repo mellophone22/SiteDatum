@@ -5,7 +5,7 @@ flowchart LR
     V["Protected historical read-only vault"] --> R
     W --> Q["SQLite queue and snapshots"]
     Q --> A["Durable device preparation and final local recheck"]
-    K --> F["Customer-held recovery preservation generations"]
+    K --> F["Preservation generations - format unspecified"]
     V --> F
     J["Ordered journal and local generation fence"] --> K
     J --> V
@@ -13,7 +13,7 @@ flowchart LR
   end
   Q --> H["Hosted epoch fence - rejects fresh retired writes"]
   H --> Q
-  U["Customer-held historical backups"] --> R
+  U["Customer-held historical backups"] --> Q
   T["Owner-anchored signed device roster"] --> B["All-active-device barrier"]
   A --> B
   B --> H

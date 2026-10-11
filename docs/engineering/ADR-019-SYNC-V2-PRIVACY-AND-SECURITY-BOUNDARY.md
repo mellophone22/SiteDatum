@@ -127,6 +127,13 @@ The approved implementation baseline is:
 
 Deleting cloud data is authenticated, idempotent, auditable without content, and returns a deletion receipt. It does not touch the local SQLite database or project files. Account deletion must either delete Sync data first or clearly combine both actions. Support staff cannot inspect or restore plaintext content.
 
+**Deletion scope:** Delete cloud data removes hosted ciphertext under the retention
+and provider-backup limits above. It does not erase local decryption keys, local
+backups or customer-held recovery files. Future active-ring key retirement would
+stop new writes under a retired version while preserving the ability to read
+captured historical material; it is not secure deletion or key erasure. Any future
+retirement consent surface must state both boundaries explicitly before use.
+
 ### 9. Recovery treats Sync as replication, not backup
 
 Verified local SQLite backup and complete Free CSV export remain the primary recovery controls. Sync v2 adds, but does not replace, these controls:
@@ -169,3 +176,4 @@ Sync v2 remains unavailable until every item is evidenced:
 ## Consequences
 
 Sync v2 is a substantial feature, not a settings toggle. It requires a new protocol, local migrations, a reviewed cloud schema, cryptographic key management, consent and deletion surfaces, and operations evidence. The additional work is intentional: it prevents a cloud convenience feature from weakening SiteDatum's local-first privacy and recovery guarantees.
+

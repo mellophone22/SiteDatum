@@ -1,7 +1,7 @@
 # Evidence context: C10-04D retirement design
 
 Date: 2026-10-11. Repository: mellophone22/SiteDatum; GitLab mirror Kikito22/sitedatum.
-Inspected source revision: `097e8daa4459c03655dc5046372aefca0c138d97`; working tree clean at inspection. Drift: none.
+Inspected source revision: `097e8daa4459c03655dc5046372aefca0c138d97`; working tree was clean at the original inspection. This follow-up adds test-only D1 source and corrects design/policy documents; original production behavior remains unchanged. The twelve-file inventory below continues to bind the original source base, not the extended packet.
 
 This is a standalone design analysis, not a sealed security scan. The supplied Claude review of `579cfed` is conversational evidence, not a locally hashed report or reproduced experiment. Its approval is conditional for the compactable format, and its retirement-design verdict is NOT APPROVED FOR IMPLEMENTATION. Founder approval covers five conservative policies, not key destruction or an archival mechanism.
 
@@ -13,14 +13,14 @@ This is a standalone design analysis, not a sealed security scan. The supplied C
 | source-ring | Bounded exact-version keyring and recovery | src-tauri/src/sync_v2_key_recovery.rs: KeyRing, WorkspaceKeys, protected storage, recovery formats, rotation staging. |
 | source-local | Local ciphertext persistence and exact retries | src-tauri/migrations/0012_sync_v2_local_queue.sql; 0014_sync_v2_apply_protocol.sql; 0015_sync_v2_key_rotation.sql; src-tauri/src/sync_v2_local_queue.rs; sync_v2_safe_apply.rs. |
 | source-transfer | Single-key approved device transfer | src-tauri/src/sync_v2_approved_device_transfer.rs. A full historical ring and roster trust anchor are not transferred by this protocol. |
-| source-hosted | Existing isolated hosted encrypted-record proof | proofs/sync-v2-identity/supabase/migrations/20261010022507_c10_03g_encrypted_record_operations.sql: apply_record_batch. Not a retirement or all-device barrier implementation. |
+| source-hosted | Existing isolated hosted encrypted-record proof | proofs/sync-v2-identity/supabase/migrations/20261010022507_c10_03g_encrypted_record_operations.sql: public.sync_v2_record_bridge_push_batch. Not a retirement or all-device barrier implementation. |
 | policy-founder | Approved five retirement policies | docs/engineering/C10-04D-KEY-ROTATION-RECOVERY.md at 097e8da; source policy record. |
 | policy-retention | Existing privacy and hosted deletion boundaries | docs/engineering/ADR-019-SYNC-V2-PRIVACY-AND-SECURITY-BOUNDARY.md; C10-03H-HOSTED-RETENTION-AND-DELETION.md. |
 | packet-existing | Current review and activation gate record | docs/engineering/C10-04D-CLAUDE-REVIEW-INSTRUCTIONS.md. |
 
 ## Integrity inventory
 
-The following SHA-256 values bind the twelve inspected checkout files, not the conversational review. These are exact Windows checkout bytes; CRLF conversion can make a Linux checkout's file hashes differ. Immutable Git commit identity is the portable review target. Collection SHA-256 is computed from sorted `path + space + lowercase SHA-256` records joined with LF and no trailing LF:
+The following SHA-256 values bind the twelve inspected checkout files, not the conversational review. These twelve recorded hashes match LF/Git-blob content at the immutable source base. Reviewers should hash the exact Git blob bytes (or an LF checkout); do not dismiss a Git-blob mismatch as a line-ending artifact. CRLF checkout bytes are a different representation, not this inventory's reference. Collection SHA-256 is computed from sorted `path + space + lowercase SHA-256` records joined with LF and no trailing LF:
 `5cccd585c644bcdaf8f3df7afc186391e48d1b3b6e61db0973628bdee3f450ac`.
 
 | Repository-relative file | Checkout SHA-256 |
@@ -40,7 +40,7 @@ The following SHA-256 values bind the twelve inspected checkout files, not the c
 
 ## Coverage and limits
 
-I inspected the keyring/rotation, queue replay, applied-receipt, transfer and hosted write boundaries used by this proposal. The device enrollment signing boundary was also read for context; this inventory is not an exhaustive repository audit. No retirement implementation, concurrency experiment, new recovery format, Windows vault operation or cryptographic benchmark was executed during this design phase. Prior format test results belong to their prior commits, not this proposal.
+I inspected the keyring/rotation, queue replay, applied-receipt, transfer and hosted write boundaries used by this proposal. The device enrollment signing boundary was also read for context; this inventory is not an exhaustive repository audit. No retirement implementation, hosted concurrency experiment, new recovery format, Windows vault operation or cryptographic benchmark was executed. This follow-up executes the fictional D1 census/authority tests described in d1-proof.md; that is not a vault or retirement implementation. Prior format test results belong to their prior commits, not this proposal.
 
 External reference checks were limited to current official Supabase RLS/grant guidance and PostgreSQL locking guidance. They support control responsibilities, not proof of the proposed protocol. No Supabase service was changed. The analysis uses a balanced engineering profile; the founder supplied no latency, memory or storage budgets.
 

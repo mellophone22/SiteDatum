@@ -82,3 +82,14 @@ C10-03 open.
 4. Client bundle and repository-history secret scan evidence.
 
 No customer beta is authorized until the later C10 gates pass.
+
+
+## Clarified deletion scope — 2026-10-11 design review
+
+A deletion receipt confirms the authenticated hosted-data operation and its stated
+retention limits only. It does not confirm destruction of local credentials,
+decryption keys, local backups or customer-held recovery files. Future active-ring
+key retirement would prevent new writes under retired versions, not erase the
+ability to read captured ciphertext. ADR-019 §8 and future consent copy must retain
+this distinction. The existing hosted deletion implementation and retention periods
+are unchanged; no new consent UI or retirement mechanism is supplied here.

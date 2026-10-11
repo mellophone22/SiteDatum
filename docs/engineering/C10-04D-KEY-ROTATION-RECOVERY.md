@@ -422,3 +422,39 @@ rotation-capacity tests remain intact alongside the two added regressions.
 Remote CI for the exact follow-up commit must be reported separately, not inferred
 from these local results. The reviewed 579cfed GitHub run 38067599031 completed
 successfully; its GitLab pipeline 2933840958 failed due to CI quota exhaustion.
+
+
+## 2026-10-11 preservation-first review corrections and D1 proof
+
+Claude's review of packet 8be1f5e endorsed a design direction, not implementation.
+The corrected [packet](c10-04d-retirement-review-20261011/hardening.md) adopts
+preservation completeness as the proposed safety property: all retained historical
+versions remain readable, even when legitimate pulls add dependencies after
+preparation. The census is diagnostic, not pruning authority. The barrier must
+prove complete membership and readiness, not a stable dependency set.
+
+[D1](c10-04d-retirement-review-20261011/d1-proof.md) is complete only as a fictional,
+test-only twelve-column census and separate read/write authority contract proof.
+Twelve focused tests passed; full Rust regression passed 214 tests with five ignored;
+113 frontend tests, lint, build, production cargo check and formatting passed. No
+existing production trait, hosted SQL or migration changed. The existing containment
+regression remains intact. This is not historical manifest discovery, vault storage,
+distributed barrier or retirement implementation.
+
+D3 is a hard predecessor of D6: a reviewed, implemented preservation format covering
+the full retained set and passed total-loss recovery drills at 1, 8, 100 and 1000
+versions are required before any pruning. SDREC002's eight-key maximum and current
+single-key transfer are not substitutes. D2 owner-root/rollback specification,
+D4 existing hosted-lock re-keying and offline-floor semantics, and D5 ordered abort
+cleanup remain unproved. See the [ledger](c10-04d-retirement-review-20261011/review-remediation.md).
+
+Capacity disclosure: if an active computer never returns online and the owner does
+not explicitly revoke it, the all-device barrier cannot complete and key capacity
+cannot be reclaimed. Offline age never silently excludes that computer. Compaction
+would retire keys from new writes, not erase captured decryption capability. Cloud
+deletion concerns hosted ciphertext, not local keys, backups or recovery files.
+These are draft future consent requirements, not a shipped retirement surface.
+
+No keys removed, protected credentials migrated, new recovery format assigned,
+service altered, main merge, release, deployment or Sync activation. D6 and D7 stay
+blocked. The no-removal, fail-closed capacity baseline remains operational.

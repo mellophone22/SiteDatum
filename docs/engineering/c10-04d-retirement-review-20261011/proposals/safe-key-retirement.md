@@ -27,7 +27,7 @@ I inspected the source boundaries below. The most important observation is that 
 | source-ring | Bounded exact-version keyring: src-tauri/src/sync_v2_key_recovery.rs | Observed: MAX_KEYS is 8, versions are preserved, write_version is explicit, no removal operation exists, recovery/protected framing is bounded. |
 | source-local | Local persistence and exact retries: migrations 0012/0014/0015; sync_v2_local_queue.rs; sync_v2_safe_apply.rs | Observed: local acknowledgements and applied receipts have workspace-only primary keys; pull history retains and compares original envelope bytes. |
 | source-transfer | Single-key approved transfer: src-tauri/src/sync_v2_approved_device_transfer.rs | Observed: existing transfer carries one workspace key, not the historical ring, trusted roster or bootstrap floor. |
-| source-hosted | Isolated encrypted-record backend: proofs/sync-v2-identity/supabase/migrations/20261010022507_c10_03g_encrypted_record_operations.sql | Observed: hosted record operations already exist. apply_record_batch uses request idempotency and a workspace lock, but no retirement barrier or epoch floor is implemented. |
+| source-hosted | Isolated encrypted-record backend: proofs/sync-v2-identity/supabase/migrations/20261010022507_c10_03g_encrypted_record_operations.sql | Observed: hosted record operations already exist. public.sync_v2_record_bridge_push_batch uses request idempotency and a workspace lock, but no retirement barrier or epoch floor is implemented. |
 | policy-founder | Founder policies: docs/engineering/C10-04D-KEY-ROTATION-RECOVERY.md at 097e8da | Observed: block on every active device, preserve historical recovery and backups, explicit per-event consent, owner-controlled signed membership. |
 | policy-retention | ADR-019 privacy boundary and C10-03H hosted retention/deletion | Observed: hosted retention and deletion already have separate product limits; indefinite offline waiting must not silently extend them. |
 | packet-existing | C10-04D-CLAUDE-REVIEW-INSTRUCTIONS.md | Observed: format conditions and activation gates remain distinct. |
@@ -44,7 +44,7 @@ A local applied receipt checks current snapshots against live rows and a pre-app
 
 We also keep original envelopes in retry history. Re-encrypting those rows in place would change the bytes used to identify an exact retry. A superficially successful compaction could then turn a valid repeated operation into a mismatch. Retaining old-version read access avoids that hazard, but introduces a different lifetime: historical keys can outlive their eligibility for new writes.
 
-The existing hosted proof contradicts the supplied report's broad statement that no hosted schema exists. The narrower conclusion remains correct: the hosted retirement floor, complete signed applied barrier and coordinated fence do not exist. Its apply_record_batch checks an already-applied request before acquiring the workspace lock. We must explicitly distinguish a harmless replay of a committed receipt from a new effect under a retired version, rather than moving checks until the old retry contract accidentally changes.
+The existing hosted proof contradicts the supplied report's broad statement that no hosted schema exists. The narrower conclusion remains correct: the hosted retirement floor, complete signed applied barrier and coordinated fence do not exist. The actual public.sync_v2_record_bridge_push_batch order is advisory workspace lock, then applied_record_batches lookup, then workspace row FOR UPDATE. The old text failed to distinguish the two locks and used a nonexistent function name. We must preserve the existing advisory-lock-before-idempotency order. A future floor check belongs on the new-effect path after exact committed retries have been recognized and before any fresh effect; retries must not gain new effects or have their original result rewritten.
 
 ## Desired Invariants
 
@@ -53,7 +53,8 @@ We would require all of the following before any hot-ring pruning:
 - Every ciphertext dependency remains decryptable with the same owner, workspace and immutable key version. Key numbers are never reused or renumbered.
 - Historical material never gains write authority. A historical resolver cannot satisfy current write_version, even if it can decrypt an old envelope.
 - The barrier contains a valid durable preparation from **every** device in a complete, independently anchored owner-approved roster at the exact epoch. Missing, stale, revoked-at-another-epoch, replayed or unverifiable evidence blocks it.
-- Membership changes, restores, new conflicts and queued writes invalidate relevant local preparation. Server-side mutations serialize with the workspace epoch fence.
+- Preservation completeness is the pruning safety property: every issued retained key version must remain available to the historical resolver and verified recovery copy, including versions required by dependencies acquired after preparation. The barrier proves membership and readiness, not a frozen dependency set.
+- Membership or candidate-policy changes invalidate the epoch/barrier. Census changes are diagnostic and trigger final revalidation, not automatic permission or an assumption that every ordinary pull must restart the event. Server-side epoch mutations serialize with the workspace fence.
 - A device prunes only after its own final dependency and preservation recheck under a local mutation fence. A global certificate alone cannot authorize local pruning of changed state.
 - Retrying any transition is idempotent. A crash never leaves ciphertext requiring a key already discarded from every supported resolver.
 - Old backups and old recovery files remain untouched and usable for the material they actually captured. They do not authenticate freshness or contain future keys.
@@ -85,7 +86,7 @@ flowchart LR
   end
   Q --> H["Isolated hosted encrypted-record proof"]
   H --> Q
-  U["Customer-held historical backups"] --> R
+  U["Customer-held historical backups"] --> Q
   A --> C["Capacity refusal - no key removal"]
 ```
 
@@ -114,7 +115,7 @@ flowchart LR
   end
   Q --> H["Isolated hosted encrypted-record proof"]
   H --> Q
-  U["Customer-held historical backups"] --> R
+  U["Customer-held historical backups"] --> Q
   A --> C["Capacity refusal - no key removal"]
 ```
 
@@ -153,19 +154,19 @@ The complete local ciphertext census must name twelve columns, including nullabl
 
 A census would validate structure, scope, exact version and integrity; count zero is not proof if a column was skipped. Digest-only receipt and anchor fields are not ciphertext. We would also account for current checkpoint floors, hosted history/bootstrap dependencies, recovery generations and ordinary backup dependencies. Unknown dependencies block destructive removal; they do not prevent retaining an old key in a historical resolver.
 
-The historical resolver would expose read-only selection by owner/workspace/version. A separate current-write capability would select only the committed active version. We would never route writes through a generic “find any available key” fallback. Existing strict write_version checks stay in place through migration.
+The historical resolver would expose read-only selection by owner/workspace/version. A distinct current-write capability would select only the committed active version. No authority wrapper would implement both ReadKeys and WriteKeys; the composite reader's compatibility write_version is unconditionally None. There is no public unwrap to recover a writer from the reader. Existing strict write_version checks stay in place through migration. D1's test-only contract proves these role distinctions with two compile-fail fixtures and a successful control, and proves existing queue writes refuse the reader without changing rows. Production APIs have not been migrated to the new role traits; that remains separately gated work.
 
 #### Protected storage and historical recovery
 
-The proposed vault needs an authenticated version inventory and bounded access, not an ever-growing Secret Vec loaded for every record. We would store scoped immutable historical entries, validate the catalog against locally trusted state, load only required entries, zeroize temporary values and refuse catalog substitution or missing material. Windows Credential Manager quotas, enumeration behavior, storage failure and atomicity need measured proof before we choose an encoding or entry budget.
+The proposed vault needs an authenticated version inventory and bounded access, not an ever-growing Secret Vec loaded for every record. We would store scoped immutable historical entries, validate the catalog against locally trusted state, load only required entries, zeroize temporary values and refuse catalog substitution or missing material. D3 must compare two explicit shapes: multiple scoped Credential Manager entries with an authenticated catalog, or an encrypted vault file protected by a separately retained Windows secret. Neither is selected. Microsoft documents a per-credential blob bound of 5*512 bytes, so a single indefinitely growing credential is not an option; actual adapter encoding, total-entry budgets, enumeration behavior, failure modes and latency still require fictional Windows measurement. See [Microsoft's CREDENTIAL documentation](https://learn.microsoft.com/en-us/windows/win32/api/wincred/ns-wincred-credentiala). A catalog construction must specify domain separation, authenticated inventory, exact framing, generation/scope binding and refusal on substitution or missing entries. No real credentials are enumerated in D1.
 
 Current SDREC002 files hold at most eight keys. We cannot silently stretch that format into an unbounded archive, or suggest that today's single-key device transfer already carries the vault. A separately reviewed historical preservation format and full-history transfer protocol are prerequisites. Their future wire specification must define domain separation, authentication, bounded chunk ordering, scope, generation binding, truncation/duplication rejection and recovery tests using mature existing primitives. This proposal intentionally assigns no new magic bytes, cryptographic construction or published minimum client version before those reviews.
 
-Old SDREC001/002 files remain untouched, with their original captured keys and scope. A new preservation generation must cover all historical entries required after total device loss, not only the latest hot ring. Before pruning, we would require a freshly verified customer-held preservation copy under a new filename. “Export succeeded” alone is insufficient; import into an isolated fictional recovery drill must demonstrate the dependencies are usable. A customer who declines that step keeps the baseline behavior.
+Old SDREC001/002 files remain untouched, with their original captured keys and scope. A new preservation generation must cover all historical entries required after total device loss, not only the latest hot ring. D3 is a hard predecessor of D6: the preservation format must exist, pass its independent cryptographic review, and pass a full-retained-set total-loss drill before any pruning API can be considered. Before an individual event, every pruning device must have produced a new customer-held copy covering the entire retained set and verified its re-import under a new filename. A copy of the bounded hot ring alone is insufficient. Planned fictional 1/8/100/1000-version drills must erase only disposable fixture storage, restore solely from that copy, and resolve each of the twelve columns at its exact version. Unsupported sizes or a copy predating the retained set must block. None of those D3 drills has run. A customer who declines preservation keeps the baseline behavior.
 
 #### Complete roster and signed preparation
 
-We need a complete signed membership history anchored independently of the provider's mutable device list. Existing device Ed25519 identities give us signing material, but not automatically an owner authorization root or a complete chain. The future root-binding and recovery procedure must be specified separately: owner/workspace binding, initial trust, device authorization, revocation, monotonically ordered roster epochs and durable pinning on each trusted device.
+We need a complete signed membership history anchored independently of the provider's mutable device list. Existing device Ed25519 identities give us signing material, but not automatically an owner authorization root or a complete chain. The future root-binding and recovery procedure must be specified separately: owner/workspace binding, initial trust, device authorization, revocation, monotonically ordered roster epochs and durable pinning on each trusted device. D2 must resolve first-device circularity explicitly: a distinct customer-held/offline owner root is one candidate; treating the first device as the root is a different trust model requiring an explicitly accepted residual, not implied approval. No root construction is selected here. A roster epoch pin must survive ordinary SQLite restore, for example through separately protected storage. Disagreeing pins, all-device pre-revocation database restores or loss of every independent pin must block authorization rather than silently resurrect an old roster. An older recovery file cannot establish current membership.
 
 A provider-truncated roster cannot authorize omission of an active device. A new enrollment or explicit owner-approved revocation starts a new epoch and invalidates collected preparation. Offline age never removes a device. Revocation is a separate consent event, not a button that silently clears a stalled barrier; unsynced local work remains intact.
 
@@ -181,11 +182,13 @@ We cannot make Windows protected storage, SQLite, a customer-held file and a hos
 
 Proposed state progression is Draft -> LocallyPrepared -> WaitingForAllDevices -> BarrierVerified -> CommitIntent -> HostedFloorCommitted -> LocallyFinalized -> Completed. Blocked and Aborted are explicit states; an abort after hosted commit cannot lower the floor. Each transition has an event ID, authenticated input digest, expected previous durable state and idempotent result. Timeouts may end waiting but never imply acknowledgement or authorize pruning.
 
-Preparation first persists and read-verifies historical preservation, records the dependency census and enters a local generation fence. Ordinary local editing stays available: if it mutates relevant state, preparation is invalidated locally and hot-ring pruning is refused. A device that goes offline after preparation can keep editing; its previously signed message must not be treated as proof that its local state is still unchanged at pruning time. That device retains its keys and must revalidate on return. The backend might already advance a floor based on the earlier barrier, so the final protocol must also prove that such unsynced work remains rebaseable with preserved keys and is never silently dropped. **That offline-after-preparation proof is unresolved and blocks pruning implementation.** We should not paper over it with a signature expiry.
+Preparation first persists and read-verifies historical preservation, records a diagnostic dependency census and records its local generation. The final mutation alone uses an exclusive local fence. Ordinary local editing and authorized pulls stay available. If A and B prepare and then A pulls additional v1 history, A's census grows but that does not defeat the safety property if every issued retained version remains independently recoverable. A final read-only recheck must authenticate those newly acquired dependencies against the complete preservation set; missing material blocks. We choose preservation completeness, not read-gating or dependency stability, as this design direction. The hosted floor would still gate fresh retired-version writes, not delete or deny existing history merely to stabilize a census. No floor implementation is added by D1.
 
-On the hosted side, new record effects, enrollment, revocation, restores/bootstrap and retirement commits must serialize under one workspace epoch boundary with a consistent lock order. Retired-version fresh writes fail; exact already-committed retries return their original result without new effects. New-schema/RLS grants and authorization tests must be explicit, not inferred from automatic exposure defaults. Official [Supabase RLS guidance](https://supabase.com/docs/guides/database/postgres/row-level-security) supports that responsibility but does not prove the retirement protocol.
+A device offline after preparation may have unsynced edits; its signature proves readiness at preparation, not its present dependency set. It retains its keys and must perform its own final revalidation on return. D4 still must prove how old-version unsynced work is safely rebased or refused with work retained after a hosted floor advances. D1 proves only the smaller fact that a newly acquired fictional dependency remains resolvable and changes the diagnostic census without authorizing any mutation. **The distributed offline/floor/rebase protocol remains unproved and blocks D6.** A signature expiry cannot repair it.
 
-Before any individual device prunes its hot ring, it rechecks the committed certificate, roster epoch, local generation, every ciphertext dependency, historical vault, verified preservation copy and current-write version while holding its local mutation fence. If any value changed, it retains keys and returns Blocked. We would persist cold material before hosted floor commit, and commit that floor before publishing local write authority or pruning. Crash recovery resumes the exact event or blocks with preserved material; it never guesses that another store succeeded.
+On the hosted side, new record effects, enrollment, revocation, restores/bootstrap and retirement commits must serialize under one workspace epoch boundary with a consistent lock order. D4 must inventory and re-key the affected existing C10-03b/c/e/f/g/h operations, not merely add a retirement lock. Today's advisory keys include owner-only, device-only, workspace-only, owner:workspace and owner/session/action shapes. The proposal does not claim these already serialize. A canonical owner/workspace key and deterministic lock hierarchy must preserve owner-wide membership invariants and invalidate every affected workspace epoch transactionally. Bridge/session-only locks must be classified rather than blindly replaced. Re-keying these already-reviewed proofs needs regression and real two-session concurrency tests before acceptance; no SQL is changed here. Retired-version fresh writes fail; exact already-committed retries return their original result without new effects. New-schema/RLS grants and authorization tests must be explicit, not inferred from automatic exposure defaults. Official [Supabase RLS guidance](https://supabase.com/docs/guides/database/postgres/row-level-security) supports that responsibility but does not prove the retirement protocol.
+
+Before any individual device prunes its hot ring, it rechecks the committed certificate, roster epoch, local generation, every ciphertext dependency, historical vault, verified preservation copy and current-write version while holding its local mutation fence. If any value changed, it retains keys and returns Blocked. We would persist cold material before hosted floor commit, and commit that floor before publishing local write authority or pruning. Crash recovery resumes the exact event or blocks with preserved material; it never guesses that another store succeeded. Retention or deletion that makes an uncommitted event impossible causes an explicit RetentionDependencyExpired/CloudDataDeleted abort. Each device releases local fences, voids preparation for that nonce and resumes ordinary work; offline devices do this when processing the durable abort on startup/reconnect. All keys are retained. Customer-held preservation copies are retained and labelled as belonging to an aborted event, never silently removed. If a hosted floor already committed, abort does not lower it: stop Sync writes, release local editing constraints and preserve keys/work while entering recovery-required state. D5 must model both sides of that commit boundary.
 
 An unknown outcome after a hosted request requires querying the exact event and verifying its certificate against trusted anchors. Provider absence or contradictory results are not evidence of success. After the hosted floor advances, rollback means disabling Sync writes and preserving all keys and local work until recovery, not reverting to an old executable or accepting lower-version writes.
 
@@ -201,7 +204,7 @@ flowchart LR
     V["Protected historical read-only vault"] --> R
     W --> Q["SQLite queue and snapshots"]
     Q --> A["Durable device preparation and final local recheck"]
-    K --> F["Customer-held recovery preservation generations"]
+    K --> F["Preservation generations - format unspecified"]
     V --> F
     J["Ordered journal and local generation fence"] --> K
     J --> V
@@ -209,7 +212,7 @@ flowchart LR
   end
   Q --> H["Hosted epoch fence - rejects fresh retired writes"]
   H --> Q
-  U["Customer-held historical backups"] --> R
+  U["Customer-held historical backups"] --> Q
   T["Owner-anchored signed device roster"] --> B["All-active-device barrier"]
   A --> B
   B --> H
@@ -312,15 +315,15 @@ These are gated future slices, not permission to code or deploy:
 
 | Package | Deliverable and acceptance gate |
 | --- | --- |
-| D1 — census and semantics | Read-only twelve-column inventory, exact-retry fixtures and explicit hot-versus-historical dependency model; no omitted nullable/resolved path |
+| D1 — census and semantics | Test-only read-only twelve-column census and role-contract proof completed in this follow-up; known fictional manifests only. No production resolver migration or retirement authority. See [D1 evidence](../d1-proof.md). |
 | D2 — membership trust | Canonical signed roster/root binding and recovery specification; omission/replay/rollback tests; separate epoch/device schema plan without breaking existing local receipts |
-| D3 — historical preservation | Scoped read-only vault, storage budgets, full-history recovery/transfer specification and independent cryptographic review; old files/backups untouched |
-| D4 — epoch/fence protocol | Hosted authorization, consistent locks, floor/bootstrap semantics, offline-after-preparation proof and original exact-retry behavior |
-| D5 — ordered recovery | Durable event journal, verified capability construction, model/fault-injection coverage across every store boundary; no hot pruning yet |
+| D3 — historical preservation | HARD PREDECESSOR of D6: reviewed format must exist and full-retained-set total-loss drills must pass, not merely be specified. Compare multi-credential/catalog and encrypted-file shapes; establish measured budgets. Old files/backups untouched. |
+| D4 — epoch/fence protocol | Specification only: preservation-completeness semantics, affected C10-03 lock re-keying and hierarchy, hosted floor/bootstrap/rebase and original lock-then-idempotency order. Actual migration/concurrency proof remains gated. |
+| D5 — ordered recovery | Specification/model work: durable journal, capability construction, retention/deletion-induced abort, fence release, retained orphan preservation copies and no floor rollback; no hot pruning. |
 | D6 — mutation and consent | Only after independent approval of D1-D5 and founder mechanism selection: separately reviewed pruning slice with final local recheck and explicit per-event confirmation |
 | D7 — eventual activation | Separate supporting release/version negotiation, fictional end-to-end recovery, consent/deletion/retention verification and explicit founder activation approval |
 
-The key-removal function must not exist in production before D6's gate. A capacity refusal is an acceptable terminal result for any failed gate. We would continue documenting the eight-key limitation rather than move these obligations into a future release silently.
+The key-removal function must not exist in production before D6's gate. Current containment checks remain unchanged; D6 must add a reviewed build-level mutation-surface assertion before any production pruning API is introduced. A capacity refusal is an acceptable terminal result for any failed gate. We would continue documenting the eight-key limitation rather than move these obligations into a future release silently.
 
 ## Open Questions
 
@@ -331,3 +334,11 @@ The key-removal function must not exist in production before D6's gate. A capaci
 - Which published build will be the minimum compatible reader, and which measured latency/storage budgets will gate it?
 
 We can close these questions through narrow proofs and review. Until then the safe, implemented answer remains: preserve keys, refuse at capacity, and keep ordinary local work available.
+
+## Draft consent wording and capacity disclosure
+
+This is proposed copy for a future separately implemented consent surface, not a visible control shipped by this packet:
+
+> Retire this version from new Sync writes and compact the active keyring. This does not erase historical keys or prevent reading captured material. Old local backups and recovery copies remain unchanged. Deleting cloud data removes hosted ciphertext according to its retention policy; it does not erase keys, backups or recovery copies on your computers. Every active computer must participate. If one never reconnects and you do not explicitly revoke it, capacity reclamation may remain unavailable indefinitely. This event requires a verified preservation copy of the full retained set.
+
+These words must be tested at the actual D6 consent boundary. [Review remediation ledger](../review-remediation.md) distinguishes document corrections, completed D1 evidence and still-blocked protocol work.

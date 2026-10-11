@@ -8,8 +8,9 @@
     "collectionSha256": "5cccd585c644bcdaf8f3df7afc186391e48d1b3b6e61db0973628bdee3f450ac",
     "artifactCount": 12,
     "targetRevision": "097e8daa4459c03655dc5046372aefca0c138d97",
-    "sourceDrift": "none",
-    "hashScope": "Exact twelve Windows checkout files in context.md; conversation review excluded; newline conversion changes hashes."
+    "sourceDrift": "present",
+    "hashScope": "Twelve LF/Git-blob source-base files in context.md; conversational reports excluded. Hash blobs, not CRLF-transformed checkout bytes.",
+    "driftDescription": "D1 test-only module and role fixtures plus documentation corrections; production behavior unchanged."
   },
   "assessment": {
     "outcome": "opportunities_identified",
@@ -110,7 +111,8 @@
         "Every active device verified at exact event/epoch.",
         "Final local dependency and generation recheck before any pruning.",
         "No committed floor rollback.",
-        "Per-event consent; no silent backup or recovery-file mutation."
+        "Per-event consent; no silent backup or recovery-file mutation.",
+        "Preservation completeness, not dependency stability; census is diagnostic, never retirement authority."
       ],
       "proposalPath": "proposals/safe-key-retirement.md",
       "options": [
@@ -396,7 +398,7 @@
             }
           ],
           "implementationReadiness": {
-            "status": "not_authorized",
+            "status": "d1_test_only_proof_complete_d6_d7_blocked",
             "affectedComponents": [
               "src-tauri/src/sync_v2_key_recovery.rs",
               "src-tauri/src/sync_v2_local_queue.rs",
@@ -415,7 +417,9 @@
             ],
             "acceptanceCriteria": [
               "No current implementation approval inferred.",
-              "No loss of local records or historical dependencies."
+              "No loss of local records or historical dependencies.",
+              "D3 format implemented/reviewed and full-retained-set total-loss drills pass before any D6 permission.",
+              "Preservation completeness proven despite later dependencies; no census-as-authority."
             ],
             "migrationNotes": [
               "No migrations executed."
@@ -425,20 +429,21 @@
         }
       ],
       "recommendedOptionId": "hot-history-vault",
-      "recommendation": "Advance specification and independent review only; preserve-baseline remains operational until all proof and consent gates pass."
+      "recommendation": "Continue only D2-D5 specification/proof work; D1 fictional proof completed. D3 reviewed format and total-loss drills are a hard predecessor of D6. Baseline remains operational."
     }
   ],
   "openQuestions": [
     "Owner-root binding/recovery.",
-    "Offline edits after preparation.",
+    "Distributed offline-after-preparation floor/rebase proof remains unresolved; preservation completeness chosen, no retired-read gating.",
     "Historical preservation construction and Windows entry budget.",
     "Retention/deletion/bootstrap integration.",
     "Minimum supporting released reader and engineering budgets."
   ],
   "validation": {
-    "phase": "documentation_only",
-    "behavioralTestsExecuted": false,
+    "phase": "d1_read_only_proof",
+    "behavioralTestsExecuted": true,
     "implementationApproved": false,
-    "servicesChanged": false
+    "servicesChanged": false,
+    "behavioralScope": "Fictional local census, role compile-fail fixtures and existing queue refusal only; no vault, barrier, floor or pruning."
   }
 }

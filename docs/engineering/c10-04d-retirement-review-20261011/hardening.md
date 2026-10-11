@@ -1,33 +1,29 @@
 # Security Hardening Review: SiteDatum C10-04D
 
-We are designing safe active-ring compaction, not implementing key destruction. The founder approved five conservative policies; that closes the policy-choice gate, not the technical proof or activation gates.
+We are designing preservation-first active-ring compaction, not implementing key destruction. The founder's five policies remain settled. Claude's 2026-10-11 review approves a design direction only; it does not approve D6 mutation or D7 activation.
 
 ## Evidence Basis
 
-Source base: `097e8daa4459c03655dc5046372aefca0c138d97`, clean at inspection, 2026-10-11. We inspected bounded keyring/recovery, single-device receipts, exact-byte retry history, single-key transfer and the existing isolated hosted write proof. The [evidence context](context.md) records checkout hashes and limitations. The supplied Claude two-verdict report is supplemental AI evidence, not certification or a reproduced experiment.
-
-The report's broad statement that no hosted schema exists is too strong: an isolated encrypted-record proof exists. What remains missing is the retirement epoch, complete applied-device barrier and coordinated fence.
+The original production source base is `097e8daa4459c03655dc5046372aefca0c138d97`; the reviewed packet commit is `8be1f5e8b415b62f9b696adb66a96d7d5e758b7c`. The [context](context.md) preserves the original LF/Git-blob integrity inventory. This follow-up adds only fictional test proofs and documentation corrections; existing production interfaces and hosted SQL remain unchanged. The [remediation ledger](review-remediation.md) separates completed corrections from outstanding mechanism proofs. Supplemental AI review is not security certification.
 
 ## Constraints
 
-Every active device must participate; offline age cannot silently exclude one. Old recovery files and backups remain untouched and usable for captured material. Each event requires explicit founder consent. Membership must be owner-approved and independently anchored, not merely a provider list. Ordinary local work remains available. No implementation, migration, release, deployment or Sync activation is authorized by this packet.
+Every active device participates; offline age never excludes one. Historical backups and recovery files remain untouched. Each event requires explicit consent. Membership needs independently anchored owner-approved history. Ordinary local work remains accountless and available. No schema migration, vault, new recovery format, key removal, deployment, release, main merge or Sync activation is included.
 
 ## Opportunity Portfolio
 
 | Opportunity | Evidence | Options | Recommendation | Proposal |
 | --- | --- | --- | --- | --- |
-| Preservation-first active-ring retirement | Bounded keys/recovery; local receipts/retries; approved policies; independent retirement prerequisites | 1. Preserve no-removal baseline. 2. Hot write ring plus protected historical read vault and epoch barrier. | Review/prove Option 2; keep Option 1 operational until all gates pass. | [Full proposal](proposals/safe-key-retirement.md) |
+| Preservation-first active-ring retirement | Bounded ring, exact-byte history, single-device receipts, reviewed policies and D1 fictional proofs | 1. Preserve no-removal baseline. 2. Hot write ring plus read-only historical preservation and epoch barrier. | Keep Option 1 operational. Continue Option 2 specifications after D1; D3's full-retained-set recovery drill is a hard predecessor of D6. | [Full proposal](proposals/safe-key-retirement.md) |
 
 ## Recommendation Summary
 
-I recommend the second option as a design direction because it separates two obligations we cannot honestly combine: stopping old keys from authorizing new writes, and preserving keys needed by historical material. We would reclaim hot-ring slots, not erase every historical copy. The no-removal baseline remains a sound choice if the new recovery, trust-root or storage costs cannot be proved acceptable.
+I recommend preservation completeness as the safety property: all retained historical versions remain readable, including dependencies acquired after preparation. The census diagnoses current dependencies; it does not authorize pruning or prove that a distributed dependency set cannot change. The barrier must prove membership and readiness, not a stable census.
 
-The proposal specifies the twelve-column census, separate epoch/device barrier storage, signed roster and acknowledgement bindings, final local rechecks, multi-store ordering and future adversarial cases. Its explicit blockers include offline edits after preparation, owner-root recovery, Windows vault budgets, full-history preservation/transfer and retention/bootstrap integration. It is not a complete wire protocol or an implementation approval.
+[D1 evidence](d1-proof.md) records twelve passing fictional tests for the twelve-column census, resolved/nullable cases, tampering, bounded refusal, schema drift, exact-version reads, compile-time role separation and unchanged queue writes on refusal. These are test-only contract proofs, not production authority migration or an operational retirement mechanism. Full regression passed 214 Rust tests (five ignored) and 113 frontend tests; lint, build, production cargo check and formatting passed.
 
 ## Next Decisions
 
-Send the [review request](review-request.md) and [proposal](proposals/safe-key-retirement.md) to Claude for a design-only adversarial review. Ask for separate verdicts on policy fidelity, architectural direction and readiness of each future proof slice. Do not ask it to approve key deletion on the strength of this document.
+Next is D2 membership-trust specification: owner-root bootstrap, recovery and rollback-resistant roster pins. No schema may be added on the strength of this packet. D3 remains specification/measurement pending a reviewed format and full-retained-set total-loss drills; D4 must absorb existing hosted-lock re-keying and preserve lock-before-idempotency order; D5 must model explicit abort cleanup. D6 and D7 remain blocked.
 
-After that review we can resolve the identified protocol questions and choose the mechanism separately. The existing founder policies do not need to be reapproved. Review approval of this draft would still not activate Sync or authorize an individual retirement event.
-
-[Structured analysis](hardening.json) accompanies the readable proposal. No new cryptographic, concurrency or Windows behavioral tests were executed in this documentation phase.
+The [updated review request](review-request.md) asks Claude to review the bounded D1 proof and corrections, not approve retirement. The five founder policies need no repeat approval. [Structured analysis](hardening.json) accompanies the proposal. No real vault, protected-storage budget, distributed concurrency or total-loss preservation test has been executed here.
