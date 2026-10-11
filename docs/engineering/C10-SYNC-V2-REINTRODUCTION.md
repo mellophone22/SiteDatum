@@ -226,5 +226,17 @@ local ciphertext columns, and records a separate multi-device/epoch barrier
 plan preserving the current single-local-device receipt tables. A concurrency
 fence, trusted roster, sparse retained-set proofs, hosted retirement/replay and
 backup/recovery ordering remain unimplemented. The exact supported application
-release/negotiation floor and five founder policies are explicit open gates.
+release/negotiation floor and protocol proofs remain explicit open gates.
 No schema migration, key removal, deployment or customer activation is added.
+
+On 2026-10-11 the founder approved all five conservative retirement policies:
+every active device must acknowledge (no automatic offline exclusion), historical
+recovery files remain usable, backups remain untouched/recoverable, every event
+requires explicit confirmation, and only owner-approved signed device history
+may establish enrollment/revocation authority. These are design constraints,
+not permission to remove keys or enable Sync. If preservation cannot be proved,
+retirement is postponed. R-3's founder-choice gate is closed; the census, trusted
+roster/barrier, hosted/replay floor, preservation mechanism and crash/concurrency
+proofs remain pending independent review. See the dated policy record in
+`C10-04D-KEY-ROTATION-RECOVERY.md`. No runtime source or migration changes follow
+from recording this approval.

@@ -98,8 +98,13 @@ alternative to changing the existing single-local-device receipt tables. No
 migration or runtime barrier/removal implementation is included. Assess roster
 trust, sparse retained-set binding, typed retirement authority and the durable
 quiesce-and-fence epoch spanning enrollment, restore, writes/conflicts and
-recovery generation. Five founder policy decisions remain unresolved; do not
-construe this plan as their acceptance or approval to destroy keys.
+recovery generation. On 2026-10-11 the founder approved all five conservative
+policies recorded in C10-04D-KEY-ROTATION-RECOVERY.md. Verify the next design
+preserves all-active-device acknowledgement, usable historical recovery files,
+untouched/recoverable backups, explicit per-event confirmation and owner-only
+signed enrollment/revocation authority. Missing preservation proof must postpone
+retirement, not weaken these policies. Policy approval does not authorize key
+destruction, archival-key relocation, backup migration or customer activation.
 
 Return separate verdicts for condition remediation and plan prerequisites.
 Run native/frontend checks and adversarial format cases; clearly distinguish

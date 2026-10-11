@@ -3,7 +3,7 @@
 Status: format foundation independently approved with conditions on 2026-10-10;
 source/test condition remediation locally verified on 2026-10-11; release/version
 negotiation remains an activation gate. Retirement design NOT approved for
-implementation; founder policies and protocol proofs remain pending.
+implementation; founder policies approved on 2026-10-11, protocol proofs pending.
 Not accepted or activated.
 Customer Sync remains disabled. No command, UI, transport, hosted deployment,
 release, activation or cost is introduced.
@@ -318,7 +318,9 @@ revocation history and device signing identities, not an unverified provider
 list. Provider omission, roster rollback, unknown/duplicate devices or a missing
 signature fail closed. How total-loss recovery re-establishes roster trust is
 also a required proof, not supplied by a recovery-file capture minimum.
-The precise roster authority/revocation policy requires founder approval.
+The owner-only authority policy was approved on 2026-10-11 below. Its signed
+history, completeness, rollback resistance and total-loss trust bootstrap
+still require protocol design, tests and independent review.
 
 Future removal must consume a private validated `RetirementBarrier` capability
 (name provisional), constructible only after roster, signed durable applied
@@ -338,7 +340,7 @@ and single-device backup-bound receipts do not provide these mechanisms.
 The hosted record/lifecycle proof exists under `proofs/sync-v2-identity`; the
 missing boundary is retirement/compaction, not all hosted schema or endpoints.
 
-The founder must decide five policies before that protocol is finalized:
+The following were the five policy questions presented before protocol design:
 
 1. Offline device: block retirement until every active device applies, or an
    explicitly reviewed rebootstrap/exclusion flow that preserves unsynced work.
@@ -351,17 +353,51 @@ The founder must decide five policies before that protocol is finalized:
 5. Roster authority: who may enroll/revoke/exclude a device and how clients verify
    a complete current roster, including total-device-loss recovery.
 
-No default policy is accepted on the founder's behalf. The eight-key capacity
-still refuses further rotation; no key removal, local schema change, hosted
-deployment, main merge, release or Sync activation is authorized by this plan.
+### Founder-approved policies — 2026-10-11
+
+The founder explicitly stated: "Yes, I approve all 5 policies", approving the
+five conservative recommendations presented with commit 60adf45:
+
+1. **All active devices must acknowledge.** Block retirement until every active
+   device supplies the required verified durable applied proof. Never
+   automatically exclude a device because it is offline or stale. Waiting can
+   be indefinite; local work remains available and retirement is postponed.
+2. **Historical recovery files remain usable.** Preserve their original
+   recoverability for the material/state they captured. Do not automatically
+   invalidate or supersede them. This does not make an old file a latest-state
+   proof or give it keys created after capture.
+3. **Historical backups stay untouched and recoverable.** No silent migration,
+   overwrite or deletion. Preserve necessary recovery dependencies; if the
+   protocol cannot prove this safely, postpone retirement. No archival key
+   format, key relocation or backup rewrite mechanism is approved implicitly.
+4. **Every retirement requires explicit per-event confirmation.** No automatic
+   retirement. Policy approval is not consent to a particular future retirement;
+   its consequences and preservation evidence must be reviewed separately.
+5. **Only the owner authorizes enrollment/revocation.** Clients must verify signed
+   device history and a complete trusted roster; a provider-supplied list alone
+   cannot authorize destruction. No automatic offline-device exclusion is
+   permitted under the guise of revocation. The future explicit revocation flow
+   must preserve local/unsynced work and explain consequences; it is not supplied
+   by this policy record.
+
+This closes the founder-choice portion of R-3, not its protocol/implementation
+proofs. Preserving old recovery/backups may prevent safe retirement indefinitely;
+the design must acknowledge that outcome instead of promising unlimited rotation
+or silent cryptographic erasure. Removing a key from a future active ring would
+not erase historical copies retained for recovery or on revoked devices.
+The eight-key capacity still refuses further rotation today. The approval is for
+the next design phase only, not implementation of removal, a schema migration,
+deployment, main merge, release, any cost or Sync activation.
 
 Missing source boundaries: no hosted applied-device acknowledgement/compaction
 action exists; current device transfer carries one key, not a full ring and
 trusted floor; backups/conflicts/history keep old ciphertext. Completing them
 is a separate protocol vertical slice, not supplied by sparse encoding.
-Offline-device rebootstrap and historical-recovery retention consequences need
-founder approval and independent design review before implementation can remove
-keys. The default until then is no removal and fail-closed capacity refusal.
+The approved policies reject automatic offline-device rebootstrap/exclusion and
+silent historical recovery invalidation. The corresponding preservation,
+roster, fence and journal protocol still needs independent design review before
+implementation can remove keys. The default remains no removal and fail-closed
+capacity refusal. No runtime code changed when these policies were recorded.
 
 Local format validation: production cargo check, focused native tests, complete
 Rust regression, formatting and the unique-fictional Windows storage drill.
