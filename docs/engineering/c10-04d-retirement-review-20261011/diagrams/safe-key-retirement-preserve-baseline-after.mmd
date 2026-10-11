@@ -1,0 +1,12 @@
+flowchart LR
+  subgraph Windows["Windows device - no-removal baseline"]
+    K["Protected keyring - at most 8 keys"] --> W["Current-version write selection"]
+    K --> R["Exact-version read selection"]
+    W --> Q["SQLite queue and snapshots"]
+    Q --> A["One-device applied receipt and backup check"]
+    K --> F["Customer-held bounded recovery file"]
+  end
+  Q --> H["Isolated hosted encrypted-record proof"]
+  H --> Q
+  U["Customer-held historical backups"] --> R
+  A --> C["Capacity refusal - no key removal"]

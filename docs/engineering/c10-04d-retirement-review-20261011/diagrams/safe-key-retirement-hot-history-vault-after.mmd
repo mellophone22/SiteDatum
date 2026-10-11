@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph Windows["Windows device - proposed only"]
+    K["Protected hot keyring - at most 8 keys"] --> W["Current-version write selection"]
+    K --> R["Exact-version read selection"]
+    V["Protected historical read-only vault"] --> R
+    W --> Q["SQLite queue and snapshots"]
+    Q --> A["Durable device preparation and final local recheck"]
+    K --> F["Customer-held recovery preservation generations"]
+    V --> F
+    J["Ordered journal and local generation fence"] --> K
+    J --> V
+    J --> A
+  end
+  Q --> H["Hosted epoch fence - rejects fresh retired writes"]
+  H --> Q
+  U["Customer-held historical backups"] --> R
+  T["Owner-anchored signed device roster"] --> B["All-active-device barrier"]
+  A --> B
+  B --> H
+  B --> J
+  P["Explicit per-event owner confirmation"] --> B

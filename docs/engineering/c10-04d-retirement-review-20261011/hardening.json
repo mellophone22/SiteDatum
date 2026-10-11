@@ -1,0 +1,444 @@
+{
+  "documentType": "codex-security.hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "c10-04d-retirement-20261011",
+  "sourceEvidence": {
+    "kind": "document_collection",
+    "label": "Pinned source and founder policies, with supplemental conversational AI review",
+    "collectionSha256": "5cccd585c644bcdaf8f3df7afc186391e48d1b3b6e61db0973628bdee3f450ac",
+    "artifactCount": 12,
+    "targetRevision": "097e8daa4459c03655dc5046372aefca0c138d97",
+    "sourceDrift": "none",
+    "hashScope": "Exact twelve Windows checkout files in context.md; conversation review excluded; newline conversion changes hashes."
+  },
+  "assessment": {
+    "outcome": "opportunities_identified",
+    "summary": "Design-only preservation-first active-ring retirement opportunity; no implementation, migration, deployment or activation."
+  },
+  "constraints": {
+    "profile": "balanced",
+    "changeHorizons": [
+      "foundational"
+    ],
+    "nonNegotiables": [
+      "All active devices; no automatic stale exclusion.",
+      "Historical recovery and backups preserved.",
+      "Explicit consent each event.",
+      "Complete owner-approved anchored signed membership.",
+      "Local-first accountless Free work.",
+      "No secret or project content disclosure."
+    ],
+    "assumptions": [
+      "No measured latency, memory or storage budget supplied.",
+      "Option 2 is a design direction, not an approved archival mechanism."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunityId": "safe-key-retirement",
+      "title": "Preservation-first key retirement",
+      "summary": "Separate hot write authority from protected historical reads under a complete epoch barrier.",
+      "diagnosis": "Current bounded single-device state cannot establish all-device preservation and concurrency authority.",
+      "evidence": [
+        {
+          "evidenceId": "review-claude",
+          "claimType": "observed",
+          "sourceKind": "document",
+          "path": "conversation: supplied report at 579cfed",
+          "claim": "Independent AI verdict rejects retirement implementation and conditionally approves format; experiments not reproduced here."
+        },
+        {
+          "evidenceId": "source-ring",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "src-tauri/src/sync_v2_key_recovery.rs",
+          "claim": "Bounded exact-version ring has no removal operation."
+        },
+        {
+          "evidenceId": "source-local",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "src-tauri/src/sync_v2_local_queue.rs",
+          "claim": "Original envelope bytes are part of replay equality; local receipts are single-device scoped."
+        },
+        {
+          "evidenceId": "source-transfer",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "src-tauri/src/sync_v2_approved_device_transfer.rs",
+          "claim": "Approved transfer carries one key, not complete historical keys or roster anchor."
+        },
+        {
+          "evidenceId": "source-hosted",
+          "claimType": "observed",
+          "sourceKind": "source",
+          "path": "proofs/sync-v2-identity/supabase/migrations/20261010022507_c10_03g_encrypted_record_operations.sql",
+          "claim": "Hosted encrypted record proof exists; retirement epoch/barrier is missing."
+        },
+        {
+          "evidenceId": "policy-founder",
+          "claimType": "observed",
+          "sourceKind": "document",
+          "path": "docs/engineering/C10-04D-KEY-ROTATION-RECOVERY.md",
+          "claim": "Five policies approved, not archival mechanism or per-event key removal."
+        },
+        {
+          "evidenceId": "policy-retention",
+          "claimType": "observed",
+          "sourceKind": "document",
+          "path": "docs/engineering/ADR-019-SYNC-V2-PRIVACY-AND-SECURITY-BOUNDARY.md",
+          "claim": "Existing tombstone retention limits cannot be silently extended for offline-device waits."
+        },
+        {
+          "evidenceId": "packet-existing",
+          "claimType": "observed",
+          "sourceKind": "document",
+          "path": "docs/engineering/C10-04D-CLAUDE-REVIEW-INSTRUCTIONS.md",
+          "claim": "Format and activation approvals remain distinct."
+        },
+        {
+          "evidenceId": "source-local",
+          "claimType": "inferred",
+          "sourceKind": "source",
+          "path": "src-tauri/src/sync_v2_safe_apply.rs",
+          "claim": "A single-device applied receipt cannot authorize an all-device historical-key lifetime change."
+        }
+      ],
+      "desiredInvariants": [
+        "No ciphertext loses exact-version decryption.",
+        "Historical resolver cannot authorize new writes.",
+        "Every active device verified at exact event/epoch.",
+        "Final local dependency and generation recheck before any pruning.",
+        "No committed floor rollback.",
+        "Per-event consent; no silent backup or recovery-file mutation."
+      ],
+      "proposalPath": "proposals/safe-key-retirement.md",
+      "options": [
+        {
+          "optionId": "preserve-baseline",
+          "title": "Preserve the no-removal baseline",
+          "kind": "baseline",
+          "summary": "Retain the eight-key ceiling and refuse capacity exhaustion without mutation.",
+          "residualRisks": [
+            "At most seven rotations from a fresh ring; indefinite capacity refusal.",
+            "Previously copied keys and same-user compromise remain."
+          ],
+          "diagramPaths": {
+            "before": "diagrams/safe-key-retirement-before.mmd",
+            "after": "diagrams/safe-key-retirement-preserve-baseline-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "review-claude",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-ring",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-local",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-transfer",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-hosted",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "policy-founder",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "policy-retention",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "packet-existing",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No dangerous removal operation; lifetime ceiling remains.",
+              "validationPlan": "Capacity refusal leaves original bytes."
+            },
+            {
+              "dimension": "performance",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No changed I/O or critical paths.",
+              "validationPlan": "Baseline regression latency check."
+            },
+            {
+              "dimension": "memory",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Existing bounded ring; no new storage.",
+              "validationPlan": "Confirm fixed keyring bounds."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Deterministic refusal, unchanged available local work.",
+              "validationPlan": "Local edit/export/backup at capacity."
+            },
+            {
+              "dimension": "operability",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Existing capacity reason; no new protocol.",
+              "validationPlan": "Content-free capacity diagnostics."
+            },
+            {
+              "dimension": "migration",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No migration.",
+              "validationPlan": "Legacy/new format regression tests."
+            },
+            {
+              "dimension": "ergonomics",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "Small existing authority API remains.",
+              "validationPlan": "Strict write authority regression."
+            },
+            {
+              "dimension": "rollback",
+              "direction": "neutral",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "No candidate state to revert.",
+              "validationPlan": "Unchanged baseline state."
+            }
+          ],
+          "implementationReadiness": {
+            "status": "not_authorized",
+            "affectedComponents": [
+              "src-tauri/src/sync_v2_key_recovery.rs",
+              "src-tauri/src/sync_v2_local_queue.rs",
+              "src-tauri/src/sync_v2_safe_apply.rs",
+              "src-tauri/src/sync_v2_approved_device_transfer.rs",
+              "proofs/sync-v2-identity"
+            ],
+            "workPackages": [
+              "Preserve refusal and compatibility regressions."
+            ],
+            "acceptanceCriteria": [
+              "No current implementation approval inferred.",
+              "No loss of local records or historical dependencies."
+            ],
+            "migrationNotes": [
+              "No migrations executed."
+            ],
+            "rollback": "No state changes."
+          }
+        },
+        {
+          "optionId": "hot-history-vault",
+          "title": "Separate hot write authority from historical read preservation",
+          "kind": "foundational",
+          "summary": "Propose read-only historical key preservation, anchored roster, all-device barrier and recoverable epoch fencing.",
+          "residualRisks": [
+            "Not cryptographic erasure; customer historical copies intentionally retain keys.",
+            "Offline-after-preparation proof, root recovery, preservation encoding and storage budget unresolved.",
+            "Retention/bootstrap conflict not resolved or policy changed."
+          ],
+          "diagramPaths": {
+            "before": "diagrams/safe-key-retirement-before.mmd",
+            "after": "diagrams/safe-key-retirement-hot-history-vault-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "review-claude",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-ring",
+              "effect": "mitigates",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-local",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-transfer",
+              "effect": "unknown",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "source-hosted",
+              "effect": "unknown",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "policy-founder",
+              "effect": "addresses",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "policy-retention",
+              "effect": "unknown",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            },
+            {
+              "evidenceId": "packet-existing",
+              "effect": "unaffected",
+              "tacticalFixRequired": true,
+              "rationale": "Coverage is conditional design analysis; existing source refusal, exact-version, authorization, compatibility and activation gates remain."
+            }
+          ],
+          "tradeoffs": [
+            {
+              "dimension": "security",
+              "direction": "improves",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Epoch-bound authority narrows accidental pruning; new vault/root trust remains unproved.",
+              "validationPlan": "Adversarial roster/capability/resolver refusal cases."
+            },
+            {
+              "dimension": "performance",
+              "direction": "regresses",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Census, signatures, fences and historical-key reads add work.",
+              "validationPlan": "Compare fictional 1/8/100/1000-version workloads: p95 reads/writes and census time; set budgets before implementation approval."
+            },
+            {
+              "dimension": "memory",
+              "direction": "regresses",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Growing retained storage/catalog; bounded lazy key reads are intended, not measured.",
+              "validationPlan": "Measure peak RSS, protected entry limits and import bounds; refuse budget exhaustion."
+            },
+            {
+              "dimension": "reliability",
+              "direction": "unknown",
+              "confidence": "low",
+              "basis": "hypothetical",
+              "assessment": "Cross-store journal proposed, crash safety and offline-after-preparation behavior unproved.",
+              "validationPlan": "Model/fault inject each store boundary and offline edits."
+            },
+            {
+              "dimension": "operability",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "hypothetical",
+              "assessment": "More blocked states, diagnostics and version support.",
+              "validationPlan": "Run content-free failure recovery drills."
+            },
+            {
+              "dimension": "migration",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "source-derived",
+              "assessment": "New historical preservation/transfer and barrier schema required.",
+              "validationPlan": "Mixed-client, restore, full-history transfer and explicit RLS/grant cases."
+            },
+            {
+              "dimension": "ergonomics",
+              "direction": "improves",
+              "confidence": "medium",
+              "basis": "hypothetical",
+              "assessment": "Private verified capabilities reduce caller drift but add protocol complexity.",
+              "validationPlan": "Compile-fail authority tests and transition coverage."
+            },
+            {
+              "dimension": "rollback",
+              "direction": "regresses",
+              "confidence": "high",
+              "basis": "hypothetical",
+              "assessment": "After committed floor, retain compatible reader and vault; never lower floor.",
+              "validationPlan": "Disable writes, preserve all dependencies and committed floor."
+            }
+          ],
+          "implementationReadiness": {
+            "status": "not_authorized",
+            "affectedComponents": [
+              "src-tauri/src/sync_v2_key_recovery.rs",
+              "src-tauri/src/sync_v2_local_queue.rs",
+              "src-tauri/src/sync_v2_safe_apply.rs",
+              "src-tauri/src/sync_v2_approved_device_transfer.rs",
+              "proofs/sync-v2-identity"
+            ],
+            "workPackages": [
+              "D1 census",
+              "D2 membership trust",
+              "D3 historical preservation",
+              "D4 epoch/fence",
+              "D5 crash recovery",
+              "D6 separately gated mutation",
+              "D7 separate activation"
+            ],
+            "acceptanceCriteria": [
+              "No current implementation approval inferred.",
+              "No loss of local records or historical dependencies."
+            ],
+            "migrationNotes": [
+              "No migrations executed."
+            ],
+            "rollback": "Disable candidate writes; preserve vault, compatible readers and committed floor."
+          }
+        }
+      ],
+      "recommendedOptionId": "hot-history-vault",
+      "recommendation": "Advance specification and independent review only; preserve-baseline remains operational until all proof and consent gates pass."
+    }
+  ],
+  "openQuestions": [
+    "Owner-root binding/recovery.",
+    "Offline edits after preparation.",
+    "Historical preservation construction and Windows entry budget.",
+    "Retention/deletion/bootstrap integration.",
+    "Minimum supporting released reader and engineering budgets."
+  ],
+  "validation": {
+    "phase": "documentation_only",
+    "behavioralTestsExecuted": false,
+    "implementationApproved": false,
+    "servicesChanged": false
+  }
+}
