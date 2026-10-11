@@ -488,3 +488,7 @@ and [conditional handoff](c10-04d-d2-owner-roster-review-20261011/implementation
 record the scope. This does not waive technical review or authorize artifact issuance,
 keys, schema, service changes or activation. The five policies are unchanged.
 The next gate is the pinned independent D2 review; D6/D7 remain blocked.
+
+### D2 independent-review semantic correction round — 2026-10-11
+
+The report at packet 0bf2e4ae supports direction only. [D2 remediation](c10-04d-d2-owner-roster-review-20261011/review-remediation.md) proposes event-bound independent-tip acknowledgements, both membership mismatch refusals, a separately reviewed fork join, honest copied-artifact limitations, bounded epoch/retry semantics, refreshed 21-line/five-file inventory and combined-freeze disclosure. Proposed semantics are not executed controls. No source/schema/root or service changes; D6/D7 remain blocked. Current eight-key no-removal capacity refusal remains the operational fallback.

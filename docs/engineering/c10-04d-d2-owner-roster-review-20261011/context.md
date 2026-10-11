@@ -25,7 +25,7 @@ Recipe: sort paths ascending; join `path + " " + sha256` with LF and no final LF
 
 ## Observations and limits
 
-Native device identity is an OS-random Ed25519 seed in Windows Credential Manager, with distinct transfer keys and scope-bound signatures. Existing hosted initial/approved enrollment has owner/session/device checks and a two-device limit. SQLite anchors and workspace-keyed local receipts are not independent all-device roster history. The current receipt/ack reference inventory has nineteen references across persistence, key recovery, queue and safe apply, including tests; do not blindly change their primary keys.
+Native device identity is an OS-random Ed25519 seed in Windows Credential Manager, with distinct transfer keys and scope-bound signatures. Existing hosted initial/approved enrollment has owner/session/device checks and a two-device limit. SQLite anchors and workspace-keyed local receipts are not independent all-device roster history. The refreshed receipt/ack reference inventory has 21 matching lines across five files at source base 91973f57d9d4f9033dcf3455299046784ddf9742: persistence.rs 2; sync_v2_key_recovery.rs 2; sync_v2_local_queue.rs 6; sync_v2_safe_apply.rs 9; sync_v2_retirement_census_proof.rs 2 (all src-tauri/src; production and test references). Do not blindly change their primary keys.
 
 No D2 owner-root format, complete chain, independent pin, schema or capability is implemented here. Source inspection is not a simulated-attack result. No Windows credential, root material, real customer data or live Supabase database was read. D2 validation is document/source correspondence and publication integrity only.
 
@@ -34,3 +34,11 @@ Prior local D1 regression belongs to its commit: 12 focused tests, full Rust 214
 ## Direction selection follow-up
 
 After draft commit `ce0bd4c92a9dea25b38582eecc947c54266189b8`, the founder selected the separate owner-signing artifact direction for independent review and clarified the trailing “and” was accidental. Recording that decision authorizes review preparation, not keys/schema/activation. The refreshed checkout matches that documentation packet; production/test source is unchanged from the inventoried base. The ten-file inventory continues to bind `91973f57d9d4f9033dcf3455299046784ddf9742`, not the revised derived text. No new runtime experiment was performed.
+
+## Semantic-correction follow-up
+
+The supplied D2 independent design review dated 2026-10-11 reviewed packet 0bf2e4ae04b0445be751002bb6bc33aed4f19d95. It is conversation-supplied evidence, not a separately inventoried report file. We retain the original ten-file LF/Git-blob inventory unchanged; that inventory does not hash this report or the revised proposal. At preparation HEAD matched 0bf2e4ae, with a clean worktree. The corrections are documentation-only; the original runtime source remains 91973f57.
+
+The refreshed grep establishes SF-1 matching-line counts and 03e lines 269/508 establish the two-device cap. All DG-1 through DG-6/PD-1 changes are proposed semantics or disclosure corrections, not executed protocol controls. The report's three simultaneously active devices exceed current scope; the revised acceptance plan uses a two-device revoke/replace transition and explicitly documents the stale-view residual.
+
+[Review remediation](review-remediation.md) maps every finding. New ForkResolution is a proposal for separate acceptance, not founder approval of recovery. No source, test, schema, root or service is changed.

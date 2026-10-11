@@ -18,4 +18,4 @@ The five earlier preservation policies remain unchanged. Selection does not waiv
 
 ## Next gate
 
-Send [the review request](review-request.md) and [proposal](proposals/owner-roster-trust.md) at the exact follow-up commit to Claude for a critical read-only independent review. No reviewer report has been received or fabricated for this selected packet. Return findings for remediation before mechanism implementation.
+Send [the review request](review-request.md) and [proposal](proposals/owner-roster-trust.md) at the exact follow-up commit to Claude for a critical read-only independent review. A reviewer report for packet 0bf2e4ae04b0445be751002bb6bc33aed4f19d95 has now been supplied. The founder authorized a documentation-only correction package. This authorizes proposed semantic corrections and another review handoff, not acceptance of ForkResolution, encoding, artifact issuance or implementation. Return findings for remediation before mechanism implementation.

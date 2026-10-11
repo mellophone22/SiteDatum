@@ -56,3 +56,9 @@ Selection alone satisfies no technical criterion. Require accepted D2 design, re
 ## Open Decisions
 
 Exact artifact/ceremony, independent latest-anchor update/recovery, signing-intent cancellation/publication ordering, resource budgets and reader floor remain unresolved. Do not repeat prior policies or direction selection; material custody changes need a new direction decision.
+
+## Semantic clarification addendum
+
+Read [the correction ledger](../review-remediation.md) before encoding. Ack scope includes event/workspace and the signer's own independent tip; both membership disagreement directions block; a roster acknowledgement remains different from preservation preparation. Numeric epoch bounds and reservation/idempotent retry/cancellation rules are proposed, not an implemented journal. ForkResolution requires a distinct multi-parent verifier, union revocations, all required cross-branch witnesses, resource bounds and independent acceptance. Freeze remains the fallback and no trust-error override is introduced.
+
+Classify all 21 matching receipt/ack lines across the five named files at source base 91973f57 before any migration. D4 must constrain hosted-only partial enrollment and revalidate at the authority boundary; merely comparing a provider list is insufficient against hidden entries. D5 must make event invalidation and final rechecks durable. Correcting this specification does not authorize those source changes.

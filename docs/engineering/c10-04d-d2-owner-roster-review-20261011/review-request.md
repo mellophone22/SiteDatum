@@ -1,28 +1,22 @@
-# Independent design review request — D2 owner-root and roster trust
+# Independent re-review request — D2 semantic corrections
 
 Repository: https://github.com/mellophone22/SiteDatum
 Branch: `codex/c10-02e-claude-review`
-Source base: `91973f57d9d4f9033dcf3455299046784ddf9742`
-Review the exact selection-record/handoff commit supplied with this packet, not a moving head. Previous D2 draft: `ce0bd4c92a9dea25b38582eecc947c54266189b8`; original production source base remains the one above.
+Runtime source base: `91973f57d9d4f9033dcf3455299046784ddf9742`
+Prior reviewed packet: `0bf2e4ae04b0445be751002bb6bc33aed4f19d95`
 
-Read [proposal](proposals/owner-roster-trust.md), [portfolio](hardening.md), [context](context.md), [structured analysis](hardening.json), [prior policy context](prior-context.md), and [validation](validation.md). Treat the report as specification-only. No schema, root issuance, key removal, service mutation or activation is requested.
+Review the exact correction commit supplied with this request, not moving HEAD. Read [remediation](review-remediation.md), [proposal](proposals/owner-roster-trust.md), [context](context.md), [portfolio](hardening.md), [JSON](hardening.json), [validation](validation.md), [founder decision](founder-decision.md), [prior policy context](prior-context.md) and [conditional handoff](implementation/offline-owner-root.md).
 
-Act as a critical independent reviewer. Do not change any repository/service, use customer data, expose secrets or buy resources. Any local fictional experiments must be labelled actually executed versus proposed. This is supplemental AI review, not professional certification.
+Act as a critical independent reviewer in read-only mode. Do not alter repository/services/schema, issue roots, activate Sync, expose secrets, use customer data or purchase resources. Separate executed checks from proposed tests. No approval is inferred from this request.
 
-Give separate verdicts:
-- Fidelity to the five founder policies and the extra root-custody decision.
-- Whether separate owner authority actually avoids first-device circularity under the stated trusted-bootstrap assumption.
-- Complete chain, root generation, owner binding, revocation, forks and stale-copy signing semantics.
-- Ordinary SQLite restore versus total independent-anchor loss/rollback. Do not accept signature validity or email recovery as freshness.
-- Conservative owner-wide two-device roster and separate workspace barrier binding.
-- D2 specification readiness versus remaining canonical encoding, artifact, migration and D4/D5 publication/journal proofs.
+Give separate verdicts on:
+- DG-1: fresh event/workspace ack, signer's independent pinned tip, exact participant set and late-change invalidation. Challenge whether this blocks only cross-event replay or really supports the stated freshness assumptions. Pins are lower bounds, not global-latest proofs.
+- DG-2: both membership mismatch directions and key mismatches, authorization-boundary prerequisites, migration/partial hosted-only enrollment. A returned list is not completeness evidence against a malicious provider.
+- DG-3/DG-4: the new multi-parent ForkResolution proposal, union revocations, full known branch inventory and every required witness. Is it safe, useful and honestly limited? No claimed prevention of stale duplicated-artifact signing. Freeze remains fallback; no root-loss shortcut.
+- DG-5: u64 semantic epoch range, issuance/cancellation reservation, exact lost-response retries, maximum refusal and parse/storage limits. No serialization assigned.
+- SF-1/SF-2/DG-6/PD-1: 21 matching lines in five files, exact cap citations, diagrams and combined-freeze disclosure.
+- Overall semantics readiness versus unresolved canonical encoding, D3 artifacts/Windows drills, D4 fences and D5 journals. D6/D7 remain blocked.
 
-Try counterexamples: a hosted omitted device; both databases restored before revocation; equal-epoch forks; root private key recovered without latest anchor; stale duplicated owner artifact; all pins rewound; a device without workspace preservation; new enrollment while a retirement event is prepared; root succession after old-root loss; lost-response retry and cancelled intent.
+Use at most two simultaneously active devices for product fixtures. The revoke/replace sequence preserves that limit and distinguishes the hosted revocation gate from the analytical stale-view issue. Do not silently weaken the cap. Challenge same-event replay, complete but stale chains, lost responses, unknown forks, conflicting revocations, omitted witnesses, root succession/compromise, total-anchor loss and exhaustion.
 
-Challenge whether any language implies a complete current roster can be proven when all independent latest anchors are lost. Verify that FreshnessUnestablished grants no retirement capability, preserves local work and does not erase captured keys. Verify no root key or serialized format has been assigned/created and no existing receipt is promoted into an all-device barrier.
-
-Report source facts separately from design contradictions and missing proofs. Recommend corrections and proposed acceptance tests. No blanket implementation approval. D6 and D7 remain blocked. Selecting a direction would still require separate approval and review before any format/schema/code.
-
-## Direction selected; technical review still required
-
-Read [the founder decision](founder-decision.md) and [conditional handoff](implementation/offline-owner-root.md). Separate offline owner-signing custody is selected as a direction, not an accepted construction. Do not ask to repeat that decision or the five preservation policies. Challenge exact custody, independent latest-anchor recovery, trusted bootstrap, stale duplicated artifacts, root succession, cancelled-intent/epoch semantics and loss/fork handling. Planned protocol tests remain unexecuted. Explain required specification corrections before any format/schema/production code. D6/D7 remain blocked.
+Return corrections and proposed acceptance tests with source facts separate from design reasoning. These are specification changes, not fixes to an activated protocol. ForkResolution is proposed for review and later explicit acceptance, not already founder-approved. No blanket implementation approval or merge/release follows.

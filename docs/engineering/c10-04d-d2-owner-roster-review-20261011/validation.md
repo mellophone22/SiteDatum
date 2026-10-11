@@ -1,19 +1,17 @@
-# D2 specification validation — 2026-10-11
+# D2 semantic-correction validation — 2026-10-11
 
-## Actually performed
+## Actually performed in this round
 
-Source inspected at `91973f57d9d4f9033dcf3455299046784ddf9742` with clean worktree; ten exact Git blobs hashed and a collection digest computed. Structured JSON parses; option/evidence IDs and eight tradeoff dimensions checked. All relative packet links resolve; each standalone Mermaid source matches its inline proposal diagram. Managed security artifacts are saved and read back for exact equality before external publication. Reader-facing packet text has no local absolute paths.
+Read the supplied independent report and relevant proposal/context/handoff documents. Verified preparation HEAD `0bf2e4ae04b0445be751002bb6bc33aed4f19d95` and clean worktree. A read-only rg search returns 21 matching source lines across five files; 03e's two-device checks are at lines 269 and 508. Revisited all required hardening-format and artifact-storage instructions.
 
-The publication must be documentation-only, pass Git whitespace checks and preserve the source base's production/test files. Both review branch heads are verified separately. CI states are read for the exact published commit, not inferred.
+The packet will be saved/read back through managed security storage. Before publication, JSON/link/evidence/diagram checks and docs-only diff/whitespace/source-equality checks must pass. Publication verification is recorded separately after completion, not inferred here.
+
+## Prior evidence, not newly run
+
+Original ten-file Git-blob/LF hashes and collection digest remain pinned to source base 91973f57. D1 test results belong to its code commit. Claude's Linux 211 passed/1 ignored result is reviewer-reported evidence, not a new run by this correction round. The report reconciles it with the prior Windows 214 passed/5 ignored tree.
 
 ## Not performed
 
-No D2 source, parser, root, schema, recovery format or capability implemented. No signature experiment, simulated attack, Windows credential/pin measurement, roster restore drill, concurrency/fault injection or performance benchmark executed. Planned tests in the proposal are not test results. Mermaid renderer unavailable; checked source agreement is not a rendered review.
+No D2 protocol implementation, parser, root, schema, encoded artifact, signature experiment, attack simulation, Windows pin/custody measurement, roster restore drill, contention/fault injection, benchmark or new behavioral test. Every acceptance case is proposed. Mermaid source agreement is not a rendered visual review.
 
-D1 results are prior evidence only. D2 specification completion is not acceptance; root-custody selection and independent review remain open. D6 and D7 remain blocked. No service changed or Sync activated.
-
-Prior D1 GitHub Actions run 38146675657 was separately read and completed successfully. That is not D2 protocol testing. The prior GitLab run was blocked by quota; new publication CI must be read separately.
-
-## Selection-record follow-up
-
-Only derived documents record direction selection and future ordering. Inventory remains pinned to its original source base. Links, JSON, diagram agreement and managed readback are rechecked. No new behavioral test or independent reviewer verdict is available for this selected packet.
+The supplied review supports direction and semantic clarification, not implementation acceptance. ForkResolution requires its own independent assessment and later explicit acceptance. D3/D4/D5 remain prerequisites. D6/D7 stay blocked; no service, billing, main merge, release or Sync activation change.

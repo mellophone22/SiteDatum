@@ -25,3 +25,7 @@ The founder selected the separate offline artifact design direction for review. 
 ## Next Decisions
 
 Review the [full semantic specification](proposals/owner-roster-trust.md) using [this request](review-request.md), with the [founder decision](founder-decision.md) recorded. [Structured analysis](hardening.json) records the tradeoffs. D2 technical acceptance, canonical format, Windows pin/recovery proof and D4/D5 ordering remain open. The [conditional handoff](implementation/offline-owner-root.md) orders future work without authorizing code. D3 specification may proceed separately; no schema or mechanism implementation follows automatically.
+
+## Independent-review correction round
+
+The D2 report at packet 0bf2e4ae supports the direction but requires semantic clarification before canonical encoding. We propose fresh event-bound acknowledgements carrying each signer's independent pin, fail-closed reconciliation in both membership-disagreement directions, a separately reviewed multi-parent fork join, honest duplicate-custody limits, and a u64 epoch bound with exact-retry semantics. [The correction ledger](review-remediation.md) separates proposed acceptance tests from checks actually performed. The fork join is not accepted or implemented; inability to justify it leaves authority frozen. Source inventory and diagrams are corrected, and capacity disclosure now names the combined freeze. No production vulnerability is claimed demonstrated by these analytical gaps.

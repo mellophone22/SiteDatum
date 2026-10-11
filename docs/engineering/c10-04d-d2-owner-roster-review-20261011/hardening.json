@@ -15,7 +15,7 @@
   },
   "assessment": {
     "outcome": "opportunities_identified",
-    "summary": "D2 specification draft separates owner/device authority and blocks freshness-unestablished retirement; no implementation."
+    "summary": "D2 semantic-correction proposal responds to independent review; no encoding, implementation or activation."
   },
   "constraints": {
     "profile": "balanced",
@@ -338,7 +338,7 @@
             "Independent root-signing journal and publication ordering unproved."
           ],
           "implementationReadiness": {
-            "status": "direction_selected_independent_review_pending",
+            "status": "semantic_corrections_pending_independent_review",
             "affectedComponents": [
               "Native device enrollment/transfer",
               "Future independent pin store",
@@ -391,5 +391,30 @@
     "decisionPath": "founder-decision.md",
     "technicalAcceptance": false,
     "artifactIssuance": false
+  },
+  "semanticCorrections": {
+    "priorReviewedPacket": "0bf2e4ae04b0445be751002bb6bc33aed4f19d95",
+    "ledgerPath": "review-remediation.md",
+    "independentAcceptance": false,
+    "forkResolutionAcceptance": false,
+    "acknowledgementFields": [
+      "event nonce",
+      "workspace scope",
+      "signer's independent pinned epoch/digest"
+    ],
+    "epochMaximumDecimal": "18446744073709551615",
+    "receiptInventory": {
+      "revision": "91973f57d9d4f9033dcf3455299046784ddf9742",
+      "unit": "matching source lines",
+      "files": {
+        "persistence.rs": 2,
+        "sync_v2_key_recovery.rs": 2,
+        "sync_v2_local_queue.rs": 6,
+        "sync_v2_safe_apply.rs": 9,
+        "sync_v2_retirement_census_proof.rs": 2
+      },
+      "total": 21
+    },
+    "implementationApproved": false
   }
 }
