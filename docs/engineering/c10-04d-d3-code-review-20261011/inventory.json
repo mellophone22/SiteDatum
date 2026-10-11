@@ -1,0 +1,56 @@
+{
+  "sourceCommit": "07e8c90e1fd6598dbd162a1f3e683cb3ca439c29",
+  "hashBasis": "exact Git blob bytes",
+  "collectionRecipe": "Sort by path; LF-join path + space + sha256; UTF-8; no trailing LF; SHA-256",
+  "collectionSha256": "c3eaf6b9cec08170d6f752b773103a16946c4f0a1caf0dddd99b90165c1bc551",
+  "files": [
+    {
+      "path": "src-tauri/Cargo.toml",
+      "sha256": "d621299de88fe1f66e3841041fd0c00f6f2adcd8677100be8d4852a41444ab29"
+    },
+    {
+      "path": "src-tauri/Cargo.lock",
+      "sha256": "282efa5f1571a38370a459c927d3034e6460194ec4c4bb9d3f08c5378ae40dc1"
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "sha256": "7e9b9287f2ff317fa3d85d8c4153bf38f112e5efa63649b86d934174c5e1f047"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_vault_file_prototype.rs",
+      "sha256": "6f60a1bf14ce34f95bbf0b90da392bda0f7f7c7a3fea20bd5d029a53eb10ed79"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_vault_storage.rs",
+      "sha256": "ccec31bda255b709de22d379c5ae55c7948cb4f373276ff1bd4534cdc8f15755"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_vault_directory.rs",
+      "sha256": "0c49768dd1a9980667064b4d14826f51ad87d9af526cfd0678b37f6250390397"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_recovery_confirmation.rs",
+      "sha256": "665261ea6ac2c93102b07661e5826d163ee687ad147f15e893e7716e595a7d52"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_retirement_census_proof.rs",
+      "sha256": "e9c8620608d8e4a2b6ce612ea34b53351890b9a0f58ab5f99a1f88eb1b57eb11"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_key_recovery.rs",
+      "sha256": "b77f33b24e7a2d4e8d0de4726844118ac6d0a31963f91a5a7fa44f40bc0d79f2"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_record_codec.rs",
+      "sha256": "1699a6349651938be4eadb00ea5a02527fd12a6600d1a102f2077b1302fb7abc"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_record_protocol.rs",
+      "sha256": "cf022005024b0fb269e1e7ee8f1316b0273f540a14b60625f345ce2078473316"
+    },
+    {
+      "path": "src-tauri/src/sync_v2_local_queue.rs",
+      "sha256": "b975196ccdc085be44d037e5b421fc52342c38cb5ee0468a1419ce106c3ff7a9"
+    }
+  ]
+}
