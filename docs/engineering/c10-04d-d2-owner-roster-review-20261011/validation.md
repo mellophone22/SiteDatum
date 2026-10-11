@@ -1,17 +1,17 @@
-# D2 semantic-correction validation — 2026-10-11
+# D2 re-review refinement validation — 2026-10-11
 
-## Actually performed in this round
+## Executed preparation checks
 
-Read the supplied independent report and relevant proposal/context/handoff documents. Verified preparation HEAD `0bf2e4ae04b0445be751002bb6bc33aed4f19d95` and clean worktree. A read-only rg search returns 21 matching source lines across five files; 03e's two-device checks are at lines 269 and 508. Revisited all required hardening-format and artifact-storage instructions.
+Preparation HEAD `1dd7368331a6070693733ea62537a74b680d63eb`; clean worktree. Re-opened MAX_SAFE_INTEGER at src-tauri/src/sync_v2_record_codec.rs:14 and numeric C10-03g jsonb_build_object counters at lines 380, 406 and 428. Arithmetic for the adopted ceiling: approximately 24.66 million years at a hypothetical 10^6 issued events per day, using 365.25 days/year. No benchmark claimed.
 
-The packet will be saved/read back through managed security storage. Before publication, JSON/link/evidence/diagram checks and docs-only diff/whitespace/source-equality checks must pass. Publication verification is recorded separately after completion, not inferred here.
+Managed artifact save/readback, JSON/evidence/link/diagram agreement, Git whitespace and documentation-only/source-equality checks are required before publication; exact publication results are retained separately after those checks. The original ten-file Git-blob/LF inventory remains pinned to runtime base 91973f57, not re-labelled as a hash of this new report or proposal.
 
-## Prior evidence, not newly run
+## Prior reviewer evidence
 
-Original ten-file Git-blob/LF hashes and collection digest remain pinned to source base 91973f57. D1 test results belong to its code commit. Claude's Linux 211 passed/1 ignored result is reviewer-reported evidence, not a new run by this correction round. The report reconciles it with the prior Windows 214 passed/5 ignored tree.
+Claude's re-review at 1dd73683 reports ten hashes/digest match, 21 matching lines / 22 occurrences in five files, cap citations, three matching diagrams, fmt and Linux Rust 211 passed/1 ignored. These are reviewer-reported checks, not new runtime tests by this correction round. Prior D1 Windows results belong to their source commit.
 
-## Not performed
+## Not executed or approved
 
-No D2 protocol implementation, parser, root, schema, encoded artifact, signature experiment, attack simulation, Windows pin/custody measurement, roster restore drill, contention/fault injection, benchmark or new behavioral test. Every acceptance case is proposed. Mermaid source agreement is not a rendered visual review.
+No D2 runtime source, parser, root, schema, wire format, signature experiment, chain fixture, restore/recovery drill, Windows credential/pin measurement, contention/fault injection or performance benchmark. Every protocol acceptance case is proposed. Mermaid source agreement is not rendered visual review.
 
-The supplied review supports direction and semantic clarification, not implementation acceptance. ForkResolution requires its own independent assessment and later explicit acceptance. D3/D4/D5 remain prerequisites. D6/D7 stay blocked; no service, billing, main merge, release or Sync activation change.
+The report supports moving toward canonical-encoding review only after semantic refinements. This package does not start that encoding phase or accept ForkResolution. No service/billing/main merge/release/Sync activation. D3/D4/D5 gates open; D6/D7 blocked.

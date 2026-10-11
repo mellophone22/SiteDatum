@@ -15,7 +15,7 @@
   },
   "assessment": {
     "outcome": "opportunities_identified",
-    "summary": "D2 semantic-correction proposal responds to independent review; no encoding, implementation or activation."
+    "summary": "D2 N-1..N-5 specification refinements awaiting independent semantic re-review; no canonical encoding or implementation."
   },
   "constraints": {
     "profile": "balanced",
@@ -335,10 +335,12 @@
             "Root theft or compromised trusted bootstrap.",
             "Undetectable total environmental rewind.",
             "Old root key/artifact does not prove latest roster.",
-            "Independent root-signing journal and publication ordering unproved."
+            "Independent root-signing journal and publication ordering unproved.",
+            "Provider-mediated legitimate-view divergence can indefinitely block progress.",
+            "Conflicting revocations and unavailable branch-active witnesses can make fork freeze permanent."
           ],
           "implementationReadiness": {
-            "status": "semantic_corrections_pending_independent_review",
+            "status": "rereview_semantic_refinements_pending",
             "affectedComponents": [
               "Native device enrollment/transfer",
               "Future independent pin store",
@@ -402,7 +404,7 @@
       "workspace scope",
       "signer's independent pinned epoch/digest"
     ],
-    "epochMaximumDecimal": "18446744073709551615",
+    "epochMaximumDecimal": "9007199254740991",
     "receiptInventory": {
       "revision": "91973f57d9d4f9033dcf3455299046784ddf9742",
       "unit": "matching source lines",
@@ -415,6 +417,26 @@
       },
       "total": 21
     },
+    "implementationApproved": false,
+    "epochConvention": "MAX_SAFE_INTEGER = 2^53-1, matching existing numeric protocol counters"
+  },
+  "reReviewRefinements": {
+    "priorReviewedCommit": "1dd7368331a6070693733ea62537a74b680d63eb",
+    "ledgerPath": "re-review-remediation.md",
+    "findings": [
+      "N-1",
+      "N-2",
+      "N-3",
+      "N-4",
+      "N-5"
+    ],
+    "singleEventDomain": [
+      "owner",
+      "workspace"
+    ],
+    "issuancePositionScope": "owner",
+    "forkResolutionAcceptance": false,
+    "canonicalEncodingAssigned": false,
     "implementationApproved": false
   }
 }

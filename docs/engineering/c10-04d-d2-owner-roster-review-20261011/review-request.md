@@ -1,22 +1,21 @@
-# Independent re-review request — D2 semantic corrections
+# Independent re-review request — D2 final semantic refinements
 
 Repository: https://github.com/mellophone22/SiteDatum
 Branch: `codex/c10-02e-claude-review`
 Runtime source base: `91973f57d9d4f9033dcf3455299046784ddf9742`
-Prior reviewed packet: `0bf2e4ae04b0445be751002bb6bc33aed4f19d95`
+Prior reviewed correction: `1dd7368331a6070693733ea62537a74b680d63eb`
 
-Review the exact correction commit supplied with this request, not moving HEAD. Read [remediation](review-remediation.md), [proposal](proposals/owner-roster-trust.md), [context](context.md), [portfolio](hardening.md), [JSON](hardening.json), [validation](validation.md), [founder decision](founder-decision.md), [prior policy context](prior-context.md) and [conditional handoff](implementation/offline-owner-root.md).
+Review the exact new refinement commit supplied with this request, not moving HEAD. Read [refinement ledger](re-review-remediation.md), [proposal](proposals/owner-roster-trust.md), [prior ledger](review-remediation.md), [context](context.md), [portfolio](hardening.md), [JSON](hardening.json), [validation](validation.md), [founder decision](founder-decision.md), [policy context](prior-context.md) and [conditional handoff](implementation/offline-owner-root.md).
 
-Act as a critical independent reviewer in read-only mode. Do not alter repository/services/schema, issue roots, activate Sync, expose secrets, use customer data or purchase resources. Separate executed checks from proposed tests. No approval is inferred from this request.
+Work read-only as a critical independent reviewer. Do not alter repository/services/schema, issue roots, activate Sync, expose secrets, use customer data or purchase resources. Separate executed checks from proposed tests. Supplemental AI review is not certification or implementation approval.
 
-Give separate verdicts on:
-- DG-1: fresh event/workspace ack, signer's independent pinned tip, exact participant set and late-change invalidation. Challenge whether this blocks only cross-event replay or really supports the stated freshness assumptions. Pins are lower bounds, not global-latest proofs.
-- DG-2: both membership mismatch directions and key mismatches, authorization-boundary prerequisites, migration/partial hosted-only enrollment. A returned list is not completeness evidence against a malicious provider.
-- DG-3/DG-4: the new multi-parent ForkResolution proposal, union revocations, full known branch inventory and every required witness. Is it safe, useful and honestly limited? No claimed prevention of stale duplicated-artifact signing. Freeze remains fallback; no root-loss shortcut.
-- DG-5: u64 semantic epoch range, issuance/cancellation reservation, exact lost-response retries, maximum refusal and parse/storage limits. No serialization assigned.
-- SF-1/SF-2/DG-6/PD-1: 21 matching lines in five files, exact cap citations, diagrams and combined-freeze disclosure.
-- Overall semantics readiness versus unresolved canonical encoding, D3 artifacts/Windows drills, D4 fences and D5 journals. D6/D7 remain blocked.
+Give separate verdicts on N-1 through N-5:
+- N-1 taxonomy: divergent revocations freeze; duplicate intent and sub-cap enrollment divergence are only conditionally eligible; all historical witnesses available; three branch confirmations never authorize three active memberships. Challenge the no-normal-authority confirmation transport prerequisite and conflicting tombstones. ForkResolution is still proposed for later explicit acceptance.
+- N-2 numeric ceiling: MAX_SAFE_INTEGER = 9,007,199,254,740,991 matches current source; all authority counters exact and bounded, no numeric/string u64 exception. Challenge every future crossing and exhaustion/retry rule. Canonical framing remains unassigned.
+- N-3 one admitted event per (owner, workspace): owner-scoped non-reused position, current signer durable single slots, healthy concurrent initiation exactly one, fault/split may block both but never two complete admissions; terminal invalidation/release and late recheck remain D4/D5 proofs. Challenge owner journal/root-copy forks, partial reservations, cross-workspace replay and same-event retries.
+- N-4 view divergence: content-free ParticipantPinAdvanced distinct from fork/corruption/missing witness; a malicious provider may block progress indefinitely without weakening safety.
+- N-5 both fixtures: revoke-B defense in depth and revoke-A isolation; B remains active, but A's revoked hosted transport must not be disguised as normal membership. Fictional signer refusal is not a new valid revoked-device ack.
 
-Use at most two simultaneously active devices for product fixtures. The revoke/replace sequence preserves that limit and distinguishes the hosted revocation gate from the analytical stale-view issue. Do not silently weaken the cap. Challenge same-event replay, complete but stale chains, lost responses, unknown forks, conflicting revocations, omitted witnesses, root succession/compromise, total-anchor loss and exhaustion.
+Verify earlier DG-1/DG-2 freshness/member-set invariants did not regress. Check exact-source inventory, numeric arithmetic, JSON/cross-document agreement, diagram meaning and disclosure. No test of the proposed protocol exists. Do not label documentation checks as cryptographic, concurrency, custody or Windows proof.
 
-Return corrections and proposed acceptance tests with source facts separate from design reasoning. These are specification changes, not fixes to an activated protocol. ForkResolution is proposed for review and later explicit acceptance, not already founder-approved. No blanket implementation approval or merge/release follows.
+Return whether D2 semantics can proceed to a separately reviewed canonical-encoding specification, with any remaining blockers. No parser/code/schema/artifact issuance, implementation, main merge, release or activation follows. D3/D4/D5 unimplemented proofs remain required; D6/D7 stay blocked.

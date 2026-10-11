@@ -19,3 +19,7 @@ The five earlier preservation policies remain unchanged. Selection does not waiv
 ## Next gate
 
 Send [the review request](review-request.md) and [proposal](proposals/owner-roster-trust.md) at the exact follow-up commit to Claude for a critical read-only independent review. A reviewer report for packet 0bf2e4ae04b0445be751002bb6bc33aed4f19d95 has now been supplied. The founder authorized a documentation-only correction package. This authorizes proposed semantic corrections and another review handoff, not acceptance of ForkResolution, encoding, artifact issuance or implementation. Return findings for remediation before mechanism implementation.
+
+## Re-review refinement authorization
+
+The founder asked to proceed with the five documentation-only N-1..N-5 refinements after the report at 1dd73683. This does not accept ForkResolution, authorize canonical encoding/code/artifact issuance or waive any D3/D4/D5/D6/D7 gate. Exact refined semantics return for independent review.

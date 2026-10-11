@@ -29,3 +29,7 @@ Review the [full semantic specification](proposals/owner-roster-trust.md) using 
 ## Independent-review correction round
 
 The D2 report at packet 0bf2e4ae supports the direction but requires semantic clarification before canonical encoding. We propose fresh event-bound acknowledgements carrying each signer's independent pin, fail-closed reconciliation in both membership-disagreement directions, a separately reviewed multi-parent fork join, honest duplicate-custody limits, and a u64 epoch bound with exact-retry semantics. [The correction ledger](review-remediation.md) separates proposed acceptance tests from checks actually performed. The fork join is not accepted or implemented; inability to justify it leaves authority frozen. Source inventory and diagrams are corrected, and capacity disclosure now names the combined freeze. No production vulnerability is claimed demonstrated by these analytical gaps.
+
+## Re-review refinement package
+
+The report at 1dd73683 supports semantics readiness only after N-1/N-2/N-3 refinements, with N-4/N-5 improvements. [Refinement ledger](re-review-remediation.md) records all five. We keep the existing MAX_SAFE_INTEGER counter convention, specify single-event owner/workspace admission with independently reserved signer slots, publish the narrow fork taxonomy and provider divergence residual, and isolate freshness from hosted revocation in the sharper fixture. No implementation acceptance follows. Fork adjudication remains proposed; conflicting revocations or an unavailable historical witness retain freeze.

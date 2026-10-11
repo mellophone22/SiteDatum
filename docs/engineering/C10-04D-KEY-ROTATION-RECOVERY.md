@@ -492,3 +492,7 @@ The next gate is the pinned independent D2 review; D6/D7 remain blocked.
 ### D2 independent-review semantic correction round — 2026-10-11
 
 The report at packet 0bf2e4ae supports direction only. [D2 remediation](c10-04d-d2-owner-roster-review-20261011/review-remediation.md) proposes event-bound independent-tip acknowledgements, both membership mismatch refusals, a separately reviewed fork join, honest copied-artifact limitations, bounded epoch/retry semantics, refreshed 21-line/five-file inventory and combined-freeze disclosure. Proposed semantics are not executed controls. No source/schema/root or service changes; D6/D7 remain blocked. Current eight-key no-removal capacity refusal remains the operational fallback.
+
+### D2 re-review N-1..N-5 refinement package — 2026-10-11
+
+The report at 1dd73683 closes earlier conditions at specification level and requests five refinements. [Refinement ledger](c10-04d-d2-owner-roster-review-20261011/re-review-remediation.md) records the narrow fork taxonomy, MAX_SAFE_INTEGER authority counters, one admitted owner/workspace event, provider-mediated divergence residual and isolated freshness fixture. This is documentation only, awaiting independent review before canonical encoding. ForkResolution remains proposed and unaccepted; D3/D4/D5 proofs open, D6/D7 blocked. No runtime, schema, key, service or activation change.

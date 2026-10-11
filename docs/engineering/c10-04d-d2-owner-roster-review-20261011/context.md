@@ -42,3 +42,11 @@ The supplied D2 independent design review dated 2026-10-11 reviewed packet 0bf2e
 The refreshed grep establishes SF-1 matching-line counts and 03e lines 269/508 establish the two-device cap. All DG-1 through DG-6/PD-1 changes are proposed semantics or disclosure corrections, not executed protocol controls. The report's three simultaneously active devices exceed current scope; the revised acceptance plan uses a two-device revoke/replace transition and explicitly documents the stale-view residual.
 
 [Review remediation](review-remediation.md) maps every finding. New ForkResolution is a proposal for separate acceptance, not founder approval of recovery. No source, test, schema, root or service is changed.
+
+## Independent re-review refinements
+
+Claude's conversation-supplied re-review of commit 1dd7368331a6070693733ea62537a74b680d63eb reports the earlier DG/SF/PD conditions closed at specification level, with new N-1 fork taxonomy, N-2 integer convention, N-3 concurrent-event scope, N-4 view-divergence residual and N-5 fixture isolation. This report is not hashed as an input file and gives no implementation approval. The founder authorized all five documentation refinements; ForkResolution acceptance remains pending.
+
+Preparation HEAD matches 1dd73683 and the worktree is clean. Runtime source remains 91973f57. Direct inspection confirms MAX_SAFE_INTEGER at sync_v2_record_codec.rs:14 and numeric hosted JSON checkpoints at C10-03g:380/406/428. Arithmetic only: 9,007,199,254,740,991 / 1,000,000 / 365.25 = approximately 24,660,368 years. The ten-file base inventory is unchanged; it does not cover newly authored text.
+
+We adopt the existing safe-integer ceiling in the proposed semantics, scope event admission per owner/workspace with owner-scoped issuance positions and independent single-slot signer reservations, publish a conditional fork taxonomy, name provider-mediated divergence and sharpen the two-device fixture. No runtime property has been tested or implemented. [Re-review refinement ledger](re-review-remediation.md) records exact dispositions and planned cases.
