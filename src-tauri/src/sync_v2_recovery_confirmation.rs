@@ -1,6 +1,6 @@
 //! Dormant recovery ceremony backend. No UI/clipboard or durable trust authority.
 #![allow(dead_code)]
-use super::sync_v2_vault_file_prototype::{Archive, Pin, Refusal, Secret};
+use super::sync_v2_vault_file_prototype::{Archive, Pin, Refusal, RetainedManifest, Secret};
 use super::sync_v2_vault_storage::{create_recovery, open_recovery};
 use std::path::Path;
 use uuid::Uuid;
@@ -17,15 +17,21 @@ pub(super) struct PendingRecovery {
     workspace: Uuid,
     generation: u64,
     pin: Pin,
-    manifest: [u8; 32],
+    manifest: RetainedManifest,
+    comparison_key: Zeroizing<[u8; 32]>,
     id: Uuid,
     confirmed: bool,
 }
-pub(super) struct ConfirmedRecovery {
+/// In-memory readback only. NOT durable custody, an independent pin, a current
+/// roster, an all-device barrier, or retirement/readiness authorization.
+/// Never serialize, persist, log or send this receipt over IPC.
+#[must_use]
+pub(super) struct InProcessReadbackReceipt {
     owner: Uuid,
     workspace: Uuid,
     generation: u64,
-    manifest: [u8; 32],
+    manifest: RetainedManifest,
+    comparison_key: Zeroizing<[u8; 32]>,
     id: Uuid,
 }
 impl RecoverySetup {
@@ -53,7 +59,9 @@ impl RecoverySetup {
         }
         let pin = create_recovery(path, &self.archive, &self.secret)?;
         let (owner, workspace, generation) = self.archive.context();
-        let manifest = self.archive.retained_manifest();
+        let mut comparison_key = Zeroizing::new([0; 32]);
+        getrandom::fill(comparison_key.as_mut()).map_err(|_| Refusal::Storage)?;
+        let manifest = self.archive.retained_manifest(&comparison_key);
         // On return the original archive and setup secret are dropped/zeroized.
         Ok(PendingRecovery {
             owner,
@@ -61,37 +69,43 @@ impl RecoverySetup {
             generation,
             pin,
             manifest,
+            comparison_key,
             id: self.id,
             confirmed: false,
         })
     }
 }
 impl PendingRecovery {
-    pub(super) fn confirm(&mut self, path: &Path, reentered: &str) -> Result<ConfirmedRecovery> {
+    pub(super) fn confirm(
+        &mut self,
+        path: &Path,
+        reentered: &str,
+    ) -> Result<InProcessReadbackReceipt> {
         if self.confirmed {
             return Err(Refusal::Invalid);
         }
         let secret = Secret::from_recovery_text(reentered)?;
         let restored = open_recovery(path, &secret, self.owner, self.workspace, self.pin)?;
-        if restored.retained_manifest() != self.manifest {
+        if restored.retained_manifest(&self.comparison_key) != self.manifest {
             return Err(Refusal::Invalid);
         }
         self.confirmed = true;
-        Ok(ConfirmedRecovery {
+        Ok(InProcessReadbackReceipt {
             owner: self.owner,
             workspace: self.workspace,
             generation: self.generation,
-            manifest: self.manifest,
+            manifest: self.manifest.clone(),
+            comparison_key: Zeroizing::new(*self.comparison_key),
             id: self.id,
         })
     }
-    pub(super) fn cancel(self) {} // Metadata only; never deletes the customer copy.
+    pub(super) fn cancel(self) {} // Drops/zeroizes only the comparison key; never deletes the copy.
 }
-impl ConfirmedRecovery {
-    pub(super) fn matches(&self, archive: &Archive, ceremony_id: Uuid) -> bool {
+impl InProcessReadbackReceipt {
+    pub(super) fn proves_readback_of(&self, archive: &Archive, ceremony_id: Uuid) -> bool {
         self.id == ceremony_id
             && archive.context() == (self.owner, self.workspace, self.generation)
-            && archive.retained_manifest() == self.manifest
+            && archive.retained_manifest(&self.comparison_key) == self.manifest
     }
 }
 #[cfg(test)]
@@ -133,6 +147,46 @@ mod tests {
         .unwrap()
     }
     #[test]
+    fn another_ceremony_local_bundle_and_wrong_manifest_never_confirm() {
+        let o = Uuid::new_v4();
+        let w = Uuid::new_v4();
+        let first = CopyFixture::new();
+        let second = CopyFixture::new();
+        let local = CopyFixture::new();
+        let mut setup = RecoverySetup::begin(archive(8, 1, o, w)).unwrap();
+        let text = setup.reveal_once().unwrap();
+        let mut pending = setup.save_copy(&first.path).unwrap();
+        // Same archive AND same re-entered secret, but a distinct seal/ceremony.
+        let secret = Secret::from_recovery_text(&text).unwrap();
+        create_recovery(&second.path, &archive(8, 1, o, w), &secret).unwrap();
+        assert!(pending.confirm(&second.path, &text).is_err());
+        assert!(!pending.confirmed);
+        super::super::sync_v2_vault_storage::create_local(&local.path, &archive(8, 1, o, w))
+            .unwrap();
+        assert!(pending.confirm(&local.path, &text).is_err());
+        assert!(!pending.confirmed);
+        let expected = pending.manifest.clone();
+        pending.manifest = archive(7, 1, o, w).retained_manifest(&pending.comparison_key);
+        assert!(pending.confirm(&first.path, &text).is_err());
+        assert!(!pending.confirmed);
+        pending.manifest = expected;
+        assert!(pending.confirm(&first.path, &text).is_ok());
+    }
+    #[test]
+    fn comparison_fingerprint_is_per_ceremony_and_not_a_stable_key_set_identifier() {
+        let o = Uuid::new_v4();
+        let w = Uuid::new_v4();
+        let first = CopyFixture::new();
+        let second = CopyFixture::new();
+        let mut a = RecoverySetup::begin(archive(8, 1, o, w)).unwrap();
+        let _ = a.reveal_once().unwrap();
+        let mut b = RecoverySetup::begin(archive(8, 1, o, w)).unwrap();
+        let _ = b.reveal_once().unwrap();
+        let a = a.save_copy(&first.path).unwrap();
+        let b = b.save_copy(&second.path).unwrap();
+        assert!(a.manifest != b.manifest);
+    }
+    #[test]
     fn saved_flag_is_not_confirmation_and_only_reentered_secret_can_confirm_full_set() {
         for n in [1, 8, 100, 1000] {
             let o = Uuid::new_v4();
@@ -150,14 +204,14 @@ mod tests {
                 .is_err());
             assert!(!pending.confirmed);
             let confirmed = pending.confirm(&path, &text).unwrap();
-            assert!(confirmed.matches(&archive(n, 1, o, w), ceremony));
-            assert!(!confirmed.matches(&archive(n, 2, o, w), ceremony));
-            assert!(!confirmed.matches(&archive(n, 1, Uuid::new_v4(), w), ceremony));
-            assert!(!confirmed.matches(
+            assert!(confirmed.proves_readback_of(&archive(n, 1, o, w), ceremony));
+            assert!(!confirmed.proves_readback_of(&archive(n, 2, o, w), ceremony));
+            assert!(!confirmed.proves_readback_of(&archive(n, 1, Uuid::new_v4(), w), ceremony));
+            assert!(!confirmed.proves_readback_of(
                 &archive(if n < 1000 { n + 1 } else { 999 }, 1, o, w),
                 ceremony
             ));
-            assert!(!confirmed.matches(&archive(n, 1, o, w), Uuid::new_v4()));
+            assert!(!confirmed.proves_readback_of(&archive(n, 1, o, w), Uuid::new_v4()));
             let altered = Archive::new(
                 o,
                 w,
@@ -172,7 +226,7 @@ mod tests {
                     .collect(),
             )
             .unwrap();
-            assert!(!confirmed.matches(&altered, ceremony));
+            assert!(!confirmed.proves_readback_of(&altered, ceremony));
             assert!(pending.confirm(&path, &text).is_err());
             std::fs::remove_file(&path).unwrap();
         }

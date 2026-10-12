@@ -3,7 +3,10 @@
 //! No active pointer, key deletion, pin discovery or multi-store journal is provided.
 #![allow(dead_code)]
 
-use super::sync_v2_vault_file_prototype::{Archive, Pin, Refusal, Secret};
+use super::sync_v2_vault_file_prototype::{
+    Archive, Pin, Refusal, Secret, MAX_DPAPI as MAX_WRAP, MAX_FILE as MAX_ARCHIVE,
+    MIN_FILE as MIN_ARCHIVE,
+};
 use sha2::{Digest, Sha256};
 use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
 use std::{
@@ -14,12 +17,34 @@ use std::{
 use uuid::Uuid;
 
 const MAGIC: &[u8; 8] = b"SDPB0001"; // Experimental bundle, not an accepted shipping format.
-const MAX_ARCHIVE: usize = 36_092;
-const MAX_WRAP: usize = 8192;
 const MAX_BUNDLE: usize = 12 + MAX_WRAP + MAX_ARCHIVE;
+const _: () = assert!(MIN_ARCHIVE <= MAX_ARCHIVE);
 const REPARSE: u32 = 0x400;
 const OPEN_REPARSE: u32 = 0x00200000;
 type Result<T> = std::result::Result<T, Refusal>;
+fn unconfirmed_readback(error: Refusal) -> Refusal {
+    match error {
+        Refusal::Invalid | Refusal::ReadbackMismatch => Refusal::ReadbackMismatch,
+        _ => Refusal::Incomplete,
+    }
+}
+
+// Constructible only here, after the independently supplied OUTER pin verifies.
+// This is not another freshness check: the outer digest binds these inner bytes.
+pub(super) struct AuthenticatedLocalPayload<'a> {
+    bytes: &'a [u8],
+    owner: Uuid,
+    workspace: Uuid,
+    generation: u64,
+}
+impl AuthenticatedLocalPayload<'_> {
+    pub(super) fn bytes(&self) -> &[u8] {
+        self.bytes
+    }
+    pub(super) fn context(&self) -> (Uuid, Uuid, u64) {
+        (self.owner, self.workspace, self.generation)
+    }
+}
 
 // Public metadata only. Cannot be deserialized from an untrusted verified flag.
 // Holding this is NOT retirement authority or proof of a global current tip.
@@ -112,7 +137,13 @@ fn write_checked(
         .share_mode(0)
         .custom_flags(OPEN_REPARSE)
         .open(path)
-        .map_err(|_| Refusal::Storage)?;
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                Refusal::DestinationExists
+            } else {
+                Refusal::Storage
+            }
+        })?;
     let finish = (|| {
         inspect_handle(&file, MAX_BUNDLE)?;
         after(Phase::Created)?;
@@ -126,12 +157,18 @@ fn write_checked(
         file.sync_all().map_err(|_| Refusal::Storage)?;
         after(Phase::Synced)?;
         if read_handle(&mut file, MAX_BUNDLE)? != bytes {
-            return Err(Refusal::Invalid);
+            return Err(Refusal::ReadbackMismatch);
         }
         after(Phase::ReadBack)
     })();
     // Any failure after creating a new file leaves it unconfirmed for inspection.
-    finish.map_err(|_| Refusal::Incomplete)
+    finish.map_err(|e| {
+        if e == Refusal::ReadbackMismatch {
+            e
+        } else {
+            Refusal::Incomplete
+        }
+    })
 }
 
 pub(super) fn create_local(path: &Path, archive: &Archive) -> Result<ExpectedBundle> {
@@ -162,7 +199,7 @@ fn create_local_inner(
     )?;
     write_checked(path, &bytes, after)?;
     drop(secret); // Verify by reopening the persisted protection, not this secret.
-    open_local(path, expected).map_err(|_| Refusal::Incomplete)?;
+    open_local(path, expected).map_err(unconfirmed_readback)?;
     Ok(expected)
 }
 pub(super) fn open_local(path: &Path, expected: ExpectedBundle) -> Result<Archive> {
@@ -176,23 +213,21 @@ pub(super) fn open_local(path: &Path, expected: ExpectedBundle) -> Result<Archiv
     let count = u32::from_be_bytes(bytes[8..12].try_into().map_err(|_| Refusal::Invalid)?) as usize;
     if count == 0
         || count > MAX_WRAP
-        || bytes.len() < 12 + count + 128
+        || bytes.len() < 12 + count + MIN_ARCHIVE
         || bytes.len() > 12 + count + MAX_ARCHIVE
     {
         return Err(Refusal::Invalid);
     }
     let secret = Secret::unwrap_local(&bytes[12..12 + count])?;
     let archive = &bytes[12 + count..];
-    Archive::open(
-        archive,
-        &secret,
-        false,
-        expected.owner,
-        expected.workspace,
-        Pin {
+    Archive::open_authenticated_local(
+        &AuthenticatedLocalPayload {
+            bytes: archive,
+            owner: expected.owner,
+            workspace: expected.workspace,
             generation: expected.generation,
-            digest: Sha256::digest(archive).into(),
         },
+        &secret,
     )
 }
 
@@ -200,7 +235,7 @@ pub(super) fn create_recovery(path: &Path, archive: &Archive, secret: &Secret) -
     let (bytes, pin) = archive.seal(secret, true)?;
     write_checked(path, &bytes, |_| Ok(()))?;
     let (o, w, _) = archive.context();
-    open_recovery(path, secret, o, w, pin).map_err(|_| Refusal::Incomplete)?;
+    open_recovery(path, secret, o, w, pin).map_err(unconfirmed_readback)?;
     Ok(pin)
 }
 pub(super) fn open_recovery(
@@ -225,6 +260,27 @@ mod tests {
     use super::super::sync_v2_key_recovery::WorkspaceKeys;
     use super::*;
     use zeroize::Zeroizing;
+    #[test]
+    fn readback_integrity_failure_and_destination_collision_are_distinct() {
+        let mut paths = Fixtures::new();
+        let path = paths.path();
+        let archive = fixture(8, 1, Uuid::new_v4(), Uuid::new_v4());
+        assert!(matches!(
+            create_local_inner(&path, &archive, |phase| {
+                if matches!(phase, Phase::ReadBack) {
+                    Err(Refusal::ReadbackMismatch)
+                } else {
+                    Ok(())
+                }
+            }),
+            Err(Refusal::ReadbackMismatch)
+        ));
+        assert!(path.exists());
+        assert!(matches!(
+            create_local(&path, &archive),
+            Err(Refusal::DestinationExists)
+        ));
+    }
 
     struct Fixtures {
         root: std::path::PathBuf,
@@ -300,7 +356,7 @@ mod tests {
         }
         assert!(matches!(
             create_local(&old, &original),
-            Err(Refusal::Storage)
+            Err(Refusal::DestinationExists)
         ));
         assert_eq!(read_locked(&old, MAX_BUNDLE).unwrap(), before);
     }

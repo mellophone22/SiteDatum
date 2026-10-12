@@ -17,9 +17,14 @@ use std::{
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-const LIMIT: usize = 1000; // Experimental budget, not a product promise.
-const HEADER: usize = 76;
-const MAX_FILE: usize = HEADER + LIMIT * 36 + 16;
+pub(super) const LIMIT: usize = 1000; // Experimental budget, not a product promise.
+pub(super) const HEADER: usize = 76;
+pub(super) const MIN_FILE: usize = HEADER + 36 + 16;
+pub(super) const MAX_FILE: usize = HEADER + LIMIT * 36 + 16;
+pub(super) const MAX_DPAPI: usize = 8192;
+#[path = "sync_v2_vault_pin.rs"]
+mod pin;
+pub(super) use pin::Pin;
 const LOCAL: &[u8; 8] = b"SDPV0001";
 const RECOVERY: &[u8; 8] = b"SDPR0001";
 
@@ -28,6 +33,8 @@ pub(super) enum Refusal {
     Invalid,
     Storage,
     Incomplete,
+    DestinationExists,
+    ReadbackMismatch,
 }
 type Result<T> = std::result::Result<T, Refusal>;
 
@@ -87,15 +94,15 @@ pub(super) struct Archive {
     generation: u64,
     keys: Vec<(u32, Zeroizing<[u8; 32]>)>,
 }
-#[derive(Clone, Copy)]
-pub(super) struct Pin {
-    pub(super) generation: u64,
-    pub(super) digest: [u8; 32],
-}
+// Opaque in-process comparator. No Debug/Serialize or byte-export API.
+#[derive(Clone, PartialEq, Eq)]
+pub(super) struct RetainedManifest([u8; 32]);
 
 impl Archive {
-    pub(super) fn retained_manifest(&self) -> [u8; 32] {
+    pub(super) fn retained_manifest(&self, ceremony_key: &[u8; 32]) -> RetainedManifest {
         // In-process full-set comparison only; never logged/published as authority.
+        // HMAC-SHA256 via HKDF extract: independently random key per ceremony.
+        // The fingerprint is opaque, non-serializable and not stable across ceremonies.
         let mut h = Sha256::new();
         h.update(b"sitedatum.prototype.d3.retained-manifest.v1");
         h.update(self.owner.as_bytes());
@@ -106,7 +113,9 @@ impl Archive {
             h.update(v.to_be_bytes());
             h.update(key.as_ref());
         }
-        h.finalize().into()
+        let encoded = Zeroizing::new(<[u8; 32]>::from(h.finalize()));
+        let (prk, _) = Hkdf::<Sha256>::extract(Some(ceremony_key), encoded.as_ref());
+        RetainedManifest(prk.into())
     }
     pub(super) fn context(&self) -> (Uuid, Uuid, u64) {
         (self.owner, self.workspace, self.generation)
@@ -178,10 +187,8 @@ impl Archive {
         let mut file = Vec::with_capacity(HEADER + encrypted.len());
         file.extend_from_slice(&header);
         file.extend_from_slice(&encrypted);
-        let pin = Pin {
-            generation: self.generation,
-            digest: Sha256::digest(&file).into(),
-        };
+        let pin = Pin::from_verified_seal(self.generation, Sha256::digest(&file).into())
+            .ok_or(Refusal::Invalid)?;
         Ok((file, pin))
     }
     pub(super) fn open(
@@ -192,7 +199,42 @@ impl Archive {
         workspace: Uuid,
         expected: Pin,
     ) -> Result<Self> {
-        if !(HEADER + 36 + 16..=MAX_FILE).contains(&bytes.len()) {
+        Self::open_inner(
+            bytes,
+            secret,
+            recovery,
+            owner,
+            workspace,
+            expected.generation(),
+            Some(expected.digest()),
+        )
+    }
+    #[cfg(windows)]
+    pub(super) fn open_authenticated_local(
+        payload: &super::sync_v2_vault_storage::AuthenticatedLocalPayload<'_>,
+        secret: &Secret,
+    ) -> Result<Self> {
+        let (owner, workspace, generation) = payload.context();
+        Self::open_inner(
+            payload.bytes(),
+            secret,
+            false,
+            owner,
+            workspace,
+            generation,
+            None,
+        )
+    }
+    fn open_inner(
+        bytes: &[u8],
+        secret: &Secret,
+        recovery: bool,
+        owner: Uuid,
+        workspace: Uuid,
+        expected_generation: u64,
+        expected_digest: Option<[u8; 32]>,
+    ) -> Result<Self> {
+        if !(MIN_FILE..=MAX_FILE).contains(&bytes.len()) {
             return Err(Refusal::Invalid);
         }
         let h = &bytes[..HEADER];
@@ -205,8 +247,8 @@ impl Archive {
             || count == 0
             || count > LIMIT
             || bytes.len() != HEADER + count * 36 + 16
-            || generation != expected.generation
-            || <[u8; 32]>::from(Sha256::digest(bytes)) != expected.digest
+            || generation != expected_generation
+            || expected_digest.is_some_and(|d| <[u8; 32]>::from(Sha256::digest(bytes)) != d)
         {
             return Err(Refusal::Invalid);
         }
@@ -262,20 +304,27 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
-pub(super) fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
-    if !(HEADER + 52..=MAX_FILE).contains(&bytes.len()) {
+// Bounded IO only; also used for DPAPI blobs. Authentication occurs at open.
+pub(super) fn write_new_bounded(path: &Path, bytes: &[u8]) -> Result<()> {
+    if !(MIN_FILE..=MAX_FILE).contains(&bytes.len()) {
         return Err(Refusal::Invalid);
     }
     let mut f = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(path)
-        .map_err(|_| Refusal::Storage)?;
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                Refusal::DestinationExists
+            } else {
+                Refusal::Storage
+            }
+        })?;
     f.write_all(bytes)
         .and_then(|_| f.sync_all())
         .map_err(|_| Refusal::Incomplete)?;
     if read_bounded(path).map_err(|_| Refusal::Incomplete)? != bytes {
-        return Err(Refusal::Incomplete);
+        return Err(Refusal::ReadbackMismatch);
     }
     // Failed new files remain for inspection; no automatic deletion or replacement.
     Ok(())
@@ -290,7 +339,7 @@ fn dpapi(input: &[u8], protect: bool) -> Result<Zeroizing<Vec<u8>>> {
         },
     };
     use zeroize::Zeroize;
-    if input.is_empty() || input.len() > 8192 {
+    if input.is_empty() || input.len() > MAX_DPAPI {
         return Err(Refusal::Invalid);
     }
     let source = CRYPT_INTEGER_BLOB {
@@ -332,7 +381,7 @@ fn dpapi(input: &[u8], protect: bool) -> Result<Zeroizing<Vec<u8>>> {
     // SAFETY: successful DPAPI returns a LocalAlloc-owned buffer of cbData bytes.
     // Copy only within the bounded OS result; wipe plaintext before freeing it.
     unsafe {
-        if output.pbData.is_null() || output.cbData == 0 || output.cbData > 8192 {
+        if output.pbData.is_null() || output.cbData == 0 || output.cbData as usize > MAX_DPAPI {
             if !output.pbData.is_null() {
                 LocalFree(output.pbData as _);
             }
@@ -365,6 +414,84 @@ impl Secret {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn pin_privacy_compile_failures_have_a_successful_custody_positive_control() {
+        let fixtures = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("proofs/sync-v2-vault-d3/compile-fixtures");
+        let directory =
+            std::env::temp_dir().join(format!("sitedatum-pin-compile-{}", Uuid::new_v4()));
+        std::fs::create_dir(&directory).unwrap();
+        for (name, expected_error) in [
+            ("positive", None),
+            ("private_literal", Some("E0451")),
+            ("private_seal", Some("E0624")),
+        ] {
+            let output = directory.join(format!("{name}.rmeta"));
+            let result = std::process::Command::new("rustc")
+                .arg("--edition=2021")
+                .arg("--emit=metadata")
+                .arg(fixtures.join(format!("{name}.rs")))
+                .arg("-o")
+                .arg(&output)
+                .output()
+                .unwrap();
+            if let Some(code) = expected_error {
+                assert!(!result.status.success());
+                assert!(
+                    String::from_utf8_lossy(&result.stderr).contains(code),
+                    "wrong compile failure: {}",
+                    String::from_utf8_lossy(&result.stderr)
+                );
+            } else {
+                assert!(
+                    result.status.success(),
+                    "positive control failed: {}",
+                    String::from_utf8_lossy(&result.stderr)
+                );
+            }
+            if output.exists() {
+                std::fs::remove_file(output).unwrap();
+            }
+        }
+        std::fs::remove_dir(directory).unwrap();
+        assert!(Pin::from_independent_custody(0, [0; 32]).is_none());
+        assert!(Pin::from_independent_custody(
+            crate::sync_v2_record_codec::MAX_SAFE_INTEGER + 1,
+            [0; 32]
+        )
+        .is_none());
+    }
+    #[test]
+    fn canonical_recovery_tail_and_generation_bounds_refuse_ambiguous_inputs() {
+        let secret = Secret::random().unwrap();
+        let text = secret.recovery_text();
+        let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        let mut accepted = 0;
+        for tail in alphabet {
+            let mut candidate = text.as_bytes().to_vec();
+            candidate[42] = *tail;
+            let candidate = String::from_utf8(candidate).unwrap();
+            if let Ok(parsed) = Secret::from_recovery_text(&candidate) {
+                assert_eq!(parsed.recovery_text().as_str(), candidate);
+                accepted += 1;
+            }
+        }
+        assert_eq!(accepted, 16);
+        for bad in [
+            format!("{}=", text.as_str()),
+            format!("{} ", &text[..42]),
+            text[..42].to_owned(),
+        ] {
+            assert!(Secret::from_recovery_text(&bad).is_err());
+        }
+        let o = Uuid::new_v4();
+        let w = Uuid::new_v4();
+        let maximum = crate::sync_v2_record_codec::MAX_SAFE_INTEGER;
+        for generation in [0, maximum + 1, u64::MAX] {
+            assert!(Archive::new(o, w, generation, vec![(1, Zeroizing::new([7; 32]))]).is_err());
+        }
+        assert!(Archive::new(o, w, maximum, vec![(1, Zeroizing::new([7; 32]))]).is_ok());
+    }
     fn archive(count: usize, generation: u64, o: Uuid, w: Uuid) -> Archive {
         Archive::new(
             o,
@@ -386,10 +513,9 @@ mod tests {
         for i in 0..bytes.len() {
             let mut changed = bytes.clone();
             changed[i] ^= 1;
-            let altered_pin = Pin {
-                digest: Sha256::digest(&changed).into(),
-                ..pin
-            };
+            let altered_pin =
+                Pin::from_independent_custody(pin.generation(), Sha256::digest(&changed).into())
+                    .unwrap();
             assert!(Archive::open(&changed, &secret, false, o, w, altered_pin).is_err());
         }
         assert!(Archive::open(&bytes, &Secret::random().unwrap(), false, o, w, pin).is_err());
@@ -479,8 +605,11 @@ mod tests {
         let w = Uuid::new_v4();
         let secret = Secret::random().unwrap();
         let (bytes, pin) = archive(8, 1, o, w).seal(&secret, false).unwrap();
-        write_new(&path, &bytes).unwrap();
-        assert_eq!(write_new(&path, &bytes), Err(Refusal::Storage));
+        write_new_bounded(&path, &bytes).unwrap();
+        assert_eq!(
+            write_new_bounded(&path, &bytes),
+            Err(Refusal::DestinationExists)
+        );
         assert_eq!(read_bounded(&path).unwrap(), bytes);
         assert!(Archive::open(&read_bounded(&path).unwrap(), &secret, false, o, w, pin).is_ok());
         let f = OpenOptions::new().write(true).open(&path).unwrap();
@@ -500,10 +629,8 @@ mod tests {
         let (again, _) = a.seal(&secret, false).unwrap();
         assert_ne!(&bytes[52..76], &again[52..76]);
         bytes[..8].copy_from_slice(RECOVERY);
-        let relabeled = Pin {
-            digest: Sha256::digest(&bytes).into(),
-            ..pin
-        };
+        let relabeled =
+            Pin::from_independent_custody(pin.generation(), Sha256::digest(&bytes).into()).unwrap();
         assert!(Archive::open(&bytes, &secret, true, o, w, relabeled).is_err());
     }
     #[cfg(windows)]
@@ -531,11 +658,11 @@ mod tests {
         let (file, pin) = a.seal(&secret, false).unwrap();
         let path =
             std::env::temp_dir().join(format!("sitedatum-d3-local-{}.fixture", Uuid::new_v4()));
-        write_new(&path, &file).unwrap();
+        write_new_bounded(&path, &file).unwrap();
         let protected_path =
             std::env::temp_dir().join(format!("sitedatum-d3-protected-{}.fixture", Uuid::new_v4()));
         // DPAPI ciphertext only. This OS blob is not a published wrapper format.
-        write_new(&protected_path, &wrapped).unwrap();
+        write_new_bounded(&protected_path, &wrapped).unwrap();
         let expected: Vec<[u8; 32]> = a
             .keys
             .iter()

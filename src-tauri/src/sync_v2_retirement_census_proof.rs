@@ -371,7 +371,9 @@ mod tests {
 
     #[test]
     fn file_vault_total_loss_recovery_reads_all_twelve_columns_at_every_retained_version() {
-        use crate::sync_v2_vault_file_prototype::{read_bounded, write_new, Archive, Secret};
+        use crate::sync_v2_vault_file_prototype::{
+            read_bounded, write_new_bounded, Archive, Secret,
+        };
         use zeroize::Zeroizing;
         for count in [1, 8, 100, 1000] {
             let f = Fixture::new();
@@ -433,7 +435,7 @@ mod tests {
             let (copy, pin) = archive.seal(&recovery, true).unwrap();
             let path = std::env::temp_dir()
                 .join(format!("sitedatum-d3-recovery-{}.fixture", Uuid::new_v4()));
-            write_new(&path, &copy).unwrap();
+            write_new_bounded(&path, &copy).unwrap();
             // Destructure to discard even the original unrelated two-key fixture ring.
             let Fixture { c, ring, .. } = f;
             drop(ring);
